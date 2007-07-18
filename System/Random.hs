@@ -212,12 +212,7 @@ mkStdGen32 s
 	s2      = q `mod` 2147483398
 
 createStdGen :: Integer -> StdGen
-createStdGen s
- | s < 0     = createStdGen (-s)
- | otherwise = StdGen (fromInteger (s1+1)) (fromInteger (s2+1))
-      where
-	(q, s1) = s `divMod` 2147483562
-	s2      = q `mod` 2147483398
+createStdGen s = mkStdGen32 $ fromIntegral s
 
 -- FIXME: 1/2/3 below should be ** (vs@30082002) XXX
 
