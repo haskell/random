@@ -327,18 +327,18 @@ randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -
 randomIvalDouble (l,h) fromDouble rng 
   | l > h     = randomIvalDouble (h,l) fromDouble rng
   | otherwise = 
-       case (randomIvalInteger (toInteger (minBound::Int), toInteger (maxBound::Int)) rng) of
+       case (randomIvalInteger (toInteger (minBound::Int32), toInteger (maxBound::Int32)) rng) of
          (x, rng') -> 
 	    let
 	     scaled_x = 
 		fromDouble ((l+h)/2) + 
-                fromDouble ((h-l) / realToFrac intRange) *
-		fromIntegral (x::Int)
+                fromDouble ((h-l) / realToFrac int32Range) *
+		fromIntegral (x::Int32)
 	    in
 	    (scaled_x, rng')
 
-intRange :: Integer
-intRange  = toInteger (maxBound::Int) - toInteger (minBound::Int)
+int32Range :: Integer
+int32Range = toInteger (maxBound::Int32) - toInteger (minBound::Int32)
 
 iLogBase :: Integer -> Integer -> Integer
 iLogBase b i = if i < b then 1 else 1 + iLogBase b (i `div` b)
