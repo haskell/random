@@ -67,6 +67,8 @@ module System.Random
 
 import Prelude
 
+import Data.Int
+
 #ifdef __NHC__
 import CPUTime		( getCPUTime )
 import Foreign.Ptr      ( Ptr, nullPtr )
@@ -159,7 +161,7 @@ instance of 'StdGen' has the following properties:
 -}
 
 data StdGen 
- = StdGen Int Int
+ = StdGen Int32 Int32
 
 instance RandomGen StdGen where
   next  = stdNext
@@ -199,8 +201,11 @@ generator, by mapping an 'Int' into a generator. Again, distinct arguments
 should be likely to produce distinct generators.
 -}
 mkStdGen :: Int -> StdGen -- why not Integer ?
-mkStdGen s
- | s < 0     = mkStdGen (-s)
+mkStdGen s = mkStdGen32 $ fromIntegral s
+
+mkStdGen32 :: Int32 -> StdGen
+mkStdGen32 s
+ | s < 0     = mkStdGen32 (-s)
  | otherwise = StdGen (s1+1) (s2+1)
       where
 	(q, s1) = s `divMod` 2147483562
@@ -348,7 +353,7 @@ stdRange = (0, 2147483562)
 
 stdNext :: StdGen -> (Int, StdGen)
 -- Returns values in the range stdRange
-stdNext (StdGen s1 s2) = (z', StdGen s1'' s2'')
+stdNext (StdGen s1 s2) = (fromIntegral z', StdGen s1'' s2'')
 	where	z'   = if z < 1 then z + 2147483562 else z
 		z    = s1'' - s2''
 
