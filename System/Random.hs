@@ -304,8 +304,8 @@ instance Random Float where
 mkStdRNG :: Integer -> IO StdGen
 mkStdRNG o = do
     ct          <- getCPUTime
-    (TOD sec _) <- getClockTime
-    return (createStdGen (sec * 12345 + ct + o))
+    (TOD sec psec) <- getClockTime
+    return (createStdGen (sec * 12345 + psec + ct + o))
 
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l,h) rng
