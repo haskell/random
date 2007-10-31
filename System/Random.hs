@@ -86,10 +86,10 @@ import Numeric		( readDec )
 -- the extended one expected in this module, so we lash-up a quick
 -- replacement here.
 #ifdef __NHC__
-data ClockTime = TOD Integer ()
+data ClockTime = TOD Integer Integer
 foreign import ccall "time.h time" readtime :: Ptr CTime -> IO CTime
 getClockTime :: IO ClockTime
-getClockTime = do CTime t <- readtime nullPtr;  return (TOD (toInteger t) ())
+getClockTime = do CTime t <- readtime nullPtr;  return (TOD (toInteger t) 0)
 #endif
 
 -- | The class 'RandomGen' provides a common interface to random number
