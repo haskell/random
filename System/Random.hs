@@ -132,7 +132,7 @@ class RandomGen g where
    genRange :: g -> (Int,Int)
 
    -- default method
-   genRange g = (minBound,maxBound)
+   genRange _ = (minBound, maxBound)
 
 {- |
 The 'StdGen' instance of 'RandomGen' has a 'genRange' of at least 30 bits.
@@ -177,7 +177,7 @@ instance Show StdGen where
 instance Read StdGen where
   readsPrec _p = \ r ->
      case try_read r of
-       r@[_] -> r
+       r'@[_] -> r'
        _   -> [stdFromString r] -- because it shouldn't ever fail.
     where 
       try_read r = do
@@ -272,13 +272,13 @@ instance Random Int where
 instance Random Char where
   randomR (a,b) g = 
       case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
-        (x,g) -> (chr x, g)
+        (x,g') -> (chr x, g')
   random g	  = randomR (minBound,maxBound) g
 
 instance Random Bool where
   randomR (a,b) g = 
       case (randomIvalInteger (toInteger (bool2Int a), toInteger (bool2Int b)) g) of
-        (x, g) -> (int2Bool x, g)
+        (x, g') -> (int2Bool x, g')
        where
          bool2Int False = 0
          bool2Int True  = 1
@@ -317,11 +317,11 @@ randomIvalInteger (l,h) rng
        n = iLogBase b k
 
        f 0 acc g = (acc, g)
-       f n acc g = 
+       f n' acc g =
           let
 	   (x,g')   = next g
 	  in
-	  f (n-1) (fromIntegral x + acc * b) g'
+	  f (n' - 1) (fromIntegral x + acc * b) g'
 
 randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
 randomIvalDouble (l,h) fromDouble rng 
