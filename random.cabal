@@ -4,6 +4,7 @@ license:	BSD3
 license-file:	LICENSE
 maintainer:	libraries@haskell.org
 synopsis:	random number library
+category:       System
 description:
 	This package provides a random number library.
 build-type: Simple
