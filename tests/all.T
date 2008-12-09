@@ -1,4 +1,4 @@
 test('random1283',
-     [reqlib('containers'),expect_broken(2844)],
+     reqlib('containers'),
      compile_and_run,
      ['-package containers'])
