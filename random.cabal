@@ -3,13 +3,21 @@ version:	1.0.0.1
 license:	BSD3
 license-file:	LICENSE
 maintainer:	libraries@haskell.org
+bug-reports: http://hackage.haskell.org/trac/ghc/newticket?component=libraries/random
 synopsis:	random number library
 category:       System
 description:
 	This package provides a random number library.
 build-type: Simple
-exposed-modules:
-	System.Random
-extensions:	CPP
-build-depends: base, old-time
+Cabal-Version: >= 1.2
+
+Library
+    exposed-modules:
+        System.Random
+    extensions:	CPP
+    build-depends: base, old-time
+
+source-repository head
+    type:     darcs
+    location: http://darcs.haskell.org/packages/random
 
