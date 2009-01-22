@@ -9,7 +9,7 @@ category:       System
 description:
 	This package provides a random number library.
 build-type: Simple
-Cabal-Version: >= 1.2
+Cabal-Version: >= 1.6
 
 Library
     exposed-modules:
