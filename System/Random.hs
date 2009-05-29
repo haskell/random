@@ -277,12 +277,14 @@ instance Random Char where
 
 instance Random Bool where
   randomR (a,b) g = 
-      case (randomIvalInteger (toInteger (bool2Int a), toInteger (bool2Int b)) g) of
+      case (randomIvalInteger (bool2Int a, bool2Int b) g) of
         (x, g') -> (int2Bool x, g')
        where
+         bool2Int :: Bool -> Integer
          bool2Int False = 0
          bool2Int True  = 1
 
+	 int2Bool :: Int -> Bool
 	 int2Bool 0	= False
 	 int2Bool _	= True
 
