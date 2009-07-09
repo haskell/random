@@ -15,7 +15,7 @@ Library
     exposed-modules:
         System.Random
     extensions:	CPP
-    build-depends: base, old-time
+    build-depends: base, time
 
 source-repository head
     type:     darcs
