@@ -1,6 +1,6 @@
 import Control.Concurrent
 import Control.Monad
-import Data.Sequence hiding (take)
+import Data.Sequence (ViewL(..), empty, fromList, viewl, (<|), (|>), (><))
 import System.Random
 
 threads = 4
