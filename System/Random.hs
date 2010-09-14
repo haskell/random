@@ -40,7 +40,8 @@ module System.Random
 
 	-- * Random number generators
 
-	  RandomGen(next, split, genRange)
+	  RandomGen(next, genRange)
+	, SplittableGen(split)
 
 	-- ** Standard random number generators
 	, StdGen
@@ -101,7 +102,7 @@ getTime = do
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
 --
--- Minimal complete definition: 'next' and 'split'.
+-- Minimal complete definition: 'next'.
 
 class RandomGen g where
 
@@ -109,14 +110,6 @@ class RandomGen g where
    -- in the range returned by 'genRange' (including both end points),
    -- and a new generator.
    next     :: g -> (Int, g)
-
-   -- |The 'split' operation allows one to obtain two distinct random number
-   -- generators. This is very useful in functional programs (for example, when
-   -- passing a random number generator down to recursive calls), but very
-   -- little work has been done on statistically robust implementations of
-   -- 'split' (["System.Random\#Burton", "System.Random\#Hellekalek"]
-   -- are the only examples we know of).
-   split    :: g -> (g, g)
 
    -- |The 'genRange' operation yields the range of values returned by
    -- the generator.
@@ -139,6 +132,17 @@ class RandomGen g where
 
    -- default method
    genRange _ = (minBound, maxBound)
+
+-- | The class 'SplittableGen' proivides a way to specify a random number
+-- generator that can be split into two new generators.
+class SplittableGen g where
+   -- |The 'split' operation allows one to obtain two distinct random number
+   -- generators. This is very useful in functional programs (for example, when
+   -- passing a random number generator down to recursive calls), but very
+   -- little work has been done on statistically robust implementations of
+   -- 'split' (["System.Random\#Burton", "System.Random\#Hellekalek"]
+   -- are the only examples we know of).
+   split    :: g -> (g, g)
 
 {- |
 The 'StdGen' instance of 'RandomGen' has a 'genRange' of at least 30 bits.
@@ -171,8 +175,10 @@ data StdGen
 
 instance RandomGen StdGen where
   next  = stdNext
-  split = stdSplit
   genRange _ = stdRange
+
+instance SplittableGen StdGen where
+  split = stdSplit
 
 instance Show StdGen where
   showsPrec p (StdGen s1 s2) = 
