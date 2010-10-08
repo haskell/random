@@ -69,6 +69,8 @@ module System.Random
 import Prelude
 
 import Data.Int
+import Data.Word
+import Foreign.C.Types
 
 #ifdef __NHC__
 import CPUTime		( getCPUTime )
@@ -277,9 +279,41 @@ class Random a where
   randomIO	   = getStdRandom random
 
 
-instance Random Int where
-  randomR (a,b) g = randomIvalInteger (toInteger a, toInteger b) g
-  random g        = randomR (minBound,maxBound) g
+instance Random Integer where
+  randomR ival g = randomIvalInteger ival g
+  random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
+
+instance Random Int        where randomR = randomIvalIntegral; random = randomBounded
+instance Random Int8       where randomR = randomIvalIntegral; random = randomBounded
+instance Random Int16      where randomR = randomIvalIntegral; random = randomBounded
+instance Random Int32      where randomR = randomIvalIntegral; random = randomBounded
+instance Random Int64      where randomR = randomIvalIntegral; random = randomBounded
+
+instance Random Word       where randomR = randomIvalIntegral; random = randomBounded
+instance Random Word8      where randomR = randomIvalIntegral; random = randomBounded
+instance Random Word16     where randomR = randomIvalIntegral; random = randomBounded
+instance Random Word32     where randomR = randomIvalIntegral; random = randomBounded
+instance Random Word64     where randomR = randomIvalIntegral; random = randomBounded
+
+instance Random CChar      where randomR = randomIvalIntegral; random = randomBounded
+instance Random CSChar     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CUChar     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CShort     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CUShort    where randomR = randomIvalIntegral; random = randomBounded
+instance Random CInt       where randomR = randomIvalIntegral; random = randomBounded
+instance Random CUInt      where randomR = randomIvalIntegral; random = randomBounded
+instance Random CLong      where randomR = randomIvalIntegral; random = randomBounded
+instance Random CULong     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CPtrdiff   where randomR = randomIvalIntegral; random = randomBounded
+instance Random CSize      where randomR = randomIvalIntegral; random = randomBounded
+instance Random CWchar     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CSigAtomic where randomR = randomIvalIntegral; random = randomBounded
+instance Random CLLong     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CULLong    where randomR = randomIvalIntegral; random = randomBounded
+instance Random CIntPtr    where randomR = randomIvalIntegral; random = randomBounded
+instance Random CUIntPtr   where randomR = randomIvalIntegral; random = randomBounded
+instance Random CIntMax    where randomR = randomIvalIntegral; random = randomBounded
+instance Random CUIntMax   where randomR = randomIvalIntegral; random = randomBounded
 
 instance Random Char where
   randomR (a,b) g = 
@@ -301,10 +335,6 @@ instance Random Bool where
 	 int2Bool _	= True
 
   random g	  = randomR (minBound,maxBound) g
- 
-instance Random Integer where
-  randomR ival g = randomIvalInteger ival g
-  random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
 instance Random Double where
   randomR ival g = randomIvalDouble ival id g
@@ -312,14 +342,29 @@ instance Random Double where
   
 -- hah, so you thought you were saving cycles by using Float?
 instance Random Float where
-  random g        = randomIvalDouble (0::Double,1) realToFrac g
-  randomR (a,b) g = randomIvalDouble (realToFrac a, realToFrac b) realToFrac g
+  randomR = randomIvalFrac
+  random  = randomFrac
+
+instance Random CFloat where
+  randomR = randomIvalFrac
+  random  = randomFrac
+
+instance Random CDouble where
+  randomR = randomIvalFrac
+  random  = randomFrac
+
 
 mkStdRNG :: Integer -> IO StdGen
 mkStdRNG o = do
     ct          <- getCPUTime
     (sec, psec) <- getTime
     return (createStdGen (sec * 12345 + psec + ct + o))
+
+randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
+randomBounded = randomR (minBound, maxBound)
+
+randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
+randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
 
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l,h) rng
@@ -336,6 +381,12 @@ randomIvalInteger (l,h) rng
 	   (x,g')   = next g
 	  in
 	  f (n' - 1) (fromIntegral x + acc * b) g'
+
+randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
+randomFrac = randomIvalDouble (0::Double,1) realToFrac
+
+randomIvalFrac :: (RandomGen g, Real a, Fractional b) => (a,a) -> g -> (b, g)
+randomIvalFrac (a,b) = randomIvalDouble (realToFrac a, realToFrac b) realToFrac
 
 randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
 randomIvalDouble (l,h) fromDouble rng 
