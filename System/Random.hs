@@ -154,8 +154,8 @@ The 'Show' and 'Read' instances of 'StdGen' provide a primitive way to save the
 state of a random number generator.
 It is required that @'read' ('show' g) == g@.
 
-In addition, 'read' may be used to map an arbitrary string (not necessarily one
-produced by 'show') onto a value of type 'StdGen'. In general, the 'read'
+In addition, 'reads' may be used to map an arbitrary string (not necessarily one
+produced by 'show') onto a value of type 'StdGen'. In general, the 'Read'
 instance of 'StdGen' has the following properties: 
 
 * It guarantees to succeed on any string. 
