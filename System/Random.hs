@@ -289,7 +289,10 @@ instance Random Int16      where randomR = randomIvalIntegral; random = randomBo
 instance Random Int32      where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int64      where randomR = randomIvalIntegral; random = randomBounded
 
+#ifndef __NHC__
+-- Word is a type synonym in nhc98.
 instance Random Word       where randomR = randomIvalIntegral; random = randomBounded
+#endif
 instance Random Word8      where randomR = randomIvalIntegral; random = randomBounded
 instance Random Word16     where randomR = randomIvalIntegral; random = randomBounded
 instance Random Word32     where randomR = randomIvalIntegral; random = randomBounded
