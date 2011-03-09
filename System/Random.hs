@@ -221,6 +221,8 @@ mkStdGen s = mkStdGen32 $ fromIntegral s
 mkStdGen32 :: Int32 -> StdGen
 mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
       where
+	-- We want a non-negative number, but we can't just take the abs
+	-- of sMaybeNegative as -minBound == minBound.
 	s       = sMaybeNegative .&. maxBound
 	(q, s1) = s `divMod` 2147483562
 	s2      = q `mod` 2147483398
