@@ -18,6 +18,6 @@ Library
     build-depends: base >= 3 && < 5, time
 
 source-repository head
-    type:     darcs
-    location: http://darcs.haskell.org/packages/random
+    type:     git
+    location: http://darcs.haskell.org/packages/random.git/
 
