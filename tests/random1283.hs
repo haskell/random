@@ -17,6 +17,7 @@ testRace t s = do
   iss <- threadRandoms t s
   return (isInterleavingOf (ref::[Int]) iss)
 
+threadRandoms :: Random a => Int -> Int -> IO [[a]]
 threadRandoms t s = do
   vs <- sequence $ replicate t $ do
     v <- newEmptyMVar
@@ -34,3 +35,4 @@ isInterleavingOf xs yss = iio xs (viewl $ fromList yss) EmptyL where
 
 fromViewL (EmptyL) = empty
 fromViewL (x :< xs) = x <| xs
+

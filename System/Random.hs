@@ -368,6 +368,7 @@ mkStdRNG o = do
 randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
 randomBounded = randomR (minBound, maxBound)
 
+-- The two integer functions below take an [inclusive,inclusive] range.
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
 randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
 
@@ -387,6 +388,7 @@ randomIvalInteger (l,h) rng
 	  in
 	  f (n' - 1) (fromIntegral x + acc * b) g'
 
+-- The continuous functions on the other hand take an [inclusive,exclusive) range.
 randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
 randomFrac = randomIvalDouble (0::Double,1) realToFrac
 
