@@ -2,7 +2,7 @@ name:		random
 version:	1.0.0.3
 license:	BSD3
 license-file:	LICENSE
-maintainer:	libraries@haskell.org
+maintainer:	rrnewton@gmail.com
 bug-reports: http://hackage.haskell.org/trac/ghc/newticket?component=libraries/random
 synopsis:	random number library
 category:       System
