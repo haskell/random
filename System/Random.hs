@@ -348,11 +348,22 @@ instance Random Double where
 -- hah, so you thought you were saving cycles by using Float?
 instance Random Float where
   randomR = randomIvalFrac
-  random  = randomFrac
+  random rng = 
+    case next rng of 
+      (x,rng') -> 
+         let 
+            -- We use 24 bits of randomness corresponding to the 24 bit significand:
+            rand = fromIntegral (mask24 .&. x) :: Float
+	 in 
+         (rand / 2^24, rng')
+   where
+     mask24 :: Int 
+     mask24 = 2^24 - 1
 
 instance Random CFloat where
   randomR = randomIvalFrac
-  random  = randomFrac
+  random rng = case random rng of 
+	         (x,rng') -> (realToFrac (x::Float), rng')
 
 instance Random CDouble where
   randomR = randomIvalFrac

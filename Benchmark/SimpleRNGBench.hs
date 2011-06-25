@@ -57,8 +57,8 @@ fmt_num n = if n < 100
 
 -- Measure clock frequency, spinning rather than sleeping to try to
 -- stay on the same core.
-measure_freq2 :: IO Int64
-measure_freq2 = do 
+measureFreq :: IO Int64
+measureFreq = do 
   let second = 1000 * 1000 * 1000 * 1000 -- picoseconds are annoying
   t1 <- rdtsc 
   start <- getCPUTime
@@ -79,14 +79,6 @@ measure_freq2 = do
 
 ----------------------------------------------------------------------------------------------------
 -- Drivers to get random numbers repeatedly.
-
-incr !counter = 
-  do -- modifyIORef counter (+1) -- Not strict enough!
-     -- Incrementing counter strictly (avoiding stack overflow) is annoying:
-     c <- readIORef counter
-     let c' = c+1
-     evaluate c'
-     writeIORef counter c'     
 
 -- Test overheads without actually generating any random numbers:
 data NoopRNG = NoopRNG
@@ -119,12 +111,20 @@ timeit numthreads freq msg gen next =
      finals <- mapM readIORef counters
      let mean :: Double = fromIntegral (foldl1 (+) finals) / fromIntegral numthreads
          cycles_per :: Double = fromIntegral freq / mean
-     print_result (round mean) msg cycles_per
+     printResult (round mean) msg cycles_per
 
  where 
    infloop !counter !(!n,!g) = 
      do incr counter
 	infloop counter (next g)
+
+   incr !counter = 
+     do -- modifyIORef counter (+1) -- Not strict enough!
+	c <- readIORef counter
+	let c' = c+1
+	evaluate c'
+	writeIORef counter c'     
+
 
 -- This function times an IO function on one or more threads.  Rather
 -- than running a fixed number of iterations, it uses a binary search
@@ -141,7 +141,7 @@ timeit_foreign numthreads freq msg ffn = do
 
   let total_per_second = round $ fromIntegral n * (1 / t)
       cycles_per = fromIntegral freq * t / fromIntegral n
-  print_result total_per_second msg cycles_per
+  printResult total_per_second msg cycles_per
   return total_per_second
 
  where 
@@ -167,9 +167,25 @@ timeit_foreign numthreads freq msg ffn = do
      return ()
 
 
-print_result total msg cycles_per = 
+printResult total msg cycles_per = 
      putStrLn$ "    "++ padleft 11 (commaint total) ++" randoms generated "++ padright 27 ("["++msg++"]") ++" ~ "
 	       ++ fmt_num cycles_per ++" cycles/int"
+
+
+-- Take many measurements
+--approxBounds :: (RandomGen g, Random a, Ord a, Bounded a) => 
+approxBounds :: (RandomGen g, Random a, Ord a, Num a, Fractional a) => 
+		g -> (g -> (a,g)) -> Int -> (a,a,a)
+approxBounds rng next n = (mn,mx, sum / fromIntegral n)
+ where 
+  (mn,mx,sum) = loop rng n 100 (-100) 0
+  loop !rng 0 mn mx sum = (mn,mx,sum)
+  loop rng  n mn mx sum = 
+    case next rng of 
+      (x, rng') -> loop rng' (n-1) (min x mn) (max x mx) (x+sum)
+
+floatBounds = do g<-getStdGen; return$ approxBounds g random 100000 :: IO (Float,Float,Float)
+
 
 ----------------------------------------------------------------------------------------------------
 -- Main Script
@@ -202,13 +218,14 @@ main = do
    t2 <- rdtsc
    putStrLn ("  Cost of rdtsc (ffi call):    " ++ show (t2 - t1))
 
-   freq <- measure_freq2
+   freq <- measureFreq
    putStrLn$ "  Approx clock frequency:  " ++ commaint freq
 
    let 
        randFloat   = random :: RandomGen g => g -> (Float,g)
        randCFloat  = random :: RandomGen g => g -> (CFloat,g)
        randDouble  = random :: RandomGen g => g -> (Double,g)
+       randCDouble = random :: RandomGen g => g -> (CDouble,g)
        randInteger = random :: RandomGen g => g -> (Integer,g)
        randBool    = random :: RandomGen g => g -> (Bool,g)
 
@@ -221,6 +238,7 @@ main = do
 	 timeit th freq "System.Random Floats"   gen   randFloat
 	 timeit th freq "System.Random CFloats"  gen   randCFloat
 	 timeit th freq "System.Random Doubles"  gen   randDouble
+	 timeit th freq "System.Random CDoubles" gen   randCDouble
 	 timeit th freq "System.Random Integers" gen   randInteger
 	 timeit th freq "System.Random Bools"    gen   randBool
 
