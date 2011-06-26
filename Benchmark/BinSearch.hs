@@ -11,15 +11,8 @@ where
 import Control.Monad
 import Data.Time.Clock -- Not in 6.10
 import Data.List
-import Data.IORef
-import System
 import System.IO
-import System.Cmd
-import System.Exit
-import Debug.Trace
-
--- In seconds:
---desired_exec_length = 3
+import Prelude hiding (min,max,log)
 
 
 
@@ -39,10 +32,8 @@ binSearch verbose trials (min,max) kernel =
      let desired_exec_length = 1.0
 	 good_trial t = (toRational t <= toRational max) && (toRational t >= toRational min)
 
-	 --loop :: Bool -> [String] -> Int -> Integer -> IO ()
-
 	 -- At some point we must give up...
-	 loop n | n > (2 ^ 100) = error "ERROR binSearch: This function doesn't seem to scale in proportion to its last argument."
+	 loop n | n > ((2::Integer) ^ (100::Integer)) = error "ERROR binSearch: This function doesn't seem to scale in proportion to its last argument."
 
 	 -- Not allowed to have "0" size input, bump it back to one:
 	 loop 0 = loop 1
@@ -50,12 +41,8 @@ binSearch verbose trials (min,max) kernel =
 	 loop n = 
 	    do 
 	       when(verbose)$ putStr$ "[binsearch:"++ show n ++ "] "
-	       -- hFlush stdout
-
 	       time <- timeit$ kernel n
-
 	       when(verbose)$ putStrLn$ "Time consumed: "++ show time
-	       -- hFlush stdout
 	       let rate = fromIntegral n / time
 
 	       -- [2010.06.09] Introducing a small fudge factor to help our guess get over the line: 
@@ -76,7 +63,9 @@ binSearch verbose trials (min,max) kernel =
 		else if time < 0.100 
 		then loop (2*n)
 
-		else do when(verbose)$ putStrLn$ "[binsearch] Estimated rate to be "++show (round$ rate)++" per second.  Trying to scale up..."
+		else do when(verbose)$ 
+			  putStrLn$ "[binsearch] Estimated rate to be "
+				    ++show (round rate::Integer)++" per second.  Trying to scale up..."
 
 			-- Here we've exited the doubling phase, but we're making our first guess as to how big a real execution should be:
 			if time > 0.100 && time < 0.33 * desired_exec_length
@@ -97,33 +86,38 @@ binSearch verbose trials (min,max) kernel =
 			-- when(verbose)$ hFlush stdout
 			lockin (trials_left - 1) n (time : log)
 
+         print_trial :: Integer -> Integer -> NominalDiffTime -> IO ()
          print_trial trialnum n time = 
 	     let rate = fromIntegral n / time
 	         timeperunit = time / fromIntegral n
 	     in
-			when(verbose)$ putStrLn$ "[binsearch]  TRIAL: "++show trialnum ++
-				                 " secPerUnit: "++ showTime timeperunit ++ 
-						 " ratePerSec: "++ show (rate) ++ 
-						 " seconds: "++showTime time
+		when(verbose)$ putStrLn$ "[binsearch]  TRIAL: "++show trialnum ++
+					 " secPerUnit: "++ showTime timeperunit ++ 
+					 " ratePerSec: "++ show (rate) ++ 
+					 " seconds: "++showTime time
 
 
 
      (n,t) <- loop 1
      return (n, fromRational$ toRational t)
 
+showTime ::  NominalDiffTime -> String
 showTime t = show ((fromRational $ toRational t) :: Double)
+
 toDouble :: Real a => a -> Double
 toDouble = fromRational . toRational
 
 
 -- Could use cycle counters here.... but the point of this is to time
 -- things on the order of a second.
+timeit :: IO () -> IO NominalDiffTime
 timeit io = 
     do strt <- getCurrentTime
        io       
        end  <- getCurrentTime
        return (diffUTCTime end strt)
-
+{-
+test :: IO (Integer,Double)
 test = 
   binSearch True 3 (1.0, 1.05)
    (\n -> 
@@ -131,3 +125,4 @@ test =
        forM_ [1..n] $ \i -> do
          old <- readIORef v
          writeIORef v (old+i))
+-}
