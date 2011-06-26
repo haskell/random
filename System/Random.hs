@@ -345,7 +345,6 @@ instance Random Double where
   randomR ival g = randomIvalDouble ival id g
   random g       = randomR (0::Double,1) g
   
--- hah, so you thought you were saving cycles by using Float?
 instance Random Float where
   randomR = randomIvalFrac
   random rng = 
@@ -353,12 +352,22 @@ instance Random Float where
       (x,rng') -> 
          let 
             -- We use 24 bits of randomness corresponding to the 24 bit significand:
-            rand = fromIntegral (mask24 .&. x) :: Float
+            rand = fromIntegral (mask24 .&. x) 
+		   :: Float
 	 in 
-         (rand / 2^24, rng')
+--         (rand / 2^24, rng')
+         (rand / fromIntegral twoto24, rng')
+	 -- Note, encodeFloat is another option, but I'm not seeing slightly
+	 --  worse performance with the following [2011.06.25]:
+--         (encodeFloat rand (-24), rng')
    where
      mask24 :: Int 
-     mask24 = 2^24 - 1
+--     mask24 = 2^24 - 1
+
+     mask24 = twoto24 - 1
+     -- RRN: Note, in my tests [2011.06.25] this worked as well as using Data.Bit:
+     twoto24 = (2::Int) ^ (24::Int)
+
 
 instance Random CFloat where
   randomR = randomIvalFrac
