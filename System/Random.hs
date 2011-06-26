@@ -285,7 +285,7 @@ instance Random Integer where
   randomR ival g = randomIvalInteger ival g
   random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
-instance Random Int        where randomR = randomIvalIntegral; random = randomBounded
+instance Random Int        where randomR = randomIvalIntegral; random = next
 instance Random Int8       where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int16      where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int32      where randomR = randomIvalIntegral; random = randomBounded
@@ -355,15 +355,12 @@ instance Random Float where
             rand = fromIntegral (mask24 .&. x) 
 		   :: Float
 	 in 
---         (rand / 2^24, rng')
          (rand / fromIntegral twoto24, rng')
 	 -- Note, encodeFloat is another option, but I'm not seeing slightly
 	 --  worse performance with the following [2011.06.25]:
 --         (encodeFloat rand (-24), rng')
    where
      mask24 :: Int 
---     mask24 = 2^24 - 1
-
      mask24 = twoto24 - 1
      -- RRN: Note, in my tests [2011.06.25] this worked as well as using Data.Bit:
      twoto24 = (2::Int) ^ (24::Int)

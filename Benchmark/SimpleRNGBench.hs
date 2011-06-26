@@ -18,6 +18,7 @@ import Control.Monad
 import Control.Exception
 
 import Data.IORef
+import Data.Word
 import Data.List hiding (last,sum)
 import Data.Int
 import Data.List.Split
@@ -226,6 +227,7 @@ main = do
 
    let 
        randInt     = random :: RandomGen g => g -> (Int,g)
+       randWord16  = random :: RandomGen g => g -> (Word16,g)
        randFloat   = random :: RandomGen g => g -> (Float,g)
        randCFloat  = random :: RandomGen g => g -> (CFloat,g)
        randDouble  = random :: RandomGen g => g -> (Double,g)
@@ -248,6 +250,7 @@ main = do
 
 	 putStrLn$ "\n  Second, timing System.Random.random at different types:"
 	 timeit th freq "System.Random Ints"     gen   randInt
+	 timeit th freq "System.Random Word16"   gen   randWord16
 	 timeit th freq "System.Random Floats"   gen   randFloat
 	 timeit th freq "System.Random CFloats"  gen   randCFloat
 	 timeit th freq "System.Random Doubles"  gen   randDouble
@@ -257,6 +260,7 @@ main = do
 
 	 putStrLn$ "\n  Third, timing range-restricted System.Random.randomR:"
 	 timeit th freq "System.Random Ints"     gen   (randomR (-100, 100::Int))
+	 timeit th freq "System.Random Word16s"  gen   (randomR (-100, 100::Word16))
 	 timeit th freq "System.Random Floats"   gen   (randomR (-100, 100::Float))
 	 timeit th freq "System.Random CFloats"  gen   (randomR (-100, 100::CFloat))
 	 timeit th freq "System.Random Doubles"  gen   (randomR (-100, 100::Double))
