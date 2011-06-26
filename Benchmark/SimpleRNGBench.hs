@@ -189,6 +189,8 @@ approxBounds initrng nxt iters = (mn_, mx_, sum_ / fromIntegral iters)
 floatBounds :: IO (Float, Float, Float)
 floatBounds = do g<-getStdGen; return$ approxBounds g random 100000 :: IO (Float,Float,Float)
 
+doubleBounds :: IO (Double, Double, Double)
+doubleBounds = do g<-getStdGen; return$ approxBounds g random 100000 :: IO (Double,Double,Double)
 
 ----------------------------------------------------------------------------------------------------
 -- Main Script

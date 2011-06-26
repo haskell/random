@@ -33,6 +33,8 @@
 --
 -----------------------------------------------------------------------------
 
+#include "MachDeps.h"
+
 module System.Random
 	(
 
@@ -285,7 +287,7 @@ instance Random Integer where
   randomR ival g = randomIvalInteger ival g
   random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
-instance Random Int        where randomR = randomIvalIntegral; random = next
+instance Random Int        where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int8       where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int16      where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int32      where randomR = randomIvalIntegral; random = randomBounded
@@ -343,38 +345,45 @@ instance Random Bool where
 
 instance Random Double where
   randomR ival g = randomIvalDouble ival id g
-  random g       = randomR (0::Double,1) g
-  
+  random rng     = 
+    case random rng of 
+      (x,rng') -> 
+          -- We use 53 bits of randomness corresponding to the 53 bit significand:
+          ((fromIntegral (mask53 .&. (x::Int64)) :: Double)  
+	   /  fromIntegral twoto53, rng')
+   where 
+    twoto53 = (2::Int64) ^ (53::Int64)
+    mask53 = twoto53 - 1
+ 
 instance Random Float where
   randomR = randomIvalFrac
   random rng = 
-    case next rng of 
+    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.   
+    case random rng of 
       (x,rng') -> 
-         let 
-            -- We use 24 bits of randomness corresponding to the 24 bit significand:
-            rand = fromIntegral (mask24 .&. x) 
-		   :: Float
-	 in 
-         (rand / fromIntegral twoto24, rng')
+          -- We use 24 bits of randomness corresponding to the 24 bit significand:
+          ((fromIntegral (mask24 .&. (x::Int32)) :: Float) 
+	   /  fromIntegral twoto24, rng')
 	 -- Note, encodeFloat is another option, but I'm not seeing slightly
 	 --  worse performance with the following [2011.06.25]:
 --         (encodeFloat rand (-24), rng')
    where
-     mask24 :: Int 
      mask24 = twoto24 - 1
-     -- RRN: Note, in my tests [2011.06.25] this worked as well as using Data.Bit:
-     twoto24 = (2::Int) ^ (24::Int)
+     twoto24 = (2::Int32) ^ (24::Int32)
 
 
 instance Random CFloat where
   randomR = randomIvalFrac
   random rng = case random rng of 
-	         (x,rng') -> (realToFrac (x::Float), rng')
+  	         (x,rng') -> (realToFrac (x::Float), rng')
 
 instance Random CDouble where
   randomR = randomIvalFrac
+  -- Presently, this is showing better performance than the Double instance:
+  -- (And yet, if the Double instance uses randomFracthen its performance is much worse!)
   random  = randomFrac
-
+  -- random rng = case random rng of 
+  -- 	         (x,rng') -> (realToFrac (x::Double), rng')
 
 mkStdRNG :: Integer -> IO StdGen
 mkStdRNG o = do
