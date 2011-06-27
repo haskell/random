@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Random
@@ -138,6 +139,15 @@ class RandomGen g where
    -- default method
    genRange _ = (minBound, maxBound)
 
+   -- If the RandomGen can produce at least @N@ uniformly distributed
+   -- random bits via the @next@ method, then genBits may indicate how many.
+   genBits :: g -> Maybe Int
+
+   -- default method
+   genBits = 
+     -- TODO: Write this in terms of genRange:
+     error "genBits: implement me!"
+
 -- | The class 'SplittableGen' proivides a way to specify a random number
 -- generator that can be split into two new generators.
 class SplittableGen g where
@@ -181,6 +191,9 @@ data StdGen
 instance RandomGen StdGen where
   next  = stdNext
   genRange _ = stdRange
+  -- Warning: Because snd genRange is just shy of 2^31 this is actually slightly inaccurate.
+  -- We accept a very small non-uniformity of output here to enable us to 
+  genBits  _ = Just 31
 
 instance SplittableGen StdGen where
   split = stdSplit
@@ -287,24 +300,24 @@ instance Random Integer where
   randomR ival g = randomIvalInteger ival g
   random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
-instance Random Int        where randomR = randomIvalIntegral; random = randomBounded
-instance Random Int8       where randomR = randomIvalIntegral; random = randomBounded
-instance Random Int16      where randomR = randomIvalIntegral; random = randomBounded
-instance Random Int32      where randomR = randomIvalIntegral; random = randomBounded
-instance Random Int64      where randomR = randomIvalIntegral; random = randomBounded
+instance Random Int        where randomR = randomIvalIntegral; random = randomBits WORD_SIZE_IN_BITS
+instance Random Int8       where randomR = randomIvalIntegral; random = randomBits 8
+instance Random Int16      where randomR = randomIvalIntegral; random = randomBits 16
+instance Random Int32      where randomR = randomIvalIntegral; random = randomBits 32 
+instance Random Int64      where randomR = randomIvalIntegral; random = randomBits 64
 
 #ifndef __NHC__
 -- Word is a type synonym in nhc98.
 instance Random Word       where randomR = randomIvalIntegral; random = randomBounded
 #endif
-instance Random Word8      where randomR = randomIvalIntegral; random = randomBounded
-instance Random Word16     where randomR = randomIvalIntegral; random = randomBounded
-instance Random Word32     where randomR = randomIvalIntegral; random = randomBounded
-instance Random Word64     where randomR = randomIvalIntegral; random = randomBounded
+instance Random Word8      where randomR = randomIvalIntegral; random = randomBits 8
+instance Random Word16     where randomR = randomIvalIntegral; random = randomBits 16
+instance Random Word32     where randomR = randomIvalIntegral; random = randomBits 32
+instance Random Word64     where randomR = randomIvalIntegral; random = randomBits 64
 
-instance Random CChar      where randomR = randomIvalIntegral; random = randomBounded
-instance Random CSChar     where randomR = randomIvalIntegral; random = randomBounded
-instance Random CUChar     where randomR = randomIvalIntegral; random = randomBounded
+instance Random CChar      where randomR = randomIvalIntegral; random = randomBits 8
+instance Random CSChar     where randomR = randomIvalIntegral; random = randomBits 8
+instance Random CUChar     where randomR = randomIvalIntegral; random = randomBits 8
 instance Random CShort     where randomR = randomIvalIntegral; random = randomBounded
 instance Random CUShort    where randomR = randomIvalIntegral; random = randomBounded
 instance Random CInt       where randomR = randomIvalIntegral; random = randomBounded
@@ -358,19 +371,21 @@ instance Random Double where
 instance Random Float where
   randomR = randomIvalFrac
   random rng = 
-    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.   
-    case random rng of 
+    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.         
+    case rand of 
       (x,rng') -> 
           -- We use 24 bits of randomness corresponding to the 24 bit significand:
-          ((fromIntegral (mask24 .&. (x::Int32)) :: Float) 
+          ((fromIntegral (mask24 .&. (x::Int)) :: Float) 
 	   /  fromIntegral twoto24, rng')
 	 -- Note, encodeFloat is another option, but I'm not seeing slightly
 	 --  worse performance with the following [2011.06.25]:
 --         (encodeFloat rand (-24), rng')
    where
+     rand = case genBits rng of 
+	      Just n | n >= 24 -> next rng
+	      _                -> random rng
      mask24 = twoto24 - 1
-     twoto24 = (2::Int32) ^ (24::Int32)
-
+     twoto24 = (2::Int) ^ (24::Int)
 
 instance Random CFloat where
   randomR = randomIvalFrac
@@ -390,6 +405,26 @@ mkStdRNG o = do
     ct          <- getCPUTime
     (sec, psec) <- getTime
     return (createStdGen (sec * 12345 + psec + ct + o))
+
+-- Create a specific number of random bits.
+randomBits :: (RandomGen g, Bits a) => Int -> g -> (a,g)
+randomBits desired gen =
+  case genBits gen of 
+    Just bits -> 
+	let   
+	    loop g !acc 0 = (acc,g)
+	    loop g !acc c = 
+	      case next g of 
+	       (x,g') -> 
+		 if bits <= c
+		 then loop g' (acc `shiftL` bits .|. fromIntegral x) (c - bits)
+		 -- Otherwise we must make sure not to generate too many bits:
+	         else let shft = min bits c in
+		      (acc `shiftL` shft .|. (fromIntegral x `shiftR` fromIntegral (bits - shft)),
+		       g')
+	in loop gen 0 desired
+    Nothing -> error "TODO: IMPLEMENT ME"    
+ where 
 
 randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
 randomBounded = randomR (minBound, maxBound)

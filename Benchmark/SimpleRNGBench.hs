@@ -265,6 +265,7 @@ main = do
    let 
        randInt     = random :: RandomGen g => g -> (Int,g)
        randWord16  = random :: RandomGen g => g -> (Word16,g)
+       randWord32  = random :: RandomGen g => g -> (Word32,g)
        randFloat   = random :: RandomGen g => g -> (Float,g)
        randCFloat  = random :: RandomGen g => g -> (CFloat,g)
        randDouble  = random :: RandomGen g => g -> (Double,g)
@@ -288,6 +289,7 @@ main = do
 	 putStrLn$ "\n  Second, timing System.Random.random at different types:"
 	 timeit th freq "System.Random Ints"     gen   randInt
 	 timeit th freq "System.Random Word16"   gen   randWord16
+	 timeit th freq "System.Random Word32"   gen   randWord32
 	 timeit th freq "System.Random Floats"   gen   randFloat
 	 timeit th freq "System.Random CFloats"  gen   randCFloat
 	 timeit th freq "System.Random Doubles"  gen   randDouble

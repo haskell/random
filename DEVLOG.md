@@ -4,7 +4,7 @@ DEVLOG: A collection of notes accumulated during development.
 =============================================================
 
 
-[2011.06.24] (transient) Regression in stdGen performance.
+ [2011.06.24] (transient) Regression in stdGen performance.
 ----------------------------------------------------------
 
 I just added a simple benchmark to make sure that whatever fix I
@@ -46,7 +46,7 @@ future.
   -Ryan
 
 
-[2011.06.24] Timing non-int types
+ [2011.06.24] Timing non-int types
 ---------------------------------
 
 The results are highly uneven:
@@ -89,4 +89,81 @@ After reimplementing random/Float these are the new results:
 
 (But I still need to propagate these changes throughout all types / API calls.)
 
+
+
+ [2011.06.26] Comparing against other Hackage RNG packagas.
+----------------------------------------------------------
+
+Here are some new results comparing against mwc-random and mersenne-random-pure64:
+
+    How many random numbers can we generate in a second on one thread?
+      Cost of rdtsc (ffi call):    533
+      Approx getCPUTime calls per second: 269,011
+      Approx clock frequency:  3,335,818,164
+      First, timing System.Random.next:
+	192,084,254 randoms generated [constant zero gen]         ~ 17.37 cycles/int
+	 14,609,734 randoms generated [System.Random stdGen/next] ~ 228 cycles/int
+
+      Second, timing System.Random.random at different types:
+	    829,214 randoms generated [System.Random Ints]        ~ 4,023 cycles/int
+	  5,375,807 randoms generated [System.Random Word16]      ~ 621 cycles/int
+	  2,549,551 randoms generated [System.Random Floats]      ~ 1,308 cycles/int
+	  2,497,583 randoms generated [System.Random CFloats]     ~ 1,336 cycles/int
+	    854,666 randoms generated [System.Random Doubles]     ~ 3,903 cycles/int
+	  2,469,775 randoms generated [System.Random CDoubles]    ~ 1,351 cycles/int
+	    826,764 randoms generated [System.Random Integers]    ~ 4,035 cycles/int
+	  4,660,286 randoms generated [System.Random Bools]       ~ 716 cycles/int
+
+      Next test other RNG packages on Hackage:
+	 96,085,080 randoms generated [System.Random.Mersenne.Pure64 next] ~ 34.72 cycles/int
+	    757,057 randoms generated [System.Random.Mersenne.Pure64 Ints] ~ 4,406 cycles/int
+	  1,395,998 randoms generated [System.Random.Mersenne.Pure64 Floats] ~ 2,390 cycles/int
+	 19,629,482 randoms generated [System.Random.MWC next]    ~ 170 cycles/int
+	    716,775 randoms generated [System.Random.MWC Ints]    ~ 4,654 cycles/int
+	  1,348,543 randoms generated [System.Random.MWC Floats]  ~ 2,474 cycles/int
+
+      Next timing range-restricted System.Random.randomR:
+	  5,113,175 randoms generated [System.Random Ints]        ~ 652 cycles/int
+	  5,187,887 randoms generated [System.Random Word16s]     ~ 643 cycles/int
+	    109,662 randoms generated [System.Random Floats]      ~ 30,419 cycles/int
+	    109,762 randoms generated [System.Random CFloats]     ~ 30,391 cycles/int
+	  2,429,840 randoms generated [System.Random Doubles]     ~ 1,373 cycles/int
+	    108,239 randoms generated [System.Random CDoubles]    ~ 30,819 cycles/int
+	  4,641,610 randoms generated [System.Random Integers]    ~ 719 cycles/int
+	  4,745,208 randoms generated [System.Random Bools]       ~ 703 cycles/int
+    Finished.
+
+
+ [2011.06.26] Created new branch, added genBits to the API
+----------------------------------------------------------
+
+genBits enabled tweaking the Float instance to bring the performance back up:
+
+	 15,037,231 randoms generated [System.Random stdGen/next] ~ 222 cycles/int
+      Second, timing System.Random.random at different types:
+	    833,750 randoms generated [System.Random Ints]        ~ 4,013 cycles/int
+	  5,486,673 randoms generated [System.Random Word16]      ~ 610 cycles/int
+	 13,027,632 randoms generated [System.Random Floats]      ~ 257 cycles/int
+	 12,788,272 randoms generated [System.Random CFloats]     ~ 262 cycles/int
+	    818,754 randoms generated [System.Random Doubles]     ~ 4,086 cycles/int
+	  2,507,631 randoms generated [System.Random CDoubles]    ~ 1,334 cycles/int
+	    885,137 randoms generated [System.Random Integers]    ~ 3,780 cycles/int
+	  4,999,175 randoms generated [System.Random Bools]       ~ 669 cycles/int
+
+Next, I added a new "randomBits" function that uses genBits to fill up
+N random bits, which is sufficient for the non-range restricted
+randoms.  This improved all-around performance:
+
+    Second, timing System.Random.random at different types:
+      4,568,027 randoms generated [System.Random Ints]        ~ 730 cycles/int
+     12,526,044 randoms generated [System.Random Word16]      ~ 266 cycles/int
+      6,134,361 randoms generated [System.Random Word32]      ~ 544 cycles/int
+     12,729,520 randoms generated [System.Random Floats]      ~ 262 cycles/int
+     12,827,441 randoms generated [System.Random CFloats]     ~ 260 cycles/int
+      4,213,043 randoms generated [System.Random Doubles]     ~ 792 cycles/int
+      2,273,839 randoms generated [System.Random CDoubles]    ~ 1,467 cycles/int
+        842,605 randoms generated [System.Random Integers]    ~ 3,959 cycles/int
+      5,060,505 randoms generated [System.Random Bools]       ~ 659 cycles/int
+
+Now all are in the millions at least except Integers.
 
