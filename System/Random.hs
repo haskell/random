@@ -91,7 +91,7 @@ import Data.IORef
 import Numeric		( readDec )
 
 
-#define DEBUGRAND
+--define DEBUGRAND
 #ifdef DEBUGRAND
 import Numeric		( showIntAtBase )
 import Data.Char     ( intToDigit )
@@ -484,18 +484,19 @@ randomIvalBits (l,h) rng
     pow2 = findBoundingPow2 range
     -- Bounding is the largest number we will generate with pow2 random bits:
     -- bounding = (1 `shiftL` pow2) - 1 -- This could overflow!
-    bounding = complement 0 `shiftR` (maxbits - pow2)
+    -- Here we explicitly counter sign-extension in shiftR:
+    bounding = (clearBit (complement 0) (maxbits-1)) `shiftR` (maxbits - pow2 - 1)
     cutoff = --if pow2 == maxbits 
 	     --then error "UNFINISHED"
 	     --else 
 	     bounding - (bounding `rem` range)
     -- rollAndTrash rolls the dice repeatedly, trashing results it doesn't
     -- like.  In the worst case, it can trash up to 50% of the
-    -- results, but usually it should be much much less.
+    -- results (but typically much much less).
     rollAndTrash g = 
       case randomBits pow2 g of 
         (x,g') | x >= cutoff -> rollAndTrash g'
-        pair                 -> pair
+        (x,g')               -> (x `mod` range, g')
 
 -- Find the smallest power of two greater than or equal to the given number.
 -- findBoundingPow2 :: (Bits a, Ord a) => a -> Int
