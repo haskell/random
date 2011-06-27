@@ -418,6 +418,7 @@ randomIvalInteger (l,h) rng
 randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
 randomFrac = randomIvalDouble (0::Double,1) realToFrac
 
+-- BUG: Ticket #5133 - this was found to generate the hi bound for Floats:
 randomIvalFrac :: (RandomGen g, Real a, Fractional b) => (a,a) -> g -> (b, g)
 randomIvalFrac (a,b) = randomIvalDouble (realToFrac a, realToFrac b) realToFrac
 

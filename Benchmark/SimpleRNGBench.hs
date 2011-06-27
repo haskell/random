@@ -21,7 +21,7 @@ import Data.IORef
 import Data.Word
 import Data.List hiding (last,sum)
 import Data.Int
-import Data.List.Split
+import Data.List.Split  hiding (split)
 import Text.Printf
 
 import Foreign.Ptr
@@ -80,7 +80,6 @@ measureFreq = do
   return$ fromIntegral (t2 - t1)
 
 ----------------------------------------------------------------------------------------------------
--- Drivers to get random numbers repeatedly.
 
 -- Test overheads without actually generating any random numbers:
 data NoopRNG = NoopRNG
@@ -91,6 +90,23 @@ instance RandomGen NoopRNG where
 instance SplittableGen NoopRNG where
 #endif
   split g = (g,g)
+
+-- An RNG generating only 0 or 1:
+data BinRNG = BinRNG StdGen
+instance RandomGen BinRNG where 
+  next (BinRNG g) = (x `mod` 2, BinRNG g')
+    where (x,g') = next g
+#if 1
+  genRange _ = (0,1)
+instance SplittableGen BinRNG where
+#endif
+  split (BinRNG g) = (BinRNG g1, BinRNG g2)
+   where (g1,g2) = split g
+
+mkBinRNG = BinRNG . mkStdGen
+
+----------------------------------------------------------------------------------------------------
+-- Drivers to get random numbers repeatedly.
 
 type Kern = Int -> Ptr Int -> IO ()
 
