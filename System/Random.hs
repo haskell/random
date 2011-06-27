@@ -308,27 +308,24 @@ instance Random Integer where
   randomR ival g = randomIvalInteger ival g
   random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
-#define TEMPTEST randomIvalBits
--- define TEMPTEST randomIvalIntegral
-
-instance Random Int        where randomR = TEMPTEST; random = randomBits WORD_SIZE_IN_BITS
-instance Random Int8       where randomR = TEMPTEST; random = randomBits 8
-instance Random Int16      where randomR = TEMPTEST; random = randomBits 16
-instance Random Int32      where randomR = TEMPTEST; random = randomBits 32 
-instance Random Int64      where randomR = TEMPTEST; random = randomBits 64
+instance Random Int        where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random Int8       where randomR = randomIvalBits; random = randomBits 8
+instance Random Int16      where randomR = randomIvalBits; random = randomBits 16
+instance Random Int32      where randomR = randomIvalBits; random = randomBits 32 
+instance Random Int64      where randomR = randomIvalBits; random = randomBits 64
 
 #ifndef __NHC__
 -- Word is a type synonym in nhc98.
-instance Random Word       where randomR = TEMPTEST; random = randomBounded
+instance Random Word       where randomR = randomIvalBits; random = randomBounded
 #endif
-instance Random Word8      where randomR = TEMPTEST; random = randomBits 8
-instance Random Word16     where randomR = TEMPTEST; random = randomBits 16
-instance Random Word32     where randomR = TEMPTEST; random = randomBits 32
-instance Random Word64     where randomR = TEMPTEST; random = randomBits 64
+instance Random Word8      where randomR = randomIvalBits; random = randomBits 8
+instance Random Word16     where randomR = randomIvalBits; random = randomBits 16
+instance Random Word32     where randomR = randomIvalBits; random = randomBits 32
+instance Random Word64     where randomR = randomIvalBits; random = randomBits 64
 
-instance Random CChar      where randomR = TEMPTEST; random = randomBits 8
-instance Random CSChar     where randomR = TEMPTEST; random = randomBits 8
-instance Random CUChar     where randomR = TEMPTEST; random = randomBits 8
+instance Random CChar      where randomR = randomIvalBits; random = randomBits 8
+instance Random CSChar     where randomR = randomIvalBits; random = randomBits 8
+instance Random CUChar     where randomR = randomIvalBits; random = randomBits 8
 
 -- TODO: Finish applying randomBits after I double check all the sizes:
 instance Random CShort     where randomR = randomIvalIntegral; random = randomBounded
@@ -391,7 +388,6 @@ instance Random Double where
 instance Random Float where
   randomR = randomRFloating
   random rng = 
-    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.         
     case rand of 
       (x,rng') -> 
           -- We use 24 bits of randomness corresponding to the 24 bit significand:
@@ -449,10 +445,9 @@ randomBits desired gen =
 #endif
 		      (acc `shiftL` c .|. shifted, g')
 	in loop gen 0 desired
-    Nothing -> error "TODO: IMPLEMENT ME"    
+    Nothing -> error "TODO: IMPLEMENT ME - handle undesirable bit sources"    
  where 
 
-#if 1
 --------------------------------------------------------------------------------
 -- TEMP: These should probably be in Data.Bits AND they shoul have hardware support:
 -- The number of leading zero bits:
@@ -507,22 +502,11 @@ randomIvalBits (l,h) rng
         (x,g') | x >= cutoff -> rollAndTrash g'
         (x,g')               -> (x `mod` range, g')
 
--- Find the smallest power of two greater than or equal to the given number.
--- findBoundingPow2 :: (Bits a, Ord a) => a -> Int
--- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
--- findBoundingPow2 num = 
---     if num == bit (leadPos-1)
---     then leadPos-1
---     else leadPos
---   where 
---    leadPos = bitSize num - bitScanReverse num
-
 -- Find the smallest power of two greater than the given number.
 -- Treat all numbers as unsigned irrespective of type:
 findBoundingPow2 :: (Bits a, Ord a) => a -> Int
 -- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
 findBoundingPow2 num = bitSize num - bitScanReverse num
-#endif
 
 
 randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)

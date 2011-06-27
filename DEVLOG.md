@@ -202,3 +202,31 @@ improved.  And in spite of that it didn't slow down TOO much.  Also,
 randomIvalBits can fix the problems in tickets #5278 and #5280 having
 to do with uniformity and assumptions about the generators.
 
+
+Oops, there were some bugs.  Here are new times as of revision 3581598e57ef995f:
+
+    Next timing range-restricted System.Random.randomR:
+	3,738,614 randoms generated [System.Random Ints]        ~ 892 cycles/int
+	7,516,652 randoms generated [System.Random Word16s]     ~ 444 cycles/int
+	  110,307 randoms generated [System.Random Floats]      ~ 30,234 cycles/int
+	  110,507 randoms generated [System.Random CFloats]     ~ 30,179 cycles/int
+	2,538,000 randoms generated [System.Random Doubles]     ~ 1,314 cycles/int
+	  108,386 randoms generated [System.Random CDoubles]    ~ 30,770 cycles/int
+	5,398,820 randoms generated [System.Random Integers]    ~ 618 cycles/int
+	4,758,575 randoms generated [System.Random Bools]       ~ 701 cycles/int
+
+Finally, in revision a837e1ffb294234dc I tweaked the restricted
+Float/Double instances to use the new versions:
+
+    Next timing range-restricted System.Random.randomR:
+	4,015,910 randoms generated [System.Random Ints]        ~ 831 cycles/int
+	7,572,249 randoms generated [System.Random Word16s]     ~ 440 cycles/int
+       12,768,688 randoms generated [System.Random Floats]      ~ 261 cycles/int
+       12,716,471 randoms generated [System.Random CFloats]     ~ 262 cycles/int
+	3,948,403 randoms generated [System.Random Doubles]     ~ 845 cycles/int
+	2,469,778 randoms generated [System.Random CDoubles]    ~ 1,350 cycles/int
+	4,542,423 randoms generated [System.Random Integers]    ~ 734 cycles/int
+	4,884,380 randoms generated [System.Random Bools]       ~ 683 cycles/int
+
+Why would Floats be faster than Word16s though?  Still some exploring left to do...
+
