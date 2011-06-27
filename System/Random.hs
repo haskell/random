@@ -89,7 +89,14 @@ import Data.Char	( isSpace, chr, ord )
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef
 import Numeric		( readDec )
+
+
+#define DEBUGRAND
+#ifdef DEBUGRAND
+import Numeric		( showIntAtBase )
+import Data.Char     ( intToDigit )
 import Debug.Trace
+#endif
 
 -- The standard nhc98 implementation of Time.ClockTime does not match
 -- the extended one expected in this module, so we lash-up a quick
@@ -425,9 +432,13 @@ randomBits desired gen =
 		 if bits <= c
 		 then loop g' (acc `shiftL` bits .|. fromIntegral x) (c - bits)
 		 -- Otherwise we must make sure not to generate too many bits:
-	         else let shft = min bits c in
-		      (acc `shiftL` shft .|. (fromIntegral x `shiftR` fromIntegral (bits - shft)),
-		       g')
+	         else 
+		      let shifted = fromIntegral (x `shiftR` (bits - c)) in
+#ifdef DEBUGRAND
+		      trace ("    Got random "++ showIntAtBase 16 intToDigit x "" ++
+		      	     ", shifted "++ show (bits-c)++": " ++ show shifted) $
+#endif
+		      (acc `shiftL` c .|. shifted, g')
 	in loop gen 0 desired
     Nothing -> error "TODO: IMPLEMENT ME"    
  where 
@@ -450,7 +461,10 @@ randomIvalBits :: (RandomGen g, Integral a, Bits a) => (a, a) -> g -> (a, g)
 randomIvalBits (l,h) rng 
   | l > h     = randomIvalBits (h,l) rng
   | otherwise = 
-      -- trace ("Got pow2: "++ show pow2 ++ " range " ++ show range ++ " cutoff "++ show cutoff) $ 
+#ifdef DEBUGRAND
+      trace ("  Got pow2: "++show pow2++" bounding "++show bounding++" maxbits "++show maxbits++
+	     " range " ++ show range ++ " cutoff "++ show cutoff) $ 
+#endif
       (l + fin_x, fin_rng)
  where 
     (fin_x,fin_rng) = 
@@ -462,14 +476,15 @@ randomIvalBits (l,h) rng
 
     -- range is the number of distinct values we wish to generate:
     -- If we are dealing with a signed type, range may be negative!
---    range  = h - l + 1
-    range  = h - l 
+    range  = h - l + 1
     maxbits = bitSize l
 
     -- With randomBits we can only generate power-of-two ranges.  We
     -- need to find the smallest power-of-two that is bigger than range.
     pow2 = findBoundingPow2 range
-    bounding = 1 `shiftL` pow2
+    -- Bounding is the largest number we will generate with pow2 random bits:
+    -- bounding = (1 `shiftL` pow2) - 1 -- This could overflow!
+    bounding = complement 0 `shiftR` (maxbits - pow2)
     cutoff = --if pow2 == maxbits 
 	     --then error "UNFINISHED"
 	     --else 
@@ -479,8 +494,8 @@ randomIvalBits (l,h) rng
     -- results, but usually it should be much much less.
     rollAndTrash g = 
       case randomBits pow2 g of 
-        (x,g') | x > cutoff -> rollAndTrash g'
-        pair                -> pair
+        (x,g') | x >= cutoff -> rollAndTrash g'
+        pair                 -> pair
 
 -- Find the smallest power of two greater than or equal to the given number.
 -- findBoundingPow2 :: (Bits a, Ord a) => a -> Int
