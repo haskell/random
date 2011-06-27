@@ -29,11 +29,14 @@ import Foreign.C.Types
 import Foreign.ForeignPtr
 import Foreign.Storable (peek,poke)
 
-import Benchmark.BinSearch
 import Prelude  hiding (last,sum)
+import BinSearch
 
 #ifdef TEST_COMPETITORS
-import System.Random.Mersenne.Pure64 (pureMT)
+import System.Random.Mersenne.Pure64
+import System.Random.MWC
+import Control.Monad.Primitive
+import System.IO.Unsafe
 #endif
 
 ----------------------------------------------------------------------------------------------------
@@ -107,7 +110,17 @@ instance SplittableGen BinRNG where
   split (BinRNG g) = (BinRNG g1, BinRNG g2)
    where (g1,g2) = split g
 
-mkBinRNG = BinRNG . mkStdGen
+
+
+#ifdef TEST_COMPETITORS
+data MWCRNG = MWCRNG (Gen (PrimState IO))
+-- data MWCRNG = MWCRNG GenIO
+instance RandomGen MWCRNG where 
+  -- For testing purposes we hack this to be non-monadic:
+  next g@(MWCRNG gen) = unsafePerformIO $
+   do v <- uniform gen
+      return (v, g)
+#endif
 
 ----------------------------------------------------------------------------------------------------
 -- Drivers to get random numbers repeatedly.
@@ -280,7 +293,27 @@ main = do
 	 timeit th freq "System.Random Integers" gen   randInteger
 	 timeit th freq "System.Random Bools"    gen   randBool
 
-	 putStrLn$ "\n  Third, timing range-restricted System.Random.randomR:"
+#ifdef TEST_COMPETITORS
+	 putStrLn$ "\n  Next test other RNG packages on Hackage:"
+         let gen_mt = pureMT 39852
+             randInt2   = random :: RandomGen g => g -> (Int,g)
+	     randFloat2 = random :: RandomGen g => g -> (Float,g)
+	 timeit th freq "System.Random.Mersenne.Pure64 next"   gen_mt next
+	 timeit th freq "System.Random.Mersenne.Pure64 Ints"   gen_mt randInt2
+	 timeit th freq "System.Random.Mersenne.Pure64 Floats" gen_mt randFloat2
+
+--	 gen_mwc <- create
+         withSystemRandom $ \ gen_mwc -> do
+	    let randInt3   = random :: RandomGen g => g -> (Int,g)
+		randFloat3 = random :: RandomGen g => g -> (Float,g)
+
+	    timeit th freq "System.Random.MWC next"   (MWCRNG gen_mwc) next
+	    timeit th freq "System.Random.MWC Ints"   (MWCRNG gen_mwc) randInt3
+	    timeit th freq "System.Random.MWC Floats" (MWCRNG gen_mwc) randFloat3
+
+#endif
+
+	 putStrLn$ "\n  Next timing range-restricted System.Random.randomR:"
 	 timeit th freq "System.Random Ints"     gen   (randomR (-100, 100::Int))
 	 timeit th freq "System.Random Word16s"  gen   (randomR (-100, 100::Word16))
 	 timeit th freq "System.Random Floats"   gen   (randomR (-100, 100::Float))
@@ -297,11 +330,6 @@ main = do
   --	  timeit_foreign th freq "rand in Haskell loop" (\n ptr -> forM_ [1..n]$ \_ -> rand )
   --	  timeit_foreign th freq "rand/store in Haskell loop"  (\n ptr -> forM_ [1..n]$ \_ -> do n <- rand; poke ptr n )
   --	  return ()
-
-#ifdef TEST_COMPETITORS
-         let gen_mt = pureMT 39852
-	 timeit th freq "System.Random.Mersenne.Pure64 next" gen_mt next
-#endif
 
    -- Test with 1 thread and numCapabilities threads:
    gamut 1

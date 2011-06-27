@@ -2,7 +2,7 @@
 -- This is a script used for timing the throughput of benchmarks that
 -- take one argument and have linear complexity.
 
-module Benchmark.BinSearch 
+module BinSearch 
     (
       binSearch
     )
