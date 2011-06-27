@@ -89,6 +89,7 @@ import Data.Char	( isSpace, chr, ord )
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef
 import Numeric		( readDec )
+import Debug.Trace
 
 -- The standard nhc98 implementation of Time.ClockTime does not match
 -- the extended one expected in this module, so we lash-up a quick
@@ -300,24 +301,29 @@ instance Random Integer where
   randomR ival g = randomIvalInteger ival g
   random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
-instance Random Int        where randomR = randomIvalIntegral; random = randomBits WORD_SIZE_IN_BITS
-instance Random Int8       where randomR = randomIvalIntegral; random = randomBits 8
-instance Random Int16      where randomR = randomIvalIntegral; random = randomBits 16
-instance Random Int32      where randomR = randomIvalIntegral; random = randomBits 32 
-instance Random Int64      where randomR = randomIvalIntegral; random = randomBits 64
+#define TEMPTEST randomIvalBits
+-- define TEMPTEST randomIvalIntegral
+
+instance Random Int        where randomR = TEMPTEST; random = randomBits WORD_SIZE_IN_BITS
+instance Random Int8       where randomR = TEMPTEST; random = randomBits 8
+instance Random Int16      where randomR = TEMPTEST; random = randomBits 16
+instance Random Int32      where randomR = TEMPTEST; random = randomBits 32 
+instance Random Int64      where randomR = TEMPTEST; random = randomBits 64
 
 #ifndef __NHC__
 -- Word is a type synonym in nhc98.
-instance Random Word       where randomR = randomIvalIntegral; random = randomBounded
+instance Random Word       where randomR = TEMPTEST; random = randomBounded
 #endif
-instance Random Word8      where randomR = randomIvalIntegral; random = randomBits 8
-instance Random Word16     where randomR = randomIvalIntegral; random = randomBits 16
-instance Random Word32     where randomR = randomIvalIntegral; random = randomBits 32
-instance Random Word64     where randomR = randomIvalIntegral; random = randomBits 64
+instance Random Word8      where randomR = TEMPTEST; random = randomBits 8
+instance Random Word16     where randomR = TEMPTEST; random = randomBits 16
+instance Random Word32     where randomR = TEMPTEST; random = randomBits 32
+instance Random Word64     where randomR = TEMPTEST; random = randomBits 64
 
-instance Random CChar      where randomR = randomIvalIntegral; random = randomBits 8
-instance Random CSChar     where randomR = randomIvalIntegral; random = randomBits 8
-instance Random CUChar     where randomR = randomIvalIntegral; random = randomBits 8
+instance Random CChar      where randomR = TEMPTEST; random = randomBits 8
+instance Random CSChar     where randomR = TEMPTEST; random = randomBits 8
+instance Random CUChar     where randomR = TEMPTEST; random = randomBits 8
+
+-- TODO: Finish applying randomBits after I double check all the sizes:
 instance Random CShort     where randomR = randomIvalIntegral; random = randomBounded
 instance Random CUShort    where randomR = randomIvalIntegral; random = randomBounded
 instance Random CInt       where randomR = randomIvalIntegral; random = randomBounded
@@ -425,6 +431,74 @@ randomBits desired gen =
 	in loop gen 0 desired
     Nothing -> error "TODO: IMPLEMENT ME"    
  where 
+
+#if 1
+--------------------------------------------------------------------------------
+-- TEMP: These should probably be in Data.Bits AND they shoul have hardware support:
+-- The number of leading zero bits:
+bitScanReverse :: Bits a => a -> Int
+bitScanReverse num = loop (size - 1)
+  where 
+   size = bitSize num
+   loop i | i < 0         = size
+          | testBit num i = size - 1 - i
+	  | otherwise     = loop (i-1)
+--------------------------------------------------------------------------------
+
+-- This new version uses randomBits to generate the a number in a range.
+randomIvalBits :: (RandomGen g, Integral a, Bits a) => (a, a) -> g -> (a, g)
+randomIvalBits (l,h) rng 
+  | l > h     = randomIvalBits (h,l) rng
+  | otherwise = 
+      -- trace ("Got pow2: "++ show pow2 ++ " range " ++ show range ++ " cutoff "++ show cutoff) $ 
+      (l + fin_x, fin_rng)
+ where 
+    (fin_x,fin_rng) = 
+       -- If we have a power-of-two-sized interval matters are simple.
+-- TODO: HANDLE pow2==0 ????
+       if range == bit (pow2 - 1)
+       then randomBits (pow2 - 1) rng
+       else rollAndTrash rng
+
+    -- range is the number of distinct values we wish to generate:
+    -- If we are dealing with a signed type, range may be negative!
+--    range  = h - l + 1
+    range  = h - l 
+    maxbits = bitSize l
+
+    -- With randomBits we can only generate power-of-two ranges.  We
+    -- need to find the smallest power-of-two that is bigger than range.
+    pow2 = findBoundingPow2 range
+    bounding = 1 `shiftL` pow2
+    cutoff = --if pow2 == maxbits 
+	     --then error "UNFINISHED"
+	     --else 
+	     bounding - (bounding `rem` range)
+    -- rollAndTrash rolls the dice repeatedly, trashing results it doesn't
+    -- like.  In the worst case, it can trash up to 50% of the
+    -- results, but usually it should be much much less.
+    rollAndTrash g = 
+      case randomBits pow2 g of 
+        (x,g') | x > cutoff -> rollAndTrash g'
+        pair                -> pair
+
+-- Find the smallest power of two greater than or equal to the given number.
+-- findBoundingPow2 :: (Bits a, Ord a) => a -> Int
+-- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
+-- findBoundingPow2 num = 
+--     if num == bit (leadPos-1)
+--     then leadPos-1
+--     else leadPos
+--   where 
+--    leadPos = bitSize num - bitScanReverse num
+
+-- Find the smallest power of two greater than the given number.
+-- Treat all numbers as unsigned irrespective of type:
+findBoundingPow2 :: (Bits a, Ord a) => a -> Int
+-- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
+findBoundingPow2 num = bitSize num - bitScanReverse num
+#endif
+
 
 randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
 randomBounded = randomR (minBound, maxBound)

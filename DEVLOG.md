@@ -167,3 +167,37 @@ randoms.  This improved all-around performance:
 
 Now all are in the millions at least except Integers.
 
+
+ [2011.06.27] Implemented randomIvalBits to replace randomIvalIntegral
+----------------------------------------------------------------------
+
+Initially this appears to slow it down slightly.  
+
+ randomIvalBits:
+      Next timing range-restricted System.Random.randomR:
+	  4,052,337 randoms generated [System.Random Ints]        ~ 823 cycles/int
+	  4,802,383 randoms generated [System.Random Word16s]     ~ 695 cycles/int
+	    111,996 randoms generated [System.Random Floats]      ~ 29,789 cycles/int
+	    111,401 randoms generated [System.Random CFloats]     ~ 29,948 cycles/int
+	  2,656,560 randoms generated [System.Random Doubles]     ~ 1,256 cycles/int
+	    108,190 randoms generated [System.Random CDoubles]    ~ 30,837 cycles/int
+	  5,152,061 randoms generated [System.Random Integers]    ~ 648 cycles/int
+	  4,833,272 randoms generated [System.Random Bools]       ~ 690 cycles/int
+
+ randomIvalIntegral:
+
+      Next timing range-restricted System.Random.randomR:
+	  5,246,059 randoms generated [System.Random Ints]        ~ 638 cycles/int
+	  5,310,547 randoms generated [System.Random Word16s]     ~ 630 cycles/int
+	    110,109 randoms generated [System.Random Floats]      ~ 30,378 cycles/int
+	    110,010 randoms generated [System.Random CFloats]     ~ 30,405 cycles/int
+	  2,290,480 randoms generated [System.Random Doubles]     ~ 1,460 cycles/int
+	    107,945 randoms generated [System.Random CDoubles]    ~ 30,987 cycles/int
+	  5,161,738 randoms generated [System.Random Integers]    ~ 648 cycles/int
+	  4,759,361 randoms generated [System.Random Bools]       ~ 703 cycles/int
+
+This is actually a good result!  This prototype version of
+randomIvalBits uses a very inefficient bitScanReverse which can be
+improved.  And in spite of that it didn't slow down TOO much.  Also,
+randomIvalBits can fix the problems in tickets #5278 and #5280 having
+to do with uniformity and assumptions about the generators.
