@@ -216,17 +216,39 @@ Oops, there were some bugs.  Here are new times as of revision 3581598e57ef995f:
 	4,758,575 randoms generated [System.Random Bools]       ~ 701 cycles/int
 
 Finally, in revision a837e1ffb294234dc I tweaked the restricted
-Float/Double instances to use the new versions:
+Float/Double instances to use the new versions.  Here are results from
+what is currently the "new_api" branch:
 
-    Next timing range-restricted System.Random.randomR:
-	4,015,910 randoms generated [System.Random Ints]        ~ 831 cycles/int
-	7,572,249 randoms generated [System.Random Word16s]     ~ 440 cycles/int
-       12,768,688 randoms generated [System.Random Floats]      ~ 261 cycles/int
-       12,716,471 randoms generated [System.Random CFloats]     ~ 262 cycles/int
-	3,948,403 randoms generated [System.Random Doubles]     ~ 845 cycles/int
-	2,469,778 randoms generated [System.Random CDoubles]    ~ 1,350 cycles/int
-	4,542,423 randoms generated [System.Random Integers]    ~ 734 cycles/int
-	4,884,380 randoms generated [System.Random Bools]       ~ 683 cycles/int
+      Second, timing System.Random.random at different types:
+	  4,346,075 randoms generated [System.Random Ints]        ~ 767 cycles/int
+	 12,162,421 randoms generated [System.Random Word16]      ~ 274 cycles/int
+	  6,615,428 randoms generated [System.Random Word32]      ~ 504 cycles/int
+	 13,371,440 randoms generated [System.Random Floats]      ~ 249 cycles/int
+	 13,393,200 randoms generated [System.Random CFloats]     ~ 249 cycles/int
+	  4,334,003 randoms generated [System.Random Doubles]     ~ 770 cycles/int
+	  2,462,703 randoms generated [System.Random CDoubles]    ~ 1,354 cycles/int
+	    855,408 randoms generated [System.Random Integers]    ~ 3,899 cycles/int
+	  5,088,025 randoms generated [System.Random Bools]       ~ 656 cycles/int
 
-Why would Floats be faster than Word16s though?  Still some exploring left to do...
+      Next timing range-restricted System.Random.randomR:
+	  4,015,910 randoms generated [System.Random Ints]        ~ 831 cycles/int
+	  7,572,249 randoms generated [System.Random Word16s]     ~ 440 cycles/int
+	 12,768,688 randoms generated [System.Random Floats]      ~ 261 cycles/int
+	 12,716,471 randoms generated [System.Random CFloats]     ~ 262 cycles/int
+	  3,948,403 randoms generated [System.Random Doubles]     ~ 845 cycles/int
+	  2,469,778 randoms generated [System.Random CDoubles]    ~ 1,350 cycles/int
+	  4,542,423 randoms generated [System.Random Integers]    ~ 734 cycles/int
+	  4,884,380 randoms generated [System.Random Bools]       ~ 683 cycles/int
 
+Why would Floats be faster than Word16s though?  Why did Word16 takes
+such a hit for the range-restricted version?  Still some exploring
+left to do...
+
+As a mock-up I made bitScanReverse return an incorrect constant
+result, which should approximate the cost of a cheap, BSR-based version.
+Surprisingly, it doesn't do very much better!
+
+     Second, timing System.Random.random at different types:
+         12,383,682 randoms generated [System.Random Word16]      ~ 269 cycles/int
+     Next timing range-restricted System.Random.randomR:
+         8,265,744 randoms generated [System.Random Word16s]     ~ 404 cycles/int

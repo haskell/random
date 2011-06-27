@@ -90,8 +90,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef
 import Numeric		( readDec )
 
-
---define DEBUGRAND
+-- #define DEBUGRAND
 #ifdef DEBUGRAND
 import Numeric		( showIntAtBase )
 import Data.Char     ( intToDigit )
@@ -449,7 +448,9 @@ randomBits desired gen =
  where 
 
 --------------------------------------------------------------------------------
--- TEMP: These should probably be in Data.Bits AND they shoul have hardware support:
+-- TEMP: These should probably be in Data.Bits AND they should have hardware support.
+-- (See trac ticket #4102.)
+
 -- The number of leading zero bits:
 bitScanReverse :: Bits a => a -> Int
 bitScanReverse num = loop (size - 1)
@@ -487,7 +488,6 @@ randomIvalBits (l,h) rng
     -- need to find the smallest power-of-two that is bigger than range.
     pow2 = findBoundingPow2 range
     -- Bounding is the largest number we will generate with pow2 random bits:
-    -- bounding = (1 `shiftL` pow2) - 1 -- This could overflow!
     -- Here we explicitly counter sign-extension in shiftR:
     bounding = (clearBit (complement 0) (maxbits-1)) `shiftR` (maxbits - pow2 - 1)
     cutoff = --if pow2 == maxbits 
