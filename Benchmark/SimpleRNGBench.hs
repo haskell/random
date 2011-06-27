@@ -32,6 +32,10 @@ import Foreign.Storable (peek,poke)
 import Benchmark.BinSearch
 import Prelude  hiding (last,sum)
 
+#ifdef TEST_COMPETITORS
+import System.Random.Mersenne.Pure64 (pureMT)
+#endif
+
 ----------------------------------------------------------------------------------------------------
 -- Miscellaneous helpers:
 
@@ -263,8 +267,8 @@ main = do
        gen = mkStdGen 23852358661234
        gamut th = do
 	 putStrLn$ "  First, timing System.Random.next:"
-	 timeit th freq "constant zero gen"    NoopRNG next 
-	 timeit th freq "System.Random stdGen" gen     next 
+	 timeit th freq "constant zero gen"      NoopRNG next 
+	 timeit th freq "System.Random stdGen/next" gen  next 
 
 	 putStrLn$ "\n  Second, timing System.Random.random at different types:"
 	 timeit th freq "System.Random Ints"     gen   randInt
@@ -286,7 +290,6 @@ main = do
 	 timeit th freq "System.Random Integers" gen   (randomR (-100, 100::Integer))
 	 timeit th freq "System.Random Bools"    gen   (randomR (False, True::Bool))
 
-
   --       when (not$ NoC `elem` opts) $ do
   --	  putStrLn$ "  Comparison to C's rand():"
   --	  timeit_foreign th freq "ptr store in C loop"   store_loop
@@ -294,6 +297,11 @@ main = do
   --	  timeit_foreign th freq "rand in Haskell loop" (\n ptr -> forM_ [1..n]$ \_ -> rand )
   --	  timeit_foreign th freq "rand/store in Haskell loop"  (\n ptr -> forM_ [1..n]$ \_ -> do n <- rand; poke ptr n )
   --	  return ()
+
+#ifdef TEST_COMPETITORS
+         let gen_mt = pureMT 39852
+	 timeit th freq "System.Random.Mersenne.Pure64 next" gen_mt next
+#endif
 
    -- Test with 1 thread and numCapabilities threads:
    gamut 1

@@ -1,0 +1,4 @@
+
+
+1.0.0.4 -- bumped version for float/double range bugfix
+
