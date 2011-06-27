@@ -343,8 +343,15 @@ instance Random Bool where
 
   random g	  = randomR (minBound,maxBound) g
 
+{-# INLINE randomRFloating #-}
+randomRFloating :: (Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
+randomRFloating (l,h) g 
+    | l>h       = randomRFloating (h,l) g
+    | otherwise = let (coef,g') = random g in 
+		  (l + coef * (h-l), g')
+
 instance Random Double where
-  randomR ival g = randomIvalDouble ival id g
+  randomR = randomRFloating
   random rng     = 
     case random rng of 
       (x,rng') -> 
@@ -356,7 +363,7 @@ instance Random Double where
     mask53 = twoto53 - 1
  
 instance Random Float where
-  randomR = randomIvalFrac
+  randomR = randomRFloating
   random rng = 
     -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.   
     case random rng of 
@@ -371,16 +378,17 @@ instance Random Float where
      mask24 = twoto24 - 1
      twoto24 = (2::Int32) ^ (24::Int32)
 
-
+-- CFloat/CDouble are basically the same as a Float/Double:
 instance Random CFloat where
-  randomR = randomIvalFrac
+  randomR = randomRFloating
   random rng = case random rng of 
   	         (x,rng') -> (realToFrac (x::Float), rng')
 
 instance Random CDouble where
-  randomR = randomIvalFrac
+  randomR = randomRFloating
+  -- A MYSTERY:
   -- Presently, this is showing better performance than the Double instance:
-  -- (And yet, if the Double instance uses randomFracthen its performance is much worse!)
+  -- (And yet, if the Double instance uses randomFrac then its performance is much worse!)
   random  = randomFrac
   -- random rng = case random rng of 
   -- 	         (x,rng') -> (realToFrac (x::Double), rng')
@@ -417,10 +425,6 @@ randomIvalInteger (l,h) rng
 -- The continuous functions on the other hand take an [inclusive,exclusive) range.
 randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
 randomFrac = randomIvalDouble (0::Double,1) realToFrac
-
--- BUG: Ticket #5133 - this was found to generate the hi bound for Floats:
-randomIvalFrac :: (RandomGen g, Real a, Fractional b) => (a,a) -> g -> (b, g)
-randomIvalFrac (a,b) = randomIvalDouble (realToFrac a, realToFrac b) realToFrac
 
 randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
 randomIvalDouble (l,h) fromDouble rng 
