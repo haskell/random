@@ -36,7 +36,8 @@ import BinSearch
 import System.Random.Mersenne.Pure64
 import System.Random.MWC
 import Control.Monad.Primitive
-import System.IO.Unsafe
+-- import System.IO.Unsafe
+import GHC.IO
 #endif
 
 ----------------------------------------------------------------------------------------------------
@@ -117,7 +118,8 @@ data MWCRNG = MWCRNG (Gen (PrimState IO))
 -- data MWCRNG = MWCRNG GenIO
 instance RandomGen MWCRNG where 
   -- For testing purposes we hack this to be non-monadic:
-  next g@(MWCRNG gen) = unsafePerformIO $
+--  next g@(MWCRNG gen) = unsafePerformIO $
+  next g@(MWCRNG gen) = unsafeDupablePerformIO $
    do v <- uniform gen
       return (v, g)
 #endif
