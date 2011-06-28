@@ -96,6 +96,7 @@ import Numeric		( showIntAtBase )
 import Data.Char     ( intToDigit )
 import Debug.Trace
 #endif
+import Debug.Trace
 
 -- The standard nhc98 implementation of Time.ClockTime does not match
 -- the extended one expected in this module, so we lash-up a quick
@@ -151,9 +152,8 @@ class RandomGen g where
    genBits :: g -> Maybe Int
 
    -- default method
-   genBits = 
-     -- TODO: Write this in terms of genRange:
-     error "genBits: implement me!"
+   -- TODO: Write this in terms of genRange:
+   genBits = error "genBits: implement me!"
 
 -- | The class 'SplittableGen' proivides a way to specify a random number
 -- generator that can be split into two new generators.
@@ -315,7 +315,7 @@ instance Random Int64      where randomR = randomIvalBits; random = randomBits 6
 
 #ifndef __NHC__
 -- Word is a type synonym in nhc98.
-instance Random Word       where randomR = randomIvalBits; random = randomBounded
+instance Random Word       where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
 #endif
 instance Random Word8      where randomR = randomIvalBits; random = randomBits 8
 instance Random Word16     where randomR = randomIvalBits; random = randomBits 16
@@ -325,30 +325,28 @@ instance Random Word64     where randomR = randomIvalBits; random = randomBits 6
 instance Random CChar      where randomR = randomIvalBits; random = randomBits 8
 instance Random CSChar     where randomR = randomIvalBits; random = randomBits 8
 instance Random CUChar     where randomR = randomIvalBits; random = randomBits 8
-
--- TODO: Finish applying randomBits after I double check all the sizes:
-instance Random CShort     where randomR = randomIvalIntegral; random = randomBounded
-instance Random CUShort    where randomR = randomIvalIntegral; random = randomBounded
-instance Random CInt       where randomR = randomIvalIntegral; random = randomBounded
-instance Random CUInt      where randomR = randomIvalIntegral; random = randomBounded
-instance Random CLong      where randomR = randomIvalIntegral; random = randomBounded
-instance Random CULong     where randomR = randomIvalIntegral; random = randomBounded
-instance Random CPtrdiff   where randomR = randomIvalIntegral; random = randomBounded
-instance Random CSize      where randomR = randomIvalIntegral; random = randomBounded
-instance Random CWchar     where randomR = randomIvalIntegral; random = randomBounded
-instance Random CSigAtomic where randomR = randomIvalIntegral; random = randomBounded
-instance Random CLLong     where randomR = randomIvalIntegral; random = randomBounded
-instance Random CULLong    where randomR = randomIvalIntegral; random = randomBounded
-instance Random CIntPtr    where randomR = randomIvalIntegral; random = randomBounded
-instance Random CUIntPtr   where randomR = randomIvalIntegral; random = randomBounded
-instance Random CIntMax    where randomR = randomIvalIntegral; random = randomBounded
-instance Random CUIntMax   where randomR = randomIvalIntegral; random = randomBounded
+instance Random CShort     where randomR = randomIvalBits; random = randomBits 16
+instance Random CUShort    where randomR = randomIvalBits; random = randomBits 16
+instance Random CInt       where randomR = randomIvalBits; random = randomBits 32
+instance Random CUInt      where randomR = randomIvalBits; random = randomBits 32
+instance Random CLong      where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random CULong     where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random CPtrdiff   where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random CSize      where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random CWchar     where randomR = randomIvalBits; random = randomBits 32
+instance Random CSigAtomic where randomR = randomIvalBits; random = randomBits 32
+instance Random CLLong     where randomR = randomIvalBits; random = randomBits 64
+instance Random CULLong    where randomR = randomIvalBits; random = randomBits 64
+instance Random CIntPtr    where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random CUIntPtr   where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
+instance Random CIntMax    where randomR = randomIvalBits; random = randomBits 64
+instance Random CUIntMax   where randomR = randomIvalBits; random = randomBits 64
 
 instance Random Char where
   randomR (a,b) g = 
        case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
          (x,g') -> (chr x, g')
-  random g	  = randomR (minBound,maxBound) g
+  random g = randomR (minBound,maxBound) g
 
 instance Random Bool where
   randomR (a,b) g = 
@@ -470,7 +468,12 @@ randomIvalBits (l,h) rng
       trace ("  Got pow2: "++show pow2++" bounding "++show bounding++" maxbits "++show maxbits++
 	     " range " ++ show range ++ " cutoff "++ show cutoff) $ 
 #endif
-      (l + fin_x, fin_rng)
+    -- In the special case we don't offset from l:
+    if special_case 
+    then --trace ("    Special case base "++ show (h - cutoff) ++" offset "++ show fin_x ) $ 
+	 (h - cutoff + fin_x + 1, fin_rng)
+    else -- trace "PLAIN CASE" 
+	 (l + fin_x, fin_rng)
  where 
     (fin_x,fin_rng) = 
        -- If we have a power-of-two-sized interval matters are simple.
@@ -489,18 +492,26 @@ randomIvalBits (l,h) rng
     pow2 = findBoundingPow2 range
     -- Bounding is the largest number we will generate with pow2 random bits:
     -- Here we explicitly counter sign-extension in shiftR:
-    bounding = (clearBit (complement 0) (maxbits-1)) `shiftR` (maxbits - pow2 - 1)
-    cutoff = --if pow2 == maxbits 
-	     --then error "UNFINISHED"
-	     --else 
-	     bounding - (bounding `rem` range)
+    special_case = range < 0 -- Special case for signed numbers and range overflow.
+    bounding = 
+	if special_case
+	then clearBit (complement 0) (maxbits-1)
+	else (clearBit (complement 0) (maxbits-1)) `shiftR` (maxbits - pow2 - 1)
+    cutoff = 
+	if special_case
+	then bounding - (bounding - h) - (l - complement bounding) + 1
+	else bounding - (bounding `rem` range)
+
     -- rollAndTrash rolls the dice repeatedly, trashing results it doesn't
     -- like.  In the worst case, it can trash up to 50% of the
     -- results (but typically much much less).
     rollAndTrash g = 
       case randomBits pow2 g of 
-        (x,g') | x >= cutoff -> rollAndTrash g'
-        (x,g')               -> (x `mod` range, g')
+        (x,g') | x >= cutoff -> -- trace ("      Trashing " ++ show x)$ 
+				rollAndTrash g'
+        (x,g')               -> -- trace ("      Keeping " ++ show x)$ 
+				(if special_case then x 
+				 else x `mod` range, g')
 
 -- Find the smallest power of two greater than the given number.
 -- Treat all numbers as unsigned irrespective of type:
@@ -508,14 +519,7 @@ findBoundingPow2 :: (Bits a, Ord a) => a -> Int
 -- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
 findBoundingPow2 num = bitSize num - bitScanReverse num
 
-
-randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
-randomBounded = randomR (minBound, maxBound)
-
--- The two integer functions below take an [inclusive,inclusive] range.
-randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
-randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
-
+-- These integer functions take an [inclusive,inclusive] range.
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l,h) rng
  | l > h     = randomIvalInteger (h,l) rng
