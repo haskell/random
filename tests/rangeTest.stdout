@@ -1,5 +1,7 @@
 Int:  Passed
 Integer:  Passed
+Integer Rbig:  Passed
+Integer RbigPos:  Passed
 Int8:  Passed
 Int16:  Passed
 Int32:  Passed

@@ -90,7 +90,6 @@ After reimplementing random/Float these are the new results:
 (But I still need to propagate these changes throughout all types / API calls.)
 
 
-
  [2011.06.26] Comparing against other Hackage RNG packagas.
 ----------------------------------------------------------
 
@@ -257,6 +256,7 @@ Surprisingly, it doesn't do very much better!
  [2011.06.28] New timing after fixing randomIvalBits for signed nums
 --------------------------------------------------------------------
 
+  [new_api branch]
 This should slow down the range versions.  Now there are several more
 "special_case" branches.
 
@@ -284,6 +284,7 @@ This should slow down the range versions.  Now there are several more
 
 Maybe coalescing those three branches into one would help.
 
+
 Also, I'm eliminating the last uses of randomIvalInteger & co.  This speeds up Bools:
 
      11,159,027 randoms generated [System.Random Bools]       ~ 298 cycles/int
@@ -295,10 +296,26 @@ And CDoubles:
 
 Finally, converting Integer over to the randomBits approach gives me
 an odd reversal of the above situation.  Now random is quicker but
-randomR is SLOWER:
+randomR is SLOWER.  
 
+New results from randomIvalBits on new_api branch:
   random:
       4,370,660 randoms generated [System.Random Integers]    ~ 763 cycles/int
   randomR:
         922,702 randoms generated [System.Random Integers]    ~ 3,615 cycles/int
+         12,385 randoms generated [System.Random BIG Integers] ~ 270,160 cycles/int
+
+
+[2011.06.28] Integer Generation via random and randomR
+-------------------------------------------------------
+
+Back on the master branch I notice that while randomIvalInteger does
+well for small ranges, it's advantage doesn't scale to larger ranges:
+
+[master branch, old approach]:
+  range (-100,100):
+      5,105,290 randoms generated [System.Random Integers]    ~ 653 cycles/int
+
+  range (0,2^5000):
+          8,969 randoms generated [System.Random BIG Integers] ~ 371,848 cycles/int
 

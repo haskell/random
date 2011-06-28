@@ -301,6 +301,7 @@ main = do
 	 timeit th freq "System.Random Integers" gen   (randomR (-100, 100::Integer))
 	 timeit th freq "System.Random Bools"    gen   (randomR (False, True::Bool))
 	 timeit th freq "System.Random Chars"    gen   (randomR ('a', 'z'))
+	 timeit th freq "System.Random BIG Integers" gen (randomR (0, (2::Integer) ^ (5000::Int)))
 
   --       when (not$ NoC `elem` opts) $ do
   --	  putStrLn$ "  Comparison to C's rand():"
