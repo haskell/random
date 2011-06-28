@@ -284,7 +284,21 @@ This should slow down the range versions.  Now there are several more
 
 Maybe coalescing those three branches into one would help.
 
-Also, I'm eliminating the last uses of randomIvalInteger.  This speeds up Bools:
+Also, I'm eliminating the last uses of randomIvalInteger & co.  This speeds up Bools:
 
      11,159,027 randoms generated [System.Random Bools]       ~ 298 cycles/int
+
+And CDoubles:
+      4,327,409 randoms generated [System.Random CDoubles]    ~ 771 cycles/int
+(I don't know why I had the opposite result before from CDouble where randomFrac was better.)
+
+
+Finally, converting Integer over to the randomBits approach gives me
+an odd reversal of the above situation.  Now random is quicker but
+randomR is SLOWER:
+
+  random:
+      4,370,660 randoms generated [System.Random Integers]    ~ 763 cycles/int
+  randomR:
+        922,702 randoms generated [System.Random Integers]    ~ 3,615 cycles/int
 

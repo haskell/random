@@ -304,7 +304,9 @@ class Random a where
 
 instance Random Integer where
   -- randomR cannot use the "Bits" version here:
-  randomR ival g = randomIvalInteger ival g
+  randomR ival@(lo,hi) = 
+      let bits = (1 + max (bitOccupancy lo) (bitOccupancy hi)) in
+      randomIvalBits_raw bits ival 
   random g = case random g of (x,g') -> (toInteger (x::Int), g')
 
 instance Random Int        where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
@@ -354,13 +356,6 @@ instance Random Bool where
   random g = case random g of 
 	      (x,g') -> (testBit (x::Word8) 0, g')
 
-{-# INLINE randomRFloating #-}
-randomRFloating :: (Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
-randomRFloating (l,h) g 
-    | l>h       = randomRFloating (h,l) g
-    | otherwise = let (coef,g') = random g in 
-		  (l + coef * (h-l), g')
-
 instance Random Double where
   randomR = randomRFloating
   random rng     = 
@@ -381,9 +376,6 @@ instance Random Float where
           -- We use 24 bits of randomness corresponding to the 24 bit significand:
           ((fromIntegral (mask24 .&. (x::Int)) :: Float) 
 	   /  fromIntegral twoto24, rng')
-	 -- Note, encodeFloat is another option, but I'm not seeing slightly
-	 --  worse performance with the following [2011.06.25]:
---         (encodeFloat rand (-24), rng')
    where
      rand = case genBits rng of 
 	      Just n | n >= 24 -> next rng
@@ -407,6 +399,14 @@ mkStdRNG o = do
     ct          <- getCPUTime
     (sec, psec) <- getTime
     return (createStdGen (sec * 12345 + psec + ct + o))
+
+{-# INLINE randomRFloating #-}
+randomRFloating :: (Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
+randomRFloating (l,h) g 
+    | l>h       = randomRFloating (h,l) g
+    | otherwise = let (coef,g') = random g in 
+		  (l + coef * (h-l), g')
+
 
 -- Create a specific number of random bits.
 randomBits :: (RandomGen g, Bits a) => Int -> g -> (a,g)
@@ -433,14 +433,13 @@ randomBits desired gen =
  where 
 
 --------------------------------------------------------------------------------
--- TEMP: These should probably be in Data.Bits AND they should have hardware support.
+-- TEMP: This should probably be in Data.Bits AND they should have hardware support.
 -- (See trac ticket #4102.)
 
--- The number of leading zero bits:
-bitScanReverse :: Bits a => a -> Int
-bitScanReverse num = loop (size - 1)
+-- Determine the number of leading zero bits:
+bitScanReverse :: Bits a => Int -> a -> Int
+bitScanReverse size num = loop (size - 1)
   where 
-   size = bitSize num
    loop i | i < 0         = size
           | testBit num i = size - 1 - i
 	  | otherwise     = loop (i-1)
@@ -448,39 +447,49 @@ bitScanReverse num = loop (size - 1)
 
 -- This new version uses randomBits to generate a number in an interval.
 randomIvalBits :: (RandomGen g, Integral a, Bits a) => (a, a) -> g -> (a, g)
-randomIvalBits (l,h) rng 
+randomIvalBits bounds@(lo,_) rng = 
+  randomIvalBits_raw (bitSize lo) bounds rng
+
+randomIvalBits_raw :: (RandomGen g, Integral a, Bits a) => 
+		      Int -> (a, a) -> g -> (a, g)
+randomIvalBits_raw maxbits (l,h) rng 
   | l > h     = randomIvalBits (h,l) rng
   | otherwise = 
 #ifdef DEBUGRAND
       trace ("  Got pow2: "++show pow2++" bounding "++show bounding++" maxbits "++show maxbits++
 	     " range " ++ show range ++ " cutoff "++ show cutoff) $ 
 #endif
-    -- In the special case we don't offset from l:
     if special_case 
+    -- In the special case we don't offset from the lower bound:
     then (h - cutoff + fin_x + 1, fin_rng)
     else (l + fin_x, fin_rng)
  where 
+
+-- TODO - USE IS_SIGNED!!!
+
     (fin_x,fin_rng) = 
-       -- If we have a power-of-two-sized interval matters are simple.
        if range == bit (pow2 - 1)
+       -- If we have a power-of-two-sized interval life is easy!
        then randomBits (pow2 - 1) rng
        else rollAndTrash rng
 
     -- range is the number of distinct values we wish to generate:
     -- If we are dealing with a signed type, range may be negative!
     range  = h - l + 1
-    maxbits = bitSize l
 
     -- With randomBits we can only generate power-of-two ranges.  We
     -- need to find the smallest power-of-two that is bigger than range.
-    pow2 = findBoundingPow2 range
+    pow2 = findBoundingPow2 maxbits range
     -- Bounding is the largest number we will generate with pow2 random bits:
     -- Here we explicitly counter sign-extension in shiftR:
     special_case = range < 0 -- Special case for signed numbers and range overflow.
-    bounding = 
-	if special_case
-	then clearBit (complement 0) (maxbits-1)
-	else (clearBit (complement 0) (maxbits-1)) `shiftR` (maxbits - pow2 - 1)
+--    bounding = let pow = if isSigned l then pow2-2 else pow2-1
+    bounding = let pow = if special_case then pow2-2 else pow2-1
+	           n = 1 `shiftL` pow in
+	       n - 1 + n
+	-- if special_case
+	-- then bnd -- clearBit (complement 0) (maxbits-1)
+	-- else bnd `shiftR` (maxbits - pow2 - 1)
     cutoff = 
 	if special_case
 	then bounding - (bounding - h) - (l - complement bounding) + 1
@@ -495,31 +504,18 @@ randomIvalBits (l,h) rng
         (x,g')               -> (if special_case then x 
 				 else x `mod` range, g')
 
--- Find the smallest power of two greater than the given number.
+-- Find the smallest power of two greater than the given number, that
+-- is, the number of bits needed to represent the number.
 -- Treat all numbers as unsigned irrespective of type:
-findBoundingPow2 :: (Bits a, Ord a) => a -> Int
+findBoundingPow2 :: (Bits a, Ord a) => Int -> a -> Int
 -- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
-findBoundingPow2 num = bitSize num - bitScanReverse num
+findBoundingPow2 bitsize num = bitsize - bitScanReverse bitsize num
 
--- These integer functions take an [inclusive,inclusive] range.
-randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
-randomIvalInteger (l,h) rng
- | l > h     = randomIvalInteger (h,l) rng
- | otherwise = case (f n 1 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
-     where
-       k = h - l + 1
-       b = 2147483561
-       n = iLogBase b k
-
-       f 0 acc g = (acc, g)
-       f n' acc g =
-          let
-	   (x,g')   = next g
-	  in
-	  f (n' - 1) (fromIntegral x + acc * b) g'
-
-iLogBase :: Integer -> Integer -> Integer
-iLogBase b i = if i < b then 1 else 1 + iLogBase b (i `div` b)
+-- How many bits does it take to represent this integer?
+-- NOT counting the sign bit.
+bitOccupancy :: Integer -> Int
+bitOccupancy i | i < 0 = bitOccupancy (-i)
+bitOccupancy i         = if i == 0 then 0 else 1 + bitOccupancy (i `shiftR` 1)
 
 stdRange :: (Int,Int)
 stdRange = (0, 2147483562)
