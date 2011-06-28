@@ -30,3 +30,35 @@ CIntPtr:  Passed
 CUIntPtr:  Passed
 CIntMax:  Passed
 CUIntMax:  Passed
+Int R:  Passed
+Integer R:  Passed
+Int8 R:  Passed
+Int16 R:  Passed
+Int32 R:  Passed
+Int64 R:  Passed
+Word R:  Passed
+Word8 R:  Passed
+Word16 R:  Passed
+Word32 R:  Passed
+Word64 R:  Passed
+Double R:  Passed
+Float R:  Passed
+CChar R:  Passed
+CSChar R:  Passed
+CUChar R:  Passed
+CShort R:  Passed
+CUShort R:  Passed
+CInt R:  Passed
+CUInt R:  Passed
+CLong R:  Passed
+CULong R:  Passed
+CPtrdiff R:  Passed
+CSize R:  Passed
+CWchar R:  Passed
+CSigAtomic R:  Passed
+CLLong R:  Passed
+CULLong R:  Passed
+CIntPtr R:  Passed
+CUIntPtr R:  Passed
+CIntMax R:  Passed
+CUIntMax R:  Passed
