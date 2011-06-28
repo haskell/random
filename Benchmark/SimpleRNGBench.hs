@@ -253,13 +253,7 @@ main = do
        randCDouble = random :: RandomGen g => g -> (CDouble,g)
        randInteger = random :: RandomGen g => g -> (Integer,g)
        randBool    = random :: RandomGen g => g -> (Bool,g)
-
-       -- rangeFloat  g = randomR (-100, 100::Float)   g
-       -- rangeCFloat  g = randomR (-100, 100::CFloat)  g
-       -- rangeDouble  g = randomR (-100, 100::Double)  g
-       -- rangeCDouble g = randomR (-100, 100::CDouble) g
-       -- rangeInteger g = randomR (-100, 100::Integer) g
-       -- rangeBool    g = randomR (False, True)        g
+       randChar    = random :: RandomGen g => g -> (Char,g)
 
        gen = mkStdGen 23852358661234
        gamut th = do
@@ -276,6 +270,7 @@ main = do
 	 timeit th freq "System.Random CDoubles" gen   randCDouble
 	 timeit th freq "System.Random Integers" gen   randInteger
 	 timeit th freq "System.Random Bools"    gen   randBool
+	 timeit th freq "System.Random Chars"    gen   randChar
 
 #ifdef TEST_COMPETITORS
 	 putStrLn$ "\n  Next test other RNG packages on Hackage:"
@@ -306,6 +301,8 @@ main = do
 	 timeit th freq "System.Random CDoubles" gen   (randomR (-100, 100::CDouble))
 	 timeit th freq "System.Random Integers" gen   (randomR (-100, 100::Integer))
 	 timeit th freq "System.Random Bools"    gen   (randomR (False, True::Bool))
+	 timeit th freq "System.Random Chars"    gen   (randomR ('a', 'z'))
+	 timeit th freq "System.Random BIG Integers" gen (randomR (0, (2::Integer) ^ (5000::Int)))
 
   --       when (not$ NoC `elem` opts) $ do
   --	  putStrLn$ "  Comparison to C's rand():"

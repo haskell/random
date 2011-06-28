@@ -90,3 +90,16 @@ After reimplementing random/Float these are the new results:
 (But I still need to propagate these changes throughout all types / API calls.)
 
 
+
+[2011.06.28] Integer Generation via random and randomR
+-------------------------------------------------------
+
+Back on the master branch I notice that while randomIvalInteger does
+well for small ranges, it's advantage doesn't scale to larger ranges:
+
+  range (-100,100):
+      5,105,290 randoms generated [System.Random Integers]    ~ 653 cycles/int
+
+  range (0,2^5000):
+          8,969 randoms generated [System.Random BIG Integers] ~ 371,848 cycles/int
+

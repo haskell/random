@@ -58,6 +58,8 @@ main =
  do 
     checkBounds "Int"     (intRange nb)  (approxBounds random trials (undefined::Int))
     checkBounds "Integer" (intRange nb)  (approxBounds random trials (undefined::Integer))
+    checkBounds "Integer Rbig"    (False,-(2^500), 2^500) (approxBounds (randomR (-(2^500), 2^500)) trials (undefined::Integer))
+    checkBounds "Integer RbigPos" (False,1,2^5000)        (approxBounds (randomR (1,2^5000))        trials (undefined::Integer))
     checkBounds "Int8"    (intRange 8)   (approxBounds random trials (undefined::Int8))
     checkBounds "Int16"   (intRange 16)  (approxBounds random trials (undefined::Int16))
     checkBounds "Int32"   (intRange 32)  (approxBounds random trials (undefined::Int32))
