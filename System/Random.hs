@@ -90,13 +90,6 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef
 import Numeric		( readDec )
 
--- #define DEBUGRAND
-#ifdef DEBUGRAND
-import Numeric		( showIntAtBase )
-import Data.Char     ( intToDigit )
-import Debug.Trace
-#endif
-
 -- The standard nhc98 implementation of Time.ClockTime does not match
 -- the extended one expected in this module, so we lash-up a quick
 -- replacement here.
@@ -423,10 +416,6 @@ randomBits desired gen =
 		 -- Otherwise we must make sure not to generate too many bits:
 	         else 
 		      let shifted = fromIntegral (x `shiftR` (bits - c)) in
-#ifdef DEBUGRAND
-		      trace ("    Got random "++ showIntAtBase 16 intToDigit x "" ++
-		      	     ", shifted "++ show (bits-c)++": " ++ show shifted) $
-#endif
 		      (acc `shiftL` c .|. shifted, g')
 	in loop gen 0 desired
     Nothing -> error "TODO: IMPLEMENT ME - handle undesirable bit sources"    
@@ -455,10 +444,6 @@ randomIvalBits_raw :: (RandomGen g, Integral a, Bits a) =>
 randomIvalBits_raw maxbits (l,h) rng 
   | l > h     = randomIvalBits (h,l) rng
   | otherwise = 
-#ifdef DEBUGRAND
-      trace ("  Got pow2: "++show pow2++" bounding "++show bounding++" maxbits "++show maxbits++
-	     " range " ++ show range ++ " cutoff "++ show cutoff) $ 
-#endif
     if special_case 
     -- In the special case we don't offset from the lower bound:
     then (h - cutoff + fin_x + 1, fin_rng)
