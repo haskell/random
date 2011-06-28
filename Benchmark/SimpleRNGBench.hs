@@ -209,24 +209,6 @@ printResult total msg cycles_per =
      putStrLn$ "    "++ padleft 11 (commaint total) ++" randoms generated "++ padright 27 ("["++msg++"]") ++" ~ "
 	       ++ fmt_num cycles_per ++" cycles/int"
 
-
--- Take many measurements and record the max/min/average random values.
-approxBounds :: (RandomGen g, Random a, Ord a, Num a, Fractional a) => 
-		g -> (g -> (a,g)) -> Int -> (a,a,a)
-approxBounds initrng nxt iters = (mn_, mx_, sum_ / fromIntegral iters)
- where 
-  (mn_, mx_, sum_) = loop initrng iters 100 (-100) 0 -- Oops, can't use minBound/maxBound here.
-  loop _ 0 mn mx sum = (mn,mx,sum)
-  loop rng  n mn mx sum = 
-    case nxt rng of 
-      (x, rng') -> loop rng' (n-1) (min x mn) (max x mx) (x+sum)
-
-floatBounds :: IO (Float, Float, Float)
-floatBounds = do g<-getStdGen; return$ approxBounds g random 100000 :: IO (Float,Float,Float)
-
-doubleBounds :: IO (Double, Double, Double)
-doubleBounds = do g<-getStdGen; return$ approxBounds g random 100000 :: IO (Double,Double,Double)
-
 ----------------------------------------------------------------------------------------------------
 -- Main Script
 

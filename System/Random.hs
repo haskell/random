@@ -346,8 +346,8 @@ instance Random CUIntMax   where randomR = randomIvalIntegral; random = randomBo
 
 instance Random Char where
   randomR (a,b) g = 
-      case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
-        (x,g') -> (chr x, g')
+       case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
+         (x,g') -> (chr x, g')
   random g	  = randomR (minBound,maxBound) g
 
 instance Random Bool where

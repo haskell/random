@@ -3,6 +3,8 @@ import Control.Monad
 import Data.Sequence (ViewL(..), empty, fromList, viewl, (<|), (|>), (><))
 import System.Random
 
+-- This test
+
 threads = 4
 samples = 5000
 
