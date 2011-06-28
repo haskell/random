@@ -141,11 +141,19 @@ class RandomGen g where
 
    -- If the RandomGen can produce at least @N@ uniformly distributed
    -- random bits via the @next@ method, then genBits may indicate how many.
-   genBits :: g -> Maybe Int
+   genBits :: g -> Int
 
    -- default method
-   -- TODO: Write this in terms of genRange:
-   genBits = error "genBits: implement me!"
+   genBits g = 
+     let (lo,hi) = genRange g
+	 -- The number of distinct values:
+	 range   = (fromIntegral hi) - (fromIntegral lo) + 1 :: Integer
+	 boundingPow2 = findBoundingPow2 WORD_SIZE_IN_BITS range
+     in
+         -- WARNING: Potential statistical ERROR here.
+         -- Unless range == 2^N these bits are not uniformly distributed.
+         -- We can say how many bits there are, but not that they are uniform:
+         boundingPow2 - 1
 
 -- | The class 'SplittableGen' proivides a way to specify a random number
 -- generator that can be split into two new generators.
@@ -192,7 +200,7 @@ instance RandomGen StdGen where
   genRange _ = stdRange
   -- Warning: Because snd genRange is just shy of 2^31 this is actually slightly inaccurate.
   -- We accept a very small non-uniformity of output here to enable us to 
-  genBits  _ = Just 31
+  genBits  _ = 31
 
 instance SplittableGen StdGen where
   split = stdSplit
@@ -370,9 +378,9 @@ instance Random Float where
           ((fromIntegral (mask24 .&. (x::Int)) :: Float) 
 	   /  fromIntegral twoto24, rng')
    where
-     rand = case genBits rng of 
-	      Just n | n >= 24 -> next rng
-	      _                -> random rng
+     rand = if genBits rng >= 24 
+	    then next rng
+	    else random rng
      mask24 = twoto24 - 1
      twoto24 = (2::Int) ^ (24::Int)
 
@@ -404,9 +412,7 @@ randomRFloating (l,h) g
 -- Create a specific number of random bits.
 randomBits :: (RandomGen g, Bits a) => Int -> g -> (a,g)
 randomBits desired gen =
-  case genBits gen of 
-    Just bits -> 
-	let   
+	let bits = genBits gen
 	    loop g !acc 0 = (acc,g)
 	    loop g !acc c = 
 	      case next g of 
@@ -418,11 +424,9 @@ randomBits desired gen =
 		      let shifted = fromIntegral (x `shiftR` (bits - c)) in
 		      (acc `shiftL` c .|. shifted, g')
 	in loop gen 0 desired
-    Nothing -> error "TODO: IMPLEMENT ME - handle undesirable bit sources"    
- where 
 
 --------------------------------------------------------------------------------
--- TEMP: This should probably be in Data.Bits AND they should have hardware support.
+-- TEMP: These should probably be in Data.Bits AND they should have hardware support.
 -- (See trac ticket #4102.)
 
 -- Determine the number of leading zero bits:
@@ -432,6 +436,13 @@ bitScanReverse size num = loop (size - 1)
    loop i | i < 0         = size
           | testBit num i = size - 1 - i
 	  | otherwise     = loop (i-1)
+
+-- How many bits does it take to represent this integer?
+-- NOT counting the sign bit.
+-- NOTE: this could probably be done with a simple GMP call.
+bitOccupancy :: Integer -> Int
+bitOccupancy i | i < 0 = bitOccupancy (-i)
+bitOccupancy i         = if i == 0 then 0 else 1 + bitOccupancy (i `shiftR` 1)
 --------------------------------------------------------------------------------
 
 -- This new version uses randomBits to generate a number in an interval.
@@ -449,8 +460,6 @@ randomIvalBits_raw maxbits (l,h) rng
     then (h - cutoff + fin_x + 1, fin_rng)
     else (l + fin_x, fin_rng)
  where 
-
--- TODO - USE IS_SIGNED!!!
 
     (fin_x,fin_rng) = 
        if range == bit (pow2 - 1)
@@ -493,14 +502,7 @@ randomIvalBits_raw maxbits (l,h) rng
 -- is, the number of bits needed to represent the number.
 -- Treat all numbers as unsigned irrespective of type:
 findBoundingPow2 :: (Bits a, Ord a) => Int -> a -> Int
--- findBoundingPow2 num | num <= 0 = error "findBoundingPow2 should not be given a non-positive number"
 findBoundingPow2 bitsize num = bitsize - bitScanReverse bitsize num
-
--- How many bits does it take to represent this integer?
--- NOT counting the sign bit.
-bitOccupancy :: Integer -> Int
-bitOccupancy i | i < 0 = bitOccupancy (-i)
-bitOccupancy i         = if i == 0 then 0 else 1 + bitOccupancy (i `shiftR` 1)
 
 stdRange :: (Int,Int)
 stdRange = (0, 2147483562)

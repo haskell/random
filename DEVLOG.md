@@ -319,3 +319,96 @@ well for small ranges, it's advantage doesn't scale to larger ranges:
   range (0,2^5000):
           8,969 randoms generated [System.Random BIG Integers] ~ 371,848 cycles/int
 
+
+
+[2011.06.28] Results with constant vs. computed genBits
+-------------------------------------------------------
+
+First constant (genBits = 31):
+
+     Cost of rdtsc (ffi call):    75
+     Approx getCPUTime calls per second: 205,190
+     Approx clock frequency:  3,339,794,338
+     First, timing System.Random.next:
+       191,438,371 randoms generated [constant zero gen]         ~ 17.45 cycles/int
+	14,845,231 randoms generated [System.Random stdGen/next] ~ 225 cycles/int
+
+      Second, timing System.Random.random at different types:
+	  4,563,419 randoms generated [System.Random Ints]        ~ 731 cycles/int
+	 12,426,562 randoms generated [System.Random Word16]      ~ 268 cycles/int
+	  6,552,495 randoms generated [System.Random Word32]      ~ 509 cycles/int
+	 13,116,848 randoms generated [System.Random Floats]      ~ 254 cycles/int
+	  4,318,609 randoms generated [System.Random Doubles]     ~ 773 cycles/int
+	  4,329,608 randoms generated [System.Random CDoubles]    ~ 771 cycles/int
+	  4,508,132 randoms generated [System.Random Integers]    ~ 740 cycles/int
+	 11,147,021 randoms generated [System.Random Bools]       ~ 299 cycles/int
+	  3,131,034 randoms generated [System.Random Chars]       ~ 1,066 cycles/int
+
+      Next timing range-restricted System.Random.randomR:
+	  3,561,451 randoms generated [System.Random Ints]        ~ 937 cycles/int
+	  6,224,402 randoms generated [System.Random Word16s]     ~ 536 cycles/int
+	 12,994,992 randoms generated [System.Random Floats]      ~ 257 cycles/int
+	  4,352,336 randoms generated [System.Random Doubles]     ~ 767 cycles/int
+	  4,333,276 randoms generated [System.Random CDoubles]    ~ 770 cycles/int
+	    906,541 randoms generated [System.Random Integers]    ~ 3,680 cycles/int
+	 11,085,278 randoms generated [System.Random Bools]       ~ 301 cycles/int
+	  3,501,431 randoms generated [System.Random Chars]       ~ 953 cycles/int
+	     12,255 randoms generated [System.Random BIG Integers] ~ 272,248 cycles/int
+    Finished.
+
+Next, constant again, but set to genBits=30 for fair comparison:
+
+     Second, timing System.Random.random at different types:
+	 4,535,771 randoms generated [System.Random Ints]        ~ 736 cycles/int
+	12,287,631 randoms generated [System.Random Word16]      ~ 272 cycles/int
+	 6,564,228 randoms generated [System.Random Word32]      ~ 509 cycles/int
+	13,003,696 randoms generated [System.Random Floats]      ~ 257 cycles/int
+	 4,276,090 randoms generated [System.Random Doubles]     ~ 781 cycles/int
+	 4,306,882 randoms generated [System.Random CDoubles]    ~ 775 cycles/int
+	 4,486,628 randoms generated [System.Random Integers]    ~ 744 cycles/int
+	11,086,989 randoms generated [System.Random Bools]       ~ 301 cycles/int
+	 2,125,687 randoms generated [System.Random Chars]       ~ 1,571 cycles/int
+
+     Next timing range-restricted System.Random.randomR:
+	 2,550,631 randoms generated [System.Random Ints]        ~ 1,309 cycles/int
+	 6,220,239 randoms generated [System.Random Word16s]     ~ 537 cycles/int
+	12,931,888 randoms generated [System.Random Floats]      ~ 258 cycles/int
+	 4,325,212 randoms generated [System.Random Doubles]     ~ 772 cycles/int
+	 4,309,817 randoms generated [System.Random CDoubles]    ~ 775 cycles/int
+	   754,029 randoms generated [System.Random Integers]    ~ 4,429 cycles/int
+	11,014,955 randoms generated [System.Random Bools]       ~ 303 cycles/int
+	 2,564,474 randoms generated [System.Random Chars]       ~ 1,302 cycles/int
+	     6,056 randoms generated [System.Random BIG Integers] ~ 551,485 cycles/int
+
+Third, computed (which computes 30 bits):
+
+     Second, timing System.Random.random at different types:
+	 4,322,954 randoms generated [System.Random Ints]        ~ 774 cycles/int
+	12,170,437 randoms generated [System.Random Word16]      ~ 275 cycles/int
+	 6,455,259 randoms generated [System.Random Word32]      ~ 518 cycles/int
+	12,473,335 randoms generated [System.Random Floats]      ~ 268 cycles/int
+	 4,211,300 randoms generated [System.Random Doubles]     ~ 795 cycles/int
+	 4,225,383 randoms generated [System.Random CDoubles]    ~ 792 cycles/int
+	 4,316,900 randoms generated [System.Random Integers]    ~ 775 cycles/int
+	10,671,171 randoms generated [System.Random Bools]       ~ 314 cycles/int
+	 2,086,555 randoms generated [System.Random Chars]       ~ 1,604 cycles/int
+
+     Next timing range-restricted System.Random.randomR:
+	 2,487,327 randoms generated [System.Random Ints]        ~ 1,345 cycles/int
+	 5,805,933 randoms generated [System.Random Word16s]     ~ 576 cycles/int
+	11,534,903 randoms generated [System.Random Floats]      ~ 290 cycles/int
+	 4,223,273 randoms generated [System.Random Doubles]     ~ 792 cycles/int
+	 4,086,697 randoms generated [System.Random CDoubles]    ~ 819 cycles/int
+	   835,202 randoms generated [System.Random Integers]    ~ 4,006 cycles/int
+	10,719,431 randoms generated [System.Random Bools]       ~ 312 cycles/int
+	 2,524,404 randoms generated [System.Random Chars]       ~ 1,326 cycles/int
+	     6,320 randoms generated [System.Random BIG Integers] ~ 529,456 cycles/int
+
+Well... it looks like 30 vs 31 makes a surprising difference!  For
+none of these types should it actually matter (except for BIG
+Intgers)... so this is a bit of a mystery.
+
+However, whether it is computed or not doesn't seem to matter.  So
+hopefully it is getting computed once as I had hoped.
+  (I.e. the genRange would statically be propagated and allow the
+relevant computations to be floated outside the lambda...)
