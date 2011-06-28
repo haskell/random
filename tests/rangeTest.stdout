@@ -33,6 +33,9 @@ CUIntMax:  Passed
 Int R:  Passed
 Integer R:  Passed
 Int8 R:  Passed
+Int8 Rsmall:  Passed
+Int8 Rmini:  Passed
+Int8 Rtrivial:  Passed
 Int16 R:  Passed
 Int32 R:  Passed
 Int64 R:  Passed
