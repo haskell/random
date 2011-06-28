@@ -26,11 +26,9 @@ approxBounds nxt iters unused (explo,exphi) initrng =
 --     (1) all generated numbers are in bounds
 --     (2) we get "close" to the bounds
 -- The with (2) is that we do enough trials to ensure that we can at
--- least hit the 95% mark.
-
---checkBounds:: (Fractional a, Ord a) =>
---checkBounds:: (Real a, Ord a) =>
---	      String -> (Bool, a, a) -> (StdGen -> ((a, a, t), StdGen)) -> IO ()
+-- least hit the 90% mark.
+checkBounds:: (Real a, Ord a) =>
+	      String -> (Bool, a, a) -> ((a,a) -> StdGen -> ((a, a, t), StdGen)) -> IO ()
 checkBounds msg (exclusive,lo,hi) fun = 
  -- (lo,hi) is [inclusive,exclusive) 
  do putStr$ msg 
@@ -53,7 +51,7 @@ intRange bits = ( False, 0 - x - x, x - 1 + x)
 wordRange bits = ( False, 0, x - 1 + x )
   where x = 2 ^ (bits-1)
 
-trials = 10000
+trials = 5000
 nb = bitSize (0::Int) -- Native bits
 
 main = 
@@ -96,6 +94,10 @@ main =
     checkBounds "Int R"     (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int))
     checkBounds "Integer R" (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Integer))
     checkBounds "Int8 R"    (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int8))
+    checkBounds "Int8 Rsmall" (False,-50,50)  (approxBounds (randomR (-50,50))   trials (undefined::Int8))
+    checkBounds "Int8 Rmini"    (False,3,4)   (approxBounds (randomR (3,4))      trials (undefined::Int8))
+    checkBounds "Int8 Rtrivial" (False,3,3)   (approxBounds (randomR (3,3))      trials (undefined::Int8))
+
     checkBounds "Int16 R"   (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int16))
     checkBounds "Int32 R"   (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int32))
     checkBounds "Int64 R"   (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int64))
