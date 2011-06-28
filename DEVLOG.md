@@ -252,3 +252,39 @@ Surprisingly, it doesn't do very much better!
          12,383,682 randoms generated [System.Random Word16]      ~ 269 cycles/int
      Next timing range-restricted System.Random.randomR:
          8,265,744 randoms generated [System.Random Word16s]     ~ 404 cycles/int
+
+
+ [2011.06.28] New timing after fixing randomIvalBits for signed nums
+--------------------------------------------------------------------
+
+This should slow down the range versions.  Now there are several more
+"special_case" branches.
+
+       192,596,820 randoms generated [constant zero gen]         ~ 17.32 cycles/int
+	15,067,951 randoms generated [System.Random stdGen/next] ~ 221 cycles/int
+
+     Second, timing System.Random.random at different types:
+	 4,455,899 randoms generated [System.Random Ints]        ~ 749 cycles/int
+	12,436,853 randoms generated [System.Random Word16]      ~ 268 cycles/int
+	 6,619,695 randoms generated [System.Random Word32]      ~ 504 cycles/int
+	13,256,112 randoms generated [System.Random Floats]      ~ 252 cycles/int
+	 4,334,004 randoms generated [System.Random Doubles]     ~ 770 cycles/int
+	 2,600,815 randoms generated [System.Random CDoubles]    ~ 1,283 cycles/int
+	   870,381 randoms generated [System.Random Integers]    ~ 3,833 cycles/int
+	 5,086,453 randoms generated [System.Random Bools]       ~ 656 cycles/int
+
+     Next timing range-restricted System.Random.randomR:
+	 3,384,306 randoms generated [System.Random Ints]        ~ 986 cycles/int
+	 6,478,477 randoms generated [System.Random Word16s]     ~ 515 cycles/int
+	13,247,408 randoms generated [System.Random Floats]      ~ 252 cycles/int
+	 4,345,005 randoms generated [System.Random Doubles]     ~ 768 cycles/int
+	 2,614,546 randoms generated [System.Random CDoubles]    ~ 1,276 cycles/int
+	 5,117,386 randoms generated [System.Random Integers]    ~ 652 cycles/int
+	 5,059,722 randoms generated [System.Random Bools]       ~ 659 cycles/int
+
+Maybe coalescing those three branches into one would help.
+
+Also, I'm eliminating the last uses of randomIvalInteger.  This speeds up Bools:
+
+     11,159,027 randoms generated [System.Random Bools]       ~ 298 cycles/int
+

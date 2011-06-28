@@ -96,7 +96,6 @@ import Numeric		( showIntAtBase )
 import Data.Char     ( intToDigit )
 import Debug.Trace
 #endif
-import Debug.Trace
 
 -- The standard nhc98 implementation of Time.ClockTime does not match
 -- the extended one expected in this module, so we lash-up a quick
@@ -304,8 +303,9 @@ class Random a where
 
 
 instance Random Integer where
+  -- randomR cannot use the "Bits" version here:
   randomR ival g = randomIvalInteger ival g
-  random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
+  random g = case random g of (x,g') -> (toInteger (x::Int), g')
 
 instance Random Int        where randomR = randomIvalBits; random = randomBits WORD_SIZE_IN_BITS
 instance Random Int8       where randomR = randomIvalBits; random = randomBits 8
@@ -343,25 +343,16 @@ instance Random CIntMax    where randomR = randomIvalBits; random = randomBits 6
 instance Random CUIntMax   where randomR = randomIvalBits; random = randomBits 64
 
 instance Random Char where
-  randomR (a,b) g = 
-       case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
-         (x,g') -> (chr x, g')
+  randomR (a,b) g = case randomR (ord a, ord b) g of
+		     (x,g') -> (chr x, g')
   random g = randomR (minBound,maxBound) g
 
 instance Random Bool where
-  randomR (a,b) g = 
-      case (randomIvalInteger (bool2Int a, bool2Int b) g) of
-        (x, g') -> (int2Bool x, g')
-       where
-         bool2Int :: Bool -> Integer
-         bool2Int False = 0
-         bool2Int True  = 1
-
-	 int2Bool :: Int -> Bool
-	 int2Bool 0	= False
-	 int2Bool _	= True
-
-  random g	  = randomR (minBound,maxBound) g
+  randomR (False,False) g = (False,g)
+  randomR (True,True)   g = (True, g)
+  randomR _             g = random g
+  random g = case random g of 
+	      (x,g') -> (testBit (x::Word8) 0, g')
 
 {-# INLINE randomRFloating #-}
 randomRFloating :: (Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
@@ -408,12 +399,8 @@ instance Random CFloat where
 
 instance Random CDouble where
   randomR = randomRFloating
-  -- A MYSTERY:
-  -- Presently, this is showing better performance than the Double instance:
-  -- (And yet, if the Double instance uses randomFrac then its performance is much worse!)
-  random  = randomFrac
-  -- random rng = case random rng of 
-  -- 	         (x,rng') -> (realToFrac (x::Double), rng')
+  random rng = case random rng of 
+   	         (x,rng') -> (realToFrac (x::Double), rng')
 
 mkStdRNG :: Integer -> IO StdGen
 mkStdRNG o = do
@@ -459,7 +446,7 @@ bitScanReverse num = loop (size - 1)
 	  | otherwise     = loop (i-1)
 --------------------------------------------------------------------------------
 
--- This new version uses randomBits to generate the a number in a range.
+-- This new version uses randomBits to generate a number in an interval.
 randomIvalBits :: (RandomGen g, Integral a, Bits a) => (a, a) -> g -> (a, g)
 randomIvalBits (l,h) rng 
   | l > h     = randomIvalBits (h,l) rng
@@ -470,14 +457,11 @@ randomIvalBits (l,h) rng
 #endif
     -- In the special case we don't offset from l:
     if special_case 
-    then --trace ("    Special case base "++ show (h - cutoff) ++" offset "++ show fin_x ) $ 
-	 (h - cutoff + fin_x + 1, fin_rng)
-    else -- trace "PLAIN CASE" 
-	 (l + fin_x, fin_rng)
+    then (h - cutoff + fin_x + 1, fin_rng)
+    else (l + fin_x, fin_rng)
  where 
     (fin_x,fin_rng) = 
        -- If we have a power-of-two-sized interval matters are simple.
--- TODO: HANDLE pow2==0 ????
        if range == bit (pow2 - 1)
        then randomBits (pow2 - 1) rng
        else rollAndTrash rng
@@ -507,10 +491,8 @@ randomIvalBits (l,h) rng
     -- results (but typically much much less).
     rollAndTrash g = 
       case randomBits pow2 g of 
-        (x,g') | x >= cutoff -> -- trace ("      Trashing " ++ show x)$ 
-				rollAndTrash g'
-        (x,g')               -> -- trace ("      Keeping " ++ show x)$ 
-				(if special_case then x 
+        (x,g') | x >= cutoff -> rollAndTrash g'
+        (x,g')               -> (if special_case then x 
 				 else x `mod` range, g')
 
 -- Find the smallest power of two greater than the given number.
@@ -535,27 +517,6 @@ randomIvalInteger (l,h) rng
 	   (x,g')   = next g
 	  in
 	  f (n' - 1) (fromIntegral x + acc * b) g'
-
--- The continuous functions on the other hand take an [inclusive,exclusive) range.
-randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
-randomFrac = randomIvalDouble (0::Double,1) realToFrac
-
-randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
-randomIvalDouble (l,h) fromDouble rng 
-  | l > h     = randomIvalDouble (h,l) fromDouble rng
-  | otherwise = 
-       case (randomIvalInteger (toInteger (minBound::Int32), toInteger (maxBound::Int32)) rng) of
-         (x, rng') -> 
-	    let
-	     scaled_x = 
-		fromDouble ((l+h)/2) + 
-                fromDouble ((h-l) / realToFrac int32Count) *
-		fromIntegral (x::Int32)
-	    in
-	    (scaled_x, rng')
-
-int32Count :: Integer
-int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1
 
 iLogBase :: Integer -> Integer -> Integer
 iLogBase b i = if i < b then 1 else 1 + iLogBase b (i `div` b)
