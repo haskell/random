@@ -1,5 +1,5 @@
 # This lets me run tests from the test directory during development:
-opts = '-i.. -XCPP '
+# opts = '-i.. -XCPP '
 
 test('rangeTest',
      normal,
