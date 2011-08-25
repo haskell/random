@@ -46,9 +46,12 @@ module System.Random
 
 	-- * Random number generators
 
+#ifdef ENABLE_SPLITTABLEGEN
 	  RandomGen(next, genRange)
 	, SplittableGen(split)
-
+#else
+	  RandomGen(next, genRange, split)
+#endif
 	-- ** Standard random number generators
 	, StdGen
 	, mkStdGen
@@ -142,9 +145,11 @@ class RandomGen g where
    -- default method
    genRange _ = (minBound, maxBound)
 
+#ifdef ENABLE_SPLITTABLEGEN
 -- | The class 'SplittableGen' proivides a way to specify a random number
 -- generator that can be split into two new generators.
 class SplittableGen g where
+#endif
    -- |The 'split' operation allows one to obtain two distinct random number
    -- generators. This is very useful in functional programs (for example, when
    -- passing a random number generator down to recursive calls), but very
@@ -186,7 +191,9 @@ instance RandomGen StdGen where
   next  = stdNext
   genRange _ = stdRange
 
+#ifdef ENABLE_SPLITTABLEGEN
 instance SplittableGen StdGen where
+#endif
   split = stdSplit
 
 instance Show StdGen where

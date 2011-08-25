@@ -1,5 +1,8 @@
 name:		random
-version:	1.0.0.4
+version:	1.0.1.0
+
+-- 1.0.1.0 -- bump for bug fixes, but no SplittableGen yet
+
 license:	BSD3
 license-file:	LICENSE
 maintainer:	rrnewton@gmail.com
@@ -10,6 +13,8 @@ description:
 	This package provides a random number library.
 build-type: Simple
 Cabal-Version: >= 1.6
+
+
 
 Library
     exposed-modules:
