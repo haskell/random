@@ -93,7 +93,7 @@ measureFreq = do
 data NoopRNG = NoopRNG
 instance RandomGen NoopRNG where 
   next g     = (0,g)
-#if 1
+#ifdef ENABLE_SPLITTABLEGEN
   genRange _ = (0,0)
 instance SplittableGen NoopRNG where
 #endif
@@ -104,7 +104,7 @@ data BinRNG = BinRNG StdGen
 instance RandomGen BinRNG where 
   next (BinRNG g) = (x `mod` 2, BinRNG g')
     where (x,g') = next g
-#if 1
+#ifdef ENABLE_SPLITTABLEGEN
   genRange _ = (0,1)
 instance SplittableGen BinRNG where
 #endif
