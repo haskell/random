@@ -5,3 +5,10 @@
 TOP=../../../testsuite
 include $(TOP)/mk/boilerplate.mk
 include $(TOP)/mk/test.mk
+
+
+# Build tests locally without the central GHC testing infrastructure:
+local:
+	ghc --make rangeTest.hs
+	ghc --make random1283.hs
+

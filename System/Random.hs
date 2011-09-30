@@ -355,11 +355,11 @@ instance Random Bool where
   random g	  = randomR (minBound,maxBound) g
 
 {-# INLINE randomRFloating #-}
-randomRFloating :: (Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
+randomRFloating :: (Fractional a, Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
 randomRFloating (l,h) g 
     | l>h       = randomRFloating (h,l) g
     | otherwise = let (coef,g') = random g in 
-		  (l + coef * (h-l), g')
+		  (2.0 * (0.5*l + coef * (0.5*h - 0.5*l)), g')  -- avoid overflow
 
 instance Random Double where
   randomR = randomRFloating
@@ -445,8 +445,8 @@ randomIvalDouble (l,h) fromDouble rng
          (x, rng') -> 
 	    let
 	     scaled_x = 
-		fromDouble ((l+h)/2) + 
-                fromDouble ((h-l) / realToFrac int32Count) *
+		fromDouble (0.5*l + 0.5*h) +                   -- previously (l+h)/2, overflowed
+                fromDouble ((0.5*h - 0.5*l) / (0.5 * realToFrac int32Count)) *  -- avoid overflow
 		fromIntegral (x::Int32)
 	    in
 	    (scaled_x, rng')

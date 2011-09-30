@@ -1,7 +1,8 @@
 name:		random
-version:	1.0.1.0
+version:	1.0.1.1
 
 -- 1.0.1.0 -- bump for bug fixes, but no SplittableGen yet
+-- 1.0.1.1 -- bump for overflow bug fixes
 
 license:	BSD3
 license-file:	LICENSE
@@ -10,7 +11,9 @@ bug-reports: http://hackage.haskell.org/trac/ghc/newticket?component=libraries/r
 synopsis:	random number library
 category:       System
 description:
-	This package provides a random number library.
+	This package provides a basic random number generation
+	library, including the ability to split random number
+	generators.
 build-type: Simple
 Cabal-Version: >= 1.6
 

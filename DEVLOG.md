@@ -157,3 +157,40 @@ First validating in the context of a slightly stale GHC head
 (7.3.20110727) on a mac.
 
 
+[2011.09.30] Redoing timings after bugfix in version 1.0.1.1
+------------------------------------------------------------
+
+It looks like there has been serious performance regression (3.33ghz
+nehalem still).
+
+    How many random numbers can we generate in a second on one thread?
+      Cost of rdtsc (ffi call):    38
+      Approx getCPUTime calls per second: 7,121
+      Approx clock frequency:  96,610,524
+      First, timing System.Random.next:
+	148,133,038 randoms generated [constant zero gen]         ~ 0.65 cycles/int
+	 12,656,455 randoms generated [System.Random stdGen/next] ~ 7.63 cycles/int
+
+      Second, timing System.Random.random at different types:
+	    676,066 randoms generated [System.Random Ints]        ~ 143 cycles/int
+	  3,917,247 randoms generated [System.Random Word16]      ~ 24.66 cycles/int
+	  2,231,460 randoms generated [System.Random Floats]      ~ 43.29 cycles/int
+	  2,269,993 randoms generated [System.Random CFloats]     ~ 42.56 cycles/int
+	    686,363 randoms generated [System.Random Doubles]     ~ 141 cycles/int
+	  2,165,679 randoms generated [System.Random CDoubles]    ~ 44.61 cycles/int
+	    713,702 randoms generated [System.Random Integers]    ~ 135 cycles/int
+	  3,647,551 randoms generated [System.Random Bools]       ~ 26.49 cycles/int
+	  4,296,919 randoms generated [System.Random Chars]       ~ 22.48 cycles/int
+
+      Next timing range-restricted System.Random.randomR:
+	  4,307,214 randoms generated [System.Random Ints]        ~ 22.43 cycles/int
+	  4,068,982 randoms generated [System.Random Word16s]     ~ 23.74 cycles/int
+	  2,059,264 randoms generated [System.Random Floats]      ~ 46.92 cycles/int
+	  1,960,359 randoms generated [System.Random CFloats]     ~ 49.28 cycles/int
+	    678,978 randoms generated [System.Random Doubles]     ~ 142 cycles/int
+	  2,009,665 randoms generated [System.Random CDoubles]    ~ 48.07 cycles/int
+	  4,296,452 randoms generated [System.Random Integers]    ~ 22.49 cycles/int
+	  3,689,999 randoms generated [System.Random Bools]       ~ 26.18 cycles/int
+	  4,367,577 randoms generated [System.Random Chars]       ~ 22.12 cycles/int
+	      6,650 randoms generated [System.Random BIG Integers] ~ 14,528 cycles/int
+
