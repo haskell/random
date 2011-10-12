@@ -27,7 +27,7 @@ approxBounds nxt iters unused (explo,exphi) initrng =
 --     (2) we get "close" to the bounds
 -- The with (2) is that we do enough trials to ensure that we can at
 -- least hit the 90% mark.
-checkBounds:: (Real a, Ord a) =>
+checkBounds:: (Real a, Show a, Ord a) =>
 	      String -> (Bool, a, a) -> ((a,a) -> StdGen -> ((a, a, t), StdGen)) -> IO ()
 checkBounds msg (exclusive,lo,hi) fun = 
  -- (lo,hi) is [inclusive,exclusive) 
