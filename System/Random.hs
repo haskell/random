@@ -6,7 +6,7 @@
 -- |
 -- Module      :  System.Random
 -- Copyright   :  (c) The University of Glasgow 2001
--- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- License     :  BSD-style (see the file LICENSE in the 'random' repository)
 -- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  stable
