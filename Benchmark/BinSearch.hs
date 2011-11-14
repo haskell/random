@@ -1,7 +1,21 @@
 
--- This is a script used for timing the throughput of benchmarks that
--- take one argument and have linear complexity.
+{- 
+ Binary search over benchmark input sizes.
 
+ There are many good ways to measure the time it takes to perform a
+ certain computation on a certain input.  However, frequently, it's
+ challenging to pick the right input size for all platforms and all
+ compilataion modes.
+
+ Sometimes for linear-complexity benchmarks it is better to measure
+ /throughput/, i.e. elements processed per second.  That is, fixing
+ the time of execution and measuring the amount of work done (rather
+ than the reverse).  This library provides a simple way to search for
+ an appropriate input size that results in the desired execution time.
+
+ An alternative approach is to kill the computation after a certain
+ amount of time and observe how much work it has completed.
+ -}
 module BinSearch 
     (
       binSearch
@@ -17,13 +31,13 @@ import Prelude hiding (min,max,log)
 
 
 -- | Binary search for the number of inputs to a computation that
--- | makes it take a specified time in seconds.
+--   results in a specified amount of execution time in seconds.  For example:
 --
 -- > binSearch verbose N (min,max) kernel
 --
--- | binSearch will find the right input size that results in a time
--- | between min and max, then it will then run for N trials and
--- | return the median (input,time-in-seconds) pair.
+--   ... will find the right input size that results in a time
+--   between min and max, then it will then run for N trials and
+--   return the median (input,time-in-seconds) pair.
 binSearch :: Bool -> Integer -> (Double,Double) -> (Integer -> IO ()) -> IO (Integer, Double)
 binSearch verbose trials (min,max) kernel =
   do 
