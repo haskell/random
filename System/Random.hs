@@ -114,7 +114,11 @@ getTime = do
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
 --
+#ifdef ENABLE_SPLITTABLEGEN
 -- Minimal complete definition: 'next'.
+#else
+-- Minimal complete definition: 'next' and 'split'.
+#endif
 
 class RandomGen g where
 
@@ -147,7 +151,7 @@ class RandomGen g where
 
 #ifdef ENABLE_SPLITTABLEGEN
 -- | The class 'SplittableGen' proivides a way to specify a random number
--- generator that can be split into two new generators.
+--   generator that can be split into two new generators.
 class SplittableGen g where
 #endif
    -- |The 'split' operation allows one to obtain two distinct random number
@@ -423,14 +427,17 @@ randomIvalInteger (l,h) rng
  | otherwise = case (f n 1 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
      where
        k = h - l + 1
+       -- ERROR: b here (2^31-87) represents a baked-in assumption about genRange:
        b = 2147483561
        n = iLogBase b k
 
+       -- Here we loop until we've generated enough randomness to cover the range:
        f 0 acc g = (acc, g)
        f n' acc g =
           let
 	   (x,g')   = next g
 	  in
+          -- We shift over the random bits generated thusfar (* b) and add in the new ones.
 	  f (n' - 1) (fromIntegral x + acc * b) g'
 
 -- The continuous functions on the other hand take an [inclusive,exclusive) range.
@@ -454,6 +461,10 @@ randomIvalDouble (l,h) fromDouble rng
 int32Count :: Integer
 int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1
 
+-- Perform an expensive logarithm on arbitrary-size integers by repeated division.
+-- 
+-- (NOTE: This actually returns ceiling(log(i) base b) except with an
+--  incorrect result at iLogBase b b = 2.)
 iLogBase :: Integer -> Integer -> Integer
 iLogBase b i = if i < b then 1 else 1 + iLogBase b (i `div` b)
 
