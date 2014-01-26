@@ -96,6 +96,15 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef
 import Numeric		( readDec )
 
+#ifdef __GLASGOW_HASKELL__
+import GHC.Exts         ( build )
+#else
+-- | A dummy variant of build without fusion.
+{-# INLINE build #-}
+build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
+build g = g (:) []
+#endif
+
 -- The standard nhc98 implementation of Time.ClockTime does not match
 -- the extended one expected in this module, so we lash-up a quick
 -- replacement here.
@@ -279,13 +288,15 @@ class Random a where
 
   -- | Plural variant of 'randomR', producing an infinite list of
   -- random values instead of returning a new generator.
+  {-# INLINE randomRs #-}
   randomRs :: RandomGen g => (a,a) -> g -> [a]
-  randomRs ival g = x : randomRs ival g' where (x,g') = randomR ival g
+  randomRs ival g = build (\cons _nil -> buildRandoms cons (randomR ival) g)
 
   -- | Plural variant of 'random', producing an infinite list of
   -- random values instead of returning a new generator.
+  {-# INLINE randoms #-}
   randoms  :: RandomGen g => g -> [a]
-  randoms  g      = (\(x,g') -> x : randoms g') (random g)
+  randoms  g      = build (\cons _nil -> buildRandoms cons random g)
 
   -- | A variant of 'randomR' that uses the global random number generator
   -- (see "System.Random#globalrng").
@@ -296,6 +307,18 @@ class Random a where
   -- (see "System.Random#globalrng").
   randomIO  :: IO a
   randomIO	   = getStdRandom random
+
+-- | Produce an infinite list-equivalent of random values.
+{-# INLINE buildRandoms #-}
+buildRandoms :: RandomGen g
+             => (a -> as -> as)  -- ^ E.g. '(:)' but subject to fusion
+             -> (g -> (a,g))     -- ^ E.g. 'random'
+             -> g                -- ^ A 'RandomGen' instance
+             -> as
+buildRandoms cons rand = go
+  where
+    -- The seq fixes part of #4218 and also makes fused Core simpler.
+    go g = x `seq` (x `cons` go g') where (x,g') = rand g
 
 
 instance Random Integer where
