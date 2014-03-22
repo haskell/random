@@ -444,24 +444,33 @@ randomBounded = randomR (minBound, maxBound)
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
 randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
 
+{-# SPECIALIZE randomIvalInteger :: (Num a) =>
+    (Integer, Integer) -> StdGen -> (a, StdGen) #-}
+        
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l,h) rng
  | l > h     = randomIvalInteger (h,l) rng
- | otherwise = case (f n 1 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
+ | otherwise = case (f 1 0 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
      where
-       k = h - l + 1
-       -- ERROR: b here (2^31-87) represents a baked-in assumption about genRange:
-       b = 2147483561
-       n = iLogBase b k
+       (genlo, genhi) = genRange rng
+       b = fromIntegral genhi - fromIntegral genlo + 1
 
-       -- Here we loop until we've generated enough randomness to cover the range:
-       f 0 acc g = (acc, g)
-       f n' acc g =
-          let
-	   (x,g')   = next g
-	  in
-          -- We shift over the random bits generated thusfar (* b) and add in the new ones.
-	  f (n' - 1) (fromIntegral x + acc * b) g'
+       -- Probabilities of the most likely and least likely result
+       -- will differ at most by a factor of (1 +- 1/q).  Assuming the RandomGen
+       -- is uniform, of course
+
+       -- On average, log q / log b more random values will be generated
+       -- than the minimum
+       q = 1000
+       k = h - l + 1
+       magtgt = k * q
+
+       -- generate random values until we exceed the target magnitude 
+       f mag v g | mag >= magtgt = (v, g)
+                 | otherwise = v' `seq`f (mag*b) v' g' where
+                        (x,g') = next g
+                        v' = (v * b + (fromIntegral x - fromIntegral genlo))
+
 
 -- The continuous functions on the other hand take an [inclusive,exclusive) range.
 randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
@@ -483,13 +492,6 @@ randomIvalDouble (l,h) fromDouble rng
 
 int32Count :: Integer
 int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1
-
--- Perform an expensive logarithm on arbitrary-size integers by repeated division.
--- 
--- (NOTE: This actually returns ceiling(log(i) base b) except with an
---  incorrect result at iLogBase b b = 2.)
-iLogBase :: Integer -> Integer -> Integer
-iLogBase b i = if i < b then 1 else 1 + iLogBase b (i `div` b)
 
 stdRange :: (Int,Int)
 stdRange = (0, 2147483562)
