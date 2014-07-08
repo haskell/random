@@ -494,7 +494,7 @@ int32Count :: Integer
 int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1
 
 stdRange :: (Int,Int)
-stdRange = (0, 2147483562)
+stdRange = (1, 2147483562)
 
 stdNext :: StdGen -> (Int, StdGen)
 -- Returns values in the range stdRange
