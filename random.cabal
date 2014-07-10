@@ -45,3 +45,10 @@ Test-Suite TestRandomRs
     ghc-options:    -rtsopts -O2
     -- TODO. Why does the following not work?
     --test-options:   +RTS -M1M -RTS
+
+Test-Suite TestRandomIOs
+    type:           exitcode-stdio-1.0
+    main-is:        TestRandomIOs.hs
+    hs-source-dirs: tests
+    build-depends:  base >= 3 && < 5, random
+    ghc-options:    -rtsopts -O2
