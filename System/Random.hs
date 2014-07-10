@@ -198,7 +198,7 @@ instance of 'StdGen' has the following properties:
 -}
 
 data StdGen 
- = StdGen Int32 Int32
+ = StdGen !Int32 !Int32
 
 instance RandomGen StdGen where
   next  = stdNext
