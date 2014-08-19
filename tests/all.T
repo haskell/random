@@ -1,6 +1,6 @@
 
 test('rangeTest',
-     when(opsys('mingw32'), expect_broken(7379)),
+     normal,
      compile_and_run,
      [''])
 
