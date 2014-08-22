@@ -198,7 +198,7 @@ instance of 'StdGen' has the following properties:
 -}
 
 data StdGen 
- = StdGen Int32 Int32
+ = StdGen !Int32 !Int32
 
 instance RandomGen StdGen where
   next  = stdNext
@@ -553,7 +553,7 @@ theStdGen  = unsafePerformIO $ do
 -- |Applies 'split' to the current global random generator,
 -- updates it with one of the results, and returns the other.
 newStdGen :: IO StdGen
-newStdGen = atomicModifyIORef theStdGen split
+newStdGen = atomicModifyIORef' theStdGen split
 
 {- |Uses the supplied function to get a value from the current global
 random generator, and updates the global generator with the new generator
@@ -566,7 +566,7 @@ between 1 and 6:
 -}
 
 getStdRandom :: (StdGen -> (a,StdGen)) -> IO a
-getStdRandom f = atomicModifyIORef theStdGen (swap . f)
+getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
   where swap (v,g) = (g,v)
 
 {- $references
