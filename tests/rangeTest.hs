@@ -121,7 +121,7 @@ main =
     checkBounds "CPtrdiff R"   (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CPtrdiff))
     checkBounds "CSize R"      (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined:: CSize))
     checkBounds "CWchar R"     (False,0,100)     (approxBounds (randomR (0,100))    trials (undefined:: CWchar))
-    checkBounds "CSigAtomic R" (False,0,100)     (approxBounds (randomR (0,100))    trials (undefined:: CWchar))
+    checkBounds "CSigAtomic R" (False,0,100)     (approxBounds (randomR (0,100))    trials (undefined:: CSigAtomic))
     checkBounds "CLLong R"     (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CLLong))
     checkBounds "CULLong R"    (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined:: CULLong))
     checkBounds "CIntPtr R"    (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CIntPtr))
