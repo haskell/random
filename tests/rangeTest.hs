@@ -37,7 +37,7 @@ checkBounds msg (exclusive,lo,hi) fun =
     (mn,mx,sum) <- getStdRandom (fun (lo,hi))
     when (mn <  lo)$ error$ "broke lower bound: " ++ show mn
     when (mx > hi) $ error$ "broke upper bound: " ++ show mx
-    when (exclusive && mx > hi)$ error$ "hit upper bound: " ++ show mx
+    when (exclusive && mx >= hi)$ error$ "hit upper bound: " ++ show mx
 
     let epsilon = 0.1 * (toRational hi - toRational lo)
 
@@ -45,52 +45,50 @@ checkBounds msg (exclusive,lo,hi) fun =
     when (toRational (mn - lo) > epsilon)$ error$ "didn't get close enough to lower bound: "++ show mn
     putStrLn "Passed" 
 
-intRange bits = ( False, 0 - x - x, x - 1 + x)
-  where x = 2 ^ (bits-2)
-
-wordRange bits = ( False, 0, x - 1 + x )
-  where x = 2 ^ (bits-1)
+boundedRange :: (Num a, Bounded a) => (Bool, a, a)
+boundedRange  = ( False, minBound, maxBound )
 
 trials = 5000
-nb = bitSize (0::Int) -- Native bits
+
+-- Keep in mind here that on some architectures (e.g. ARM) CChar, CWchar, and CSigAtomic
+-- are unsigned
 
 main = 
  do 
-    checkBounds "Int"     (intRange nb)  (approxBounds random trials (undefined::Int))
-    checkBounds "Integer" (intRange nb)  (approxBounds random trials (undefined::Integer))
---    checkBounds "Integer Rbig"    (False,-(2^500), 2^500) (approxBounds (randomR (-(2^500), 2^500)) trials (undefined::Integer))
---    checkBounds "Integer RbigPos" (False,1,2^5000)        (approxBounds (randomR (1,2^5000))        trials (undefined::Integer))
-    checkBounds "Int8"    (intRange 8)   (approxBounds random trials (undefined::Int8))
-    checkBounds "Int16"   (intRange 16)  (approxBounds random trials (undefined::Int16))
-    checkBounds "Int32"   (intRange 32)  (approxBounds random trials (undefined::Int32))
-    checkBounds "Int64"   (intRange 64)  (approxBounds random trials (undefined::Int64))
-    checkBounds "Word"   (wordRange nb ) (approxBounds random trials (undefined::Word))
-    checkBounds "Word8"  (wordRange 8)   (approxBounds random trials (undefined::Word8))
-    checkBounds "Word16" (wordRange 16)  (approxBounds random trials (undefined::Word16))
-    checkBounds "Word32" (wordRange 32)  (approxBounds random trials (undefined::Word32))
-    checkBounds "Word64" (wordRange 64)  (approxBounds random trials (undefined::Word64))
-    checkBounds "Double" (True,0.0,1.0)  (approxBounds random trials (undefined::Double))
-    checkBounds "Float"  (True,0.0,1.0)  (approxBounds random trials (undefined::Float))
+    checkBounds "Int"     boundedRange   (approxBounds random trials (undefined::Int))
+    checkBounds "Integer" (False, fromIntegral (minBound::Int), fromIntegral (maxBound::Int))
+                                         (approxBounds random trials (undefined::Integer))
+    checkBounds "Int8"    boundedRange   (approxBounds random trials (undefined::Int8))
+    checkBounds "Int16"   boundedRange   (approxBounds random trials (undefined::Int16))
+    checkBounds "Int32"   boundedRange   (approxBounds random trials (undefined::Int32))
+    checkBounds "Int64"   boundedRange   (approxBounds random trials (undefined::Int64))
+    checkBounds "Word"    boundedRange   (approxBounds random trials (undefined::Word))
+    checkBounds "Word8"   boundedRange   (approxBounds random trials (undefined::Word8))
+    checkBounds "Word16"  boundedRange   (approxBounds random trials (undefined::Word16))
+    checkBounds "Word32"  boundedRange   (approxBounds random trials (undefined::Word32))
+    checkBounds "Word64"  boundedRange   (approxBounds random trials (undefined::Word64))
+    checkBounds "Double"  (True,0.0,1.0) (approxBounds random trials (undefined::Double))
+    checkBounds "Float"   (True,0.0,1.0) (approxBounds random trials (undefined::Float))
 
-    checkBounds "CChar"      (intRange 8)   (approxBounds random trials (undefined:: CChar))
-    checkBounds "CSChar"     (intRange 8)   (approxBounds random trials (undefined:: CSChar))
-    checkBounds "CUChar"     (wordRange 8)  (approxBounds random trials (undefined:: CUChar))
-    checkBounds "CShort"     (intRange 16)  (approxBounds random trials (undefined:: CShort))
-    checkBounds "CUShort"    (wordRange 16) (approxBounds random trials (undefined:: CUShort))
-    checkBounds "CInt"       (intRange 32)  (approxBounds random trials (undefined:: CInt))
-    checkBounds "CUInt"      (wordRange 32) (approxBounds random trials (undefined:: CUInt))
-    checkBounds "CLong"      (intRange  nb) (approxBounds random trials (undefined:: CLong))
-    checkBounds "CULong"     (wordRange nb) (approxBounds random trials (undefined:: CULong))
-    checkBounds "CPtrdiff"   (intRange  nb) (approxBounds random trials (undefined:: CPtrdiff))
-    checkBounds "CSize"      (wordRange nb) (approxBounds random trials (undefined:: CSize))
-    checkBounds "CWchar"     (intRange 32)  (approxBounds random trials (undefined:: CWchar))
-    checkBounds "CSigAtomic" (intRange 32)  (approxBounds random trials (undefined:: CWchar))
-    checkBounds "CLLong"     (intRange 64)  (approxBounds random trials (undefined:: CLLong))
-    checkBounds "CULLong"    (wordRange 64) (approxBounds random trials (undefined:: CULLong))
-    checkBounds "CIntPtr"    (intRange nb)  (approxBounds random trials (undefined:: CIntPtr))
-    checkBounds "CUIntPtr"   (wordRange nb) (approxBounds random trials (undefined:: CUIntPtr))
-    checkBounds "CIntMax"    (intRange 64)  (approxBounds random trials (undefined:: CIntMax))
-    checkBounds "CUIntMax"   (wordRange 64) (approxBounds random trials (undefined:: CUIntMax))
+    checkBounds "CChar"      boundedRange (approxBounds random trials (undefined:: CChar))
+    checkBounds "CSChar"     boundedRange (approxBounds random trials (undefined:: CSChar))
+    checkBounds "CUChar"     boundedRange (approxBounds random trials (undefined:: CUChar))
+    checkBounds "CShort"     boundedRange (approxBounds random trials (undefined:: CShort))
+    checkBounds "CUShort"    boundedRange (approxBounds random trials (undefined:: CUShort))
+    checkBounds "CInt"       boundedRange (approxBounds random trials (undefined:: CInt))
+    checkBounds "CUInt"      boundedRange (approxBounds random trials (undefined:: CUInt))
+    checkBounds "CLong"      boundedRange (approxBounds random trials (undefined:: CLong))
+    checkBounds "CULong"     boundedRange (approxBounds random trials (undefined:: CULong))
+    checkBounds "CPtrdiff"   boundedRange (approxBounds random trials (undefined:: CPtrdiff))
+    checkBounds "CSize"      boundedRange (approxBounds random trials (undefined:: CSize))
+    checkBounds "CWchar"     boundedRange (approxBounds random trials (undefined:: CWchar))
+    checkBounds "CSigAtomic" boundedRange (approxBounds random trials (undefined:: CSigAtomic))
+    checkBounds "CLLong"     boundedRange (approxBounds random trials (undefined:: CLLong))
+    checkBounds "CULLong"    boundedRange (approxBounds random trials (undefined:: CULLong))
+    checkBounds "CIntPtr"    boundedRange (approxBounds random trials (undefined:: CIntPtr))
+    checkBounds "CUIntPtr"   boundedRange (approxBounds random trials (undefined:: CUIntPtr))
+    checkBounds "CIntMax"    boundedRange (approxBounds random trials (undefined:: CIntMax))
+    checkBounds "CUIntMax"   boundedRange (approxBounds random trials (undefined:: CUIntMax))
 
   -- Then check all the range-restricted versions:
     checkBounds "Int R"     (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int))
@@ -111,7 +109,7 @@ main =
     checkBounds "Double R" (True,10.0,77.0)   (approxBounds (randomR (10,77)) trials (undefined::Double))
     checkBounds "Float R"  (True,10.0,77.0)   (approxBounds (randomR (10,77)) trials (undefined::Float))
 
-    checkBounds "CChar R"   (False,-100,100)     (approxBounds (randomR (-100,100)) trials (undefined:: CChar))
+    checkBounds "CChar R"   (False,0,100)        (approxBounds (randomR (0,100))    trials (undefined:: CChar))
     checkBounds "CSChar R"  (False,-100,100)     (approxBounds (randomR (-100,100)) trials (undefined:: CSChar))
     checkBounds "CUChar R"  (False,0,200)        (approxBounds (randomR (0,200))    trials (undefined:: CUChar))
     checkBounds "CShort R"  (False,-100,100)     (approxBounds (randomR (-100,100)) trials (undefined:: CShort))
@@ -122,8 +120,8 @@ main =
     checkBounds "CULong R"     (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined:: CULong))
     checkBounds "CPtrdiff R"   (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CPtrdiff))
     checkBounds "CSize R"      (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined:: CSize))
-    checkBounds "CWchar R"     (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CWchar))
-    checkBounds "CSigAtomic R" (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CWchar))
+    checkBounds "CWchar R"     (False,0,100)     (approxBounds (randomR (0,100))    trials (undefined:: CWchar))
+    checkBounds "CSigAtomic R" (False,0,100)     (approxBounds (randomR (0,100))    trials (undefined:: CWchar))
     checkBounds "CLLong R"     (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CLLong))
     checkBounds "CULLong R"    (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined:: CULLong))
     checkBounds "CIntPtr R"    (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined:: CIntPtr))
@@ -134,3 +132,4 @@ main =
 -- Untested:
 -- instance Random Char where
 -- instance Random Bool where
+-- instance Random Integer where
