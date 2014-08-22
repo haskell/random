@@ -8,7 +8,7 @@ version:	1.0.1.2
 license:	BSD3
 license-file:	LICENSE
 maintainer:	rrnewton@gmail.com
-bug-reports: http://hackage.haskell.org/trac/ghc/newticket?component=libraries/random
+bug-reports:	https://github.com/haskell/random/issues
 synopsis:	random number library
 category:       System
 description:
