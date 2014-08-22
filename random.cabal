@@ -1,9 +1,10 @@
 name:		random
-version:	1.0.1.2
+version:	1.0.1.3
 
 -- 1.0.1.0 -- bump for bug fixes, but no SplittableGen yet
 -- 1.0.1.1 -- bump for overflow bug fixes
 -- 1.0.1.2 -- bump for ticket 8704, build fusion
+-- 1.0.1.3 -- bump for various bug fixes
 
 license:	BSD3
 license-file:	LICENSE
