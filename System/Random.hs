@@ -244,6 +244,11 @@ should be likely to produce distinct generators.
 mkStdGen :: Int -> StdGen -- why not Integer ?
 mkStdGen s = mkStdGen32 $ fromIntegral s
 
+{-
+From ["System.Random\#LEcuyer"]: "The integer variables s1 and s2 ... must be
+initialized to values in the range [1, 2147483562] and [1, 2147483398]
+respectively."
+-}
 mkStdGen32 :: Int32 -> StdGen
 mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
       where
@@ -255,8 +260,6 @@ mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
 
 createStdGen :: Integer -> StdGen
 createStdGen s = mkStdGen32 $ fromIntegral s
-
--- FIXME: 1/2/3 below should be ** (vs@30082002) XXX
 
 {- |
 With a source of random number supply in hand, the 'Random' class allows the
@@ -491,10 +494,10 @@ randomIvalDouble (l,h) fromDouble rng
 	    (scaled_x, rng')
 
 int32Count :: Integer
-int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1
+int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1  -- GHC ticket #3982
 
 stdRange :: (Int,Int)
-stdRange = (0, 2147483562)
+stdRange = (1, 2147483562)
 
 stdNext :: StdGen -> (Int, StdGen)
 -- Returns values in the range stdRange
