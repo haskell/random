@@ -1,7 +1,6 @@
-
-
 The Haskell Standard Library -- Random Number Generation
 ========================================================
+[![Build Status](https://secure.travis-ci.org/haskell/random.svg?branch=master)](http://travis-ci.org/haskell/random)
 
 This library provides a basic interface for (splittable) random number generators.
 
