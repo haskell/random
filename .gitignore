@@ -6,3 +6,7 @@ Thumbs.db
 GNUmakefile
 dist-install/
 ghc.mk
+
+dist
+.cabal-sandbox
+cabal.sandbox.config
