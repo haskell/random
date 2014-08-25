@@ -93,7 +93,11 @@ import Data.Ratio       ( numerator, denominator )
 #endif
 import Data.Char	( isSpace, chr, ord )
 import System.IO.Unsafe ( unsafePerformIO )
-import Data.IORef
+import Data.IORef       ( IORef, atomicModifyIORef, newIORef, readIORef
+                        , writeIORef )
+#if MIN_VERSION_base (4,6,0)
+import Data.IORef       ( atomicModifyIORef' )
+#endif
 import Numeric		( readDec )
 
 #ifdef __GLASGOW_HASKELL__
@@ -103,6 +107,15 @@ import GHC.Exts         ( build )
 {-# INLINE build #-}
 build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
 build g = g (:) []
+#endif
+
+#if !MIN_VERSION_base (4,6,0)
+atomicModifyIORef' :: IORef a -> (a -> (a,b)) -> IO b
+atomicModifyIORef' ref f = do
+    b <- atomicModifyIORef ref
+            (\x -> let (a, b) = f x
+                    in (a, a `seq` b))
+    b `seq` return b
 #endif
 
 -- The standard nhc98 implementation of Time.ClockTime does not match
