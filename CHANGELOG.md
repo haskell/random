@@ -6,9 +6,11 @@
     https://github.com/haskell/random/pull/7
   * fix memory leaks by using strict fields and strict atomicModifyIORef'
     https://github.com/haskell/random/pull/8
+    related to ghc trac tickets  #7936 and #4218
   * support for base < 4.6 (which doesnt provide strict atomicModifyIORef')
     and integrating Travis CI support.
     https://github.com/haskell/random/pull/12
+  * fix C type in test suite https://github.com/haskell/random/pull/9
 
 # 1.0.1.1
 bump for overflow bug fixes
