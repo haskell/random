@@ -93,10 +93,11 @@ import Data.Ratio       ( numerator, denominator )
 #endif
 import Data.Char	( isSpace, chr, ord )
 import System.IO.Unsafe ( unsafePerformIO )
-import Data.IORef       ( IORef, atomicModifyIORef, newIORef, readIORef
-                        , writeIORef )
+import Data.IORef       ( IORef, newIORef, readIORef, writeIORef )
 #if MIN_VERSION_base (4,6,0)
 import Data.IORef       ( atomicModifyIORef' )
+#else
+import Data.IORef       ( atomicModifyIORef )
 #endif
 import Numeric		( readDec )
 
