@@ -15,6 +15,14 @@ description:
 	library, including the ability to split random number
 	generators.
 
+extra-source-files:
+  .travis.yml
+  README.md
+  CHANGELOG.md
+  .gitignore
+  .darcs-boring
+
+
 
 build-type: Simple
 -- cabal-version 1.8 needed because "the field 'build-depends: random' refers
