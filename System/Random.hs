@@ -7,7 +7,7 @@
 -- Module      :  System.Random
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file LICENSE in the 'random' repository)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  stable
 -- Portability :  portable
@@ -18,7 +18,7 @@
 -- or to get different results on each run by using the system-initialised
 -- generator or by supplying a seed from some other source.
 --
--- The library is split into two layers: 
+-- The library is split into two layers:
 --
 -- * A core /random number generator/ provides a supply of bits.
 --   The class 'RandomGen' provides a common interface to such generators.
@@ -40,40 +40,40 @@
 #include "MachDeps.h"
 
 module System.Random
-	(
+    (
 
-	-- $intro
+    -- $intro
 
-	-- * Random number generators
+    -- * Random number generators
 
 #ifdef ENABLE_SPLITTABLEGEN
-	  RandomGen(next, genRange)
-	, SplittableGen(split)
+      RandomGen(next, genRange)
+    , SplittableGen(split)
 #else
-	  RandomGen(next, genRange, split)
+      RandomGen(next, genRange, split)
 #endif
-	-- ** Standard random number generators
-	, StdGen
-	, mkStdGen
+    -- ** Standard random number generators
+    , StdGen
+    , mkStdGen
 
-	-- ** The global random number generator
+    -- ** The global random number generator
 
-	-- $globalrng
+    -- $globalrng
 
-	, getStdRandom
-	, getStdGen
-	, setStdGen
-	, newStdGen
+    , getStdRandom
+    , getStdGen
+    , setStdGen
+    , newStdGen
 
-	-- * Random values of various types
-	, Random ( random,   randomR,
-		   randoms,  randomRs,
-		   randomIO, randomRIO )
+    -- * Random values of various types
+    , Random ( random,   randomR,
+               randoms,  randomRs,
+               randomIO, randomRIO )
 
-	-- * References
-	-- $references
+    -- * References
+    -- $references
 
-	) where
+    ) where
 
 import Prelude
 
@@ -83,15 +83,15 @@ import Data.Word
 import Foreign.C.Types
 
 #ifdef __NHC__
-import CPUTime		( getCPUTime )
+import CPUTime      ( getCPUTime )
 import Foreign.Ptr      ( Ptr, nullPtr )
-import Foreign.C	( CTime, CUInt )
+import Foreign.C    ( CTime, CUInt )
 #else
-import System.CPUTime	( getCPUTime )
-import Data.Time	( getCurrentTime, UTCTime(..) )
+import System.CPUTime   ( getCPUTime )
+import Data.Time    ( getCurrentTime, UTCTime(..) )
 import Data.Ratio       ( numerator, denominator )
 #endif
-import Data.Char	( isSpace, chr, ord )
+import Data.Char    ( isSpace, chr, ord )
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.IORef       ( IORef, newIORef, readIORef, writeIORef )
 #if MIN_VERSION_base (4,6,0)
@@ -99,7 +99,7 @@ import Data.IORef       ( atomicModifyIORef' )
 #else
 import Data.IORef       ( atomicModifyIORef )
 #endif
-import Numeric		( readDec )
+import Numeric      ( readDec )
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Exts         ( build )
@@ -201,18 +201,17 @@ It is required that @'read' ('show' g) == g@.
 
 In addition, 'reads' may be used to map an arbitrary string (not necessarily one
 produced by 'show') onto a value of type 'StdGen'. In general, the 'Read'
-instance of 'StdGen' has the following properties: 
+instance of 'StdGen' has the following properties:
 
-* It guarantees to succeed on any string. 
+* It guarantees to succeed on any string.
 
-* It guarantees to consume only a finite portion of the string. 
+* It guarantees to consume only a finite portion of the string.
 
 * Different argument strings are likely to result in different results.
 
 -}
 
-data StdGen 
- = StdGen !Int32 !Int32
+data StdGen = StdGen !Int32 !Int32
 
 instance RandomGen StdGen where
   next  = stdNext
@@ -224,8 +223,8 @@ instance SplittableGen StdGen where
   split = stdSplit
 
 instance Show StdGen where
-  showsPrec p (StdGen s1 s2) = 
-     showsPrec p s1 . 
+  showsPrec p (StdGen s1 s2) =
+     showsPrec p s1 .
      showChar ' ' .
      showsPrec p s2
 
@@ -234,11 +233,11 @@ instance Read StdGen where
      case try_read r of
        r'@[_] -> r'
        _   -> [stdFromString r] -- because it shouldn't ever fail.
-    where 
+    where
       try_read r = do
-         (s1, r1) <- readDec (dropWhile isSpace r)
-	 (s2, r2) <- readDec (dropWhile isSpace r1)
-	 return (StdGen s1 s2, r2)
+        (s1, r1) <- readDec (dropWhile isSpace r)
+        (s2, r2) <- readDec (dropWhile isSpace r1)
+        return (StdGen s1 s2, r2)
 
 {-
  If we cannot unravel the StdGen from a string, create
@@ -246,8 +245,9 @@ instance Read StdGen where
 -}
 stdFromString         :: String -> (StdGen, String)
 stdFromString s        = (mkStdGen num, rest)
-	where (cs, rest) = splitAt 6 s
-              num        = foldl (\a x -> x + 3 * a) 1 (map ord cs)
+    where
+      (cs, rest) = splitAt 6 s
+      num        = foldl (\a x -> x + 3 * a) 1 (map ord cs)
 
 
 {- |
@@ -265,12 +265,12 @@ respectively."
 -}
 mkStdGen32 :: Int32 -> StdGen
 mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
-      where
-	-- We want a non-negative number, but we can't just take the abs
-	-- of sMaybeNegative as -minBound == minBound.
-	s       = sMaybeNegative .&. maxBound
-	(q, s1) = s `divMod` 2147483562
-	s2      = q `mod` 2147483398
+  where
+    -- We want a non-negative number, but we can't just take the abs
+    -- of sMaybeNegative as -minBound == minBound.
+    s       = sMaybeNegative .&. maxBound
+    (q, s1) = s `divMod` 2147483562
+    s2      = q `mod` 2147483398
 
 createStdGen :: Integer -> StdGen
 createStdGen s = mkStdGen32 $ fromIntegral s
@@ -280,7 +280,6 @@ With a source of random number supply in hand, the 'Random' class allows the
 programmer to extract random values of a variety of types.
 
 Minimal complete definition: 'randomR' and 'random'.
-
 -}
 
 class Random a where
@@ -313,7 +312,7 @@ class Random a where
   -- random values instead of returning a new generator.
   {-# INLINE randoms #-}
   randoms  :: RandomGen g => g -> [a]
-  randoms  g      = build (\cons _nil -> buildRandoms cons random g)
+  randoms g = build (\cons _nil -> buildRandoms cons random g)
 
   -- | A variant of 'randomR' that uses the global random number generator
   -- (see "System.Random#globalrng").
@@ -323,7 +322,7 @@ class Random a where
   -- | A variant of 'random' that uses the global random number generator
   -- (see "System.Random#globalrng").
   randomIO  :: IO a
-  randomIO	   = getStdRandom random
+  randomIO     = getStdRandom random
 
 -- | Produce an infinite list-equivalent of random values.
 {-# INLINE buildRandoms #-}
@@ -340,7 +339,7 @@ buildRandoms cons rand = go
 
 instance Random Integer where
   randomR ival g = randomIvalInteger ival g
-  random g	 = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
+  random g   = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
 instance Random Int        where randomR = randomIvalIntegral; random = randomBounded
 instance Random Int8       where randomR = randomIvalIntegral; random = randomBounded
@@ -378,57 +377,58 @@ instance Random CIntMax    where randomR = randomIvalIntegral; random = randomBo
 instance Random CUIntMax   where randomR = randomIvalIntegral; random = randomBounded
 
 instance Random Char where
-  randomR (a,b) g = 
-       case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
-         (x,g') -> (chr x, g')
-  random g	  = randomR (minBound,maxBound) g
+  randomR (a,b) g =
+    case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
+      (x,g') -> (chr x, g')
+  random g =
+    randomR (minBound,maxBound) g
 
 instance Random Bool where
-  randomR (a,b) g = 
+  randomR (a,b) g =
       case (randomIvalInteger (bool2Int a, bool2Int b) g) of
-        (x, g') -> (int2Bool x, g')
-       where
-         bool2Int :: Bool -> Integer
-         bool2Int False = 0
-         bool2Int True  = 1
+          (x, g') -> (int2Bool x, g')
+        where
+          bool2Int :: Bool -> Integer
+          bool2Int False = 0
+          bool2Int True  = 1
 
-	 int2Bool :: Int -> Bool
-	 int2Bool 0	= False
-	 int2Bool _	= True
+          int2Bool :: Int -> Bool
+          int2Bool 0     = False
+          int2Bool _     = True
 
-  random g	  = randomR (minBound,maxBound) g
+  random g = randomR (minBound,maxBound) g
 
 {-# INLINE randomRFloating #-}
 randomRFloating :: (Fractional a, Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
-randomRFloating (l,h) g 
+randomRFloating (l,h) g
     | l>h       = randomRFloating (h,l) g
-    | otherwise = let (coef,g') = random g in 
-		  (2.0 * (0.5*l + coef * (0.5*h - 0.5*l)), g')  -- avoid overflow
+    | otherwise = let (coef,g') = random g in
+          (2.0 * (0.5*l + coef * (0.5*h - 0.5*l)), g')  -- avoid overflow
 
 instance Random Double where
   randomR = randomRFloating
-  random rng     = 
-    case random rng of 
-      (x,rng') -> 
+  random rng =
+    case random rng of
+      (x,rng') ->
           -- We use 53 bits of randomness corresponding to the 53 bit significand:
-          ((fromIntegral (mask53 .&. (x::Int64)) :: Double)  
-	   /  fromIntegral twoto53, rng')
-   where 
+          ((fromIntegral (mask53 .&. (x::Int64)) :: Double)
+       /  fromIntegral twoto53, rng')
+   where
     twoto53 = (2::Int64) ^ (53::Int64)
     mask53 = twoto53 - 1
- 
+
 instance Random Float where
   randomR = randomRFloating
-  random rng = 
-    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.   
-    case random rng of 
-      (x,rng') -> 
+  random rng =
+    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.
+    case random rng of
+      (x,rng') ->
           -- We use 24 bits of randomness corresponding to the 24 bit significand:
-          ((fromIntegral (mask24 .&. (x::Int32)) :: Float) 
-	   /  fromIntegral twoto24, rng')
-	 -- Note, encodeFloat is another option, but I'm not seeing slightly
-	 --  worse performance with the following [2011.06.25]:
---         (encodeFloat rand (-24), rng')
+          ((fromIntegral (mask24 .&. (x::Int32)) :: Float)
+       /  fromIntegral twoto24, rng')
+     -- Note, encodeFloat is another option, but I'm not seeing slightly
+     --  worse performance with the following [2011.06.25]:
+       --(encodeFloat rand (-24), rng')
    where
      mask24 = twoto24 - 1
      twoto24 = (2::Int32) ^ (24::Int32)
@@ -436,8 +436,9 @@ instance Random Float where
 -- CFloat/CDouble are basically the same as a Float/Double:
 instance Random CFloat where
   randomR = randomRFloating
-  random rng = case random rng of 
-  	         (x,rng') -> (realToFrac (x::Float), rng')
+  random rng =
+    case random rng of
+      (x,rng') -> (realToFrac (x::Float), rng')
 
 instance Random CDouble where
   randomR = randomRFloating
@@ -445,8 +446,8 @@ instance Random CDouble where
   -- Presently, this is showing better performance than the Double instance:
   -- (And yet, if the Double instance uses randomFrac then its performance is much worse!)
   random  = randomFrac
-  -- random rng = case random rng of 
-  -- 	         (x,rng') -> (realToFrac (x::Double), rng')
+  -- random rng = case random rng of
+  --             (x,rng') -> (realToFrac (x::Double), rng')
 
 mkStdRNG :: Integer -> IO StdGen
 mkStdRNG o = do
@@ -463,49 +464,46 @@ randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
 
 {-# SPECIALIZE randomIvalInteger :: (Num a) =>
     (Integer, Integer) -> StdGen -> (a, StdGen) #-}
-        
+
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l,h) rng
  | l > h     = randomIvalInteger (h,l) rng
  | otherwise = case (f 1 0 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
-     where
-       (genlo, genhi) = genRange rng
-       b = fromIntegral genhi - fromIntegral genlo + 1
+   where
+     (genlo, genhi) = genRange rng
+     b = fromIntegral genhi - fromIntegral genlo + 1
 
-       -- Probabilities of the most likely and least likely result
-       -- will differ at most by a factor of (1 +- 1/q).  Assuming the RandomGen
-       -- is uniform, of course
+     -- Probabilities of the most likely and least likely result
+     -- will differ at most by a factor of (1 +- 1/q).  Assuming the RandomGen
+     -- is uniform, of course
 
-       -- On average, log q / log b more random values will be generated
-       -- than the minimum
-       q = 1000
-       k = h - l + 1
-       magtgt = k * q
+     -- On average, log q / log b more random values will be generated
+     -- than the minimum
+     q = 1000
+     k = h - l + 1
+     magtgt = k * q
 
-       -- generate random values until we exceed the target magnitude 
-       f mag v g | mag >= magtgt = (v, g)
-                 | otherwise = v' `seq`f (mag*b) v' g' where
-                        (x,g') = next g
-                        v' = (v * b + (fromIntegral x - fromIntegral genlo))
-
+     -- generate random values until we exceed the target magnitude
+     f mag v g | mag >= magtgt = (v, g)
+               | otherwise = v' `seq`f (mag*b) v' g'
+       where
+         (x,g') = next g
+         v' = (v * b + (fromIntegral x - fromIntegral genlo))
 
 -- The continuous functions on the other hand take an [inclusive,exclusive) range.
 randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
 randomFrac = randomIvalDouble (0::Double,1) realToFrac
 
 randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
-randomIvalDouble (l,h) fromDouble rng 
+randomIvalDouble (l,h) fromDouble rng
   | l > h     = randomIvalDouble (h,l) fromDouble rng
-  | otherwise = 
+  | otherwise =
        case (randomIvalInteger (toInteger (minBound::Int32), toInteger (maxBound::Int32)) rng) of
-         (x, rng') -> 
-	    let
-	     scaled_x = 
-		fromDouble (0.5*l + 0.5*h) +                   -- previously (l+h)/2, overflowed
-                fromDouble ((0.5*h - 0.5*l) / (0.5 * realToFrac int32Count)) *  -- avoid overflow
-		fromIntegral (x::Int32)
-	    in
-	    (scaled_x, rng')
+         (x, rng') ->
+           let scaled_x = fromDouble (0.5*l + 0.5*h) +                                    -- previously (l+h)/2, overflowed
+                            fromDouble ((0.5*h - 0.5*l) / (0.5 * realToFrac int32Count)) *  -- avoid overflow
+                            fromIntegral (x::Int32)
+           in (scaled_x, rng')
 
 int32Count :: Integer
 int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1  -- GHC ticket #3982
@@ -516,32 +514,32 @@ stdRange = (1, 2147483562)
 stdNext :: StdGen -> (Int, StdGen)
 -- Returns values in the range stdRange
 stdNext (StdGen s1 s2) = (fromIntegral z', StdGen s1'' s2'')
-	where	z'   = if z < 1 then z + 2147483562 else z
-		z    = s1'' - s2''
+  where
+    z'   = if z < 1 then z + 2147483562 else z
+    z    = s1'' - s2''
 
-		k    = s1 `quot` 53668
-		s1'  = 40014 * (s1 - k * 53668) - k * 12211
-		s1'' = if s1' < 0 then s1' + 2147483563 else s1'
-    
-		k'   = s2 `quot` 52774
-		s2'  = 40692 * (s2 - k' * 52774) - k' * 3791
-		s2'' = if s2' < 0 then s2' + 2147483399 else s2'
+    k    = s1 `quot` 53668
+    s1'  = 40014 * (s1 - k * 53668) - k * 12211
+    s1'' = if s1' < 0 then s1' + 2147483563 else s1'
 
-stdSplit            :: StdGen -> (StdGen, StdGen)
-stdSplit std@(StdGen s1 s2)
-                     = (left, right)
-                       where
-                        -- no statistical foundation for this!
-                        left    = StdGen new_s1 t2
-                        right   = StdGen t1 new_s2
+    k'   = s2 `quot` 52774
+    s2'  = 40692 * (s2 - k' * 52774) - k' * 3791
+    s2'' = if s2' < 0 then s2' + 2147483399 else s2'
 
-                        new_s1 | s1 == 2147483562 = 1
-                               | otherwise        = s1 + 1
+stdSplit :: StdGen -> (StdGen, StdGen)
+stdSplit std@(StdGen s1 s2) = (left, right)
+  where
+    -- no statistical foundation for this!
+    left    = StdGen new_s1 t2
+    right   = StdGen t1 new_s2
 
-                        new_s2 | s2 == 1          = 2147483398
-                               | otherwise        = s2 - 1
+    new_s1 | s1 == 2147483562 = 1
+           | otherwise        = s1 + 1
 
-                        StdGen t1 t2 = snd (next std)
+    new_s2 | s2 == 1          = 2147483398
+           | otherwise        = s2 - 1
+
+    StdGen t1 t2 = snd (next std)
 
 -- The global random number generator
 
