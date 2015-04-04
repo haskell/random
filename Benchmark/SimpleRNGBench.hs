@@ -33,6 +33,7 @@ import Prelude  hiding (last,sum)
 import BinSearch
 
 #ifdef TEST_COMPETITORS
+import System.Random.TF
 import System.Random.Mersenne.Pure64
 import System.Random.MWC
 import Control.Monad.Primitive
@@ -44,11 +45,11 @@ import GHC.IO
 -- Miscellaneous helpers:
 
 -- Readable large integer printing:
-commaint :: Integral a => a -> String
+commaint :: (Show a, Integral a) => a -> String
 commaint n = 
    reverse $ concat $
    intersperse "," $ 
-   chunk 3 $ 
+   chunksOf 3 $ 
    reverse (show n)
 
 padleft :: Int -> String -> String
@@ -281,7 +282,13 @@ main = do
 	 timeit th freq "System.Random.Mersenne.Pure64 Ints"   gen_mt randInt2
 	 timeit th freq "System.Random.Mersenne.Pure64 Floats" gen_mt randFloat2
 
---	 gen_mwc <- create
+         let gen_tf = seedTFGen (0,1,2,3)
+             randInt4   = random :: RandomGen g => g -> (Int,g)
+	     randFloat4 = random :: RandomGen g => g -> (Float,g)
+         timeit th freq "System.Random.TF next" gen_tf next
+	 timeit th freq "System.Random.TF Ints"   gen_tf randInt4
+	 timeit th freq "System.Random.TF Floats" gen_tf randFloat4
+
          withSystemRandom $ \ gen_mwc -> do
 	    let randInt3   = random :: RandomGen g => g -> (Int,g)
 		randFloat3 = random :: RandomGen g => g -> (Float,g)

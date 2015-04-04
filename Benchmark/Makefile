@@ -1,7 +1,6 @@
 
 
-#OPTS= -O2 -Wall -XCPP
-OPTS= -O2 -Wall -XCPP -Werror
+OPTS= -O2 -Wall -XCPP
 
 all: lib bench
 
