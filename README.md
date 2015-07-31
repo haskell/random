@@ -10,7 +10,7 @@ The API documentation can be found here:
 
 A module supplying this interface is required for Haskell 98 (but not Haskell
 2010). An older [version]
-(http://www.haskell.org/ghc/docs/latest/html/libraries/haskell98/Random.html)
+(https://downloads.haskell.org/~ghc/latest/docs/html/libraries/haskell98-2.0.0.3/Random.html)
 of this library is included with GHC in the haskell98 package. This newer
 version, with compatible api, is included in the [Haskell Platform]
 (http://www.haskell.org/platform/contents.html).
