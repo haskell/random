@@ -7,18 +7,18 @@ import Data.Bits
 import Foreign.C.Types
 
 -- Take many measurements and record the max/min/average random values.
-approxBounds :: (RandomGen g, Random a, Ord a, Num a) => 
-		(g -> (a,g)) -> Int -> a -> (a,a) -> g -> ((a,a,a),g)
+approxBounds :: (RandomGen g, Random a, Ord a, Num a) =>
+                (g -> (a,g)) -> Int -> a -> (a,a) -> g -> ((a,a,a),g)
 -- Here we do a little hack to essentiall pass in the type in the last argument:
-approxBounds nxt iters unused (explo,exphi) initrng = 
-   if False 
+approxBounds nxt iters unused (explo,exphi) initrng =
+   if False
    then ((unused,unused,unused),undefined)
 --   else loop initrng iters 100 (-100) 0 -- Oops, can't use minBound/maxBound here.
    else loop initrng iters exphi explo 0 -- Oops, can't use minBound/maxBound here.
- where 
+ where
   loop rng 0 mn mx sum = ((mn,mx,sum),rng)
-  loop rng  n mn mx sum = 
-    case nxt rng of 
+  loop rng  n mn mx sum =
+    case nxt rng of
       (x, rng') -> loop rng' (n-1) (min x mn) (max x mx) (x+sum)
 
 
@@ -28,12 +28,12 @@ approxBounds nxt iters unused (explo,exphi) initrng =
 -- The with (2) is that we do enough trials to ensure that we can at
 -- least hit the 90% mark.
 checkBounds:: (Real a, Show a, Ord a) =>
-	      String -> (Bool, a, a) -> ((a,a) -> StdGen -> ((a, a, t), StdGen)) -> IO ()
-checkBounds msg (exclusive,lo,hi) fun = 
- -- (lo,hi) is [inclusive,exclusive) 
- do putStr$ msg 
---	    ++ ", expected range " ++ show (lo,hi) 
-	    ++ ":  "
+              String -> (Bool, a, a) -> ((a,a) -> StdGen -> ((a, a, t), StdGen)) -> IO ()
+checkBounds msg (exclusive,lo,hi) fun =
+ -- (lo,hi) is [inclusive,exclusive)
+ do putStr$ msg
+--          ++ ", expected range " ++ show (lo,hi)
+            ++ ":  "
     (mn,mx,sum) <- getStdRandom (fun (lo,hi))
     when (mn <  lo)$ error$ "broke lower bound: " ++ show mn
     when (mx > hi) $ error$ "broke upper bound: " ++ show mx
@@ -43,7 +43,7 @@ checkBounds msg (exclusive,lo,hi) fun =
 
     when (toRational (hi - mx) > epsilon)$ error$ "didn't get close enough to upper bound: "++ show mx
     when (toRational (mn - lo) > epsilon)$ error$ "didn't get close enough to lower bound: "++ show mn
-    putStrLn "Passed" 
+    putStrLn "Passed"
 
 boundedRange :: (Num a, Bounded a) => (Bool, a, a)
 boundedRange  = ( False, minBound, maxBound )
@@ -53,8 +53,8 @@ trials = 5000
 -- Keep in mind here that on some architectures (e.g. ARM) CChar, CWchar, and CSigAtomic
 -- are unsigned
 
-main = 
- do 
+main =
+ do
     checkBounds "Int"     boundedRange   (approxBounds random trials (undefined::Int))
     checkBounds "Integer" (False, fromIntegral (minBound::Int), fromIntegral (maxBound::Int))
                                          (approxBounds random trials (undefined::Integer))
