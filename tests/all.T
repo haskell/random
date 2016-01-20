@@ -1,3 +1,4 @@
+setTestOpts(reqlib('random'))
 
 test('rangeTest',
      normal,
