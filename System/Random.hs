@@ -258,6 +258,10 @@ should be likely to produce distinct generators.
 mkStdGen :: Int -> StdGen -- why not Integer ?
 mkStdGen s = mkStdGen32 $ fromIntegral s
 
+k1, k2 :: Int32
+k1 = 2147483562
+k2 = 2147483398
+
 {-
 From ["System.Random\#LEcuyer"]: "The integer variables s1 and s2 ... must be
 initialized to values in the range [1, 2147483562] and [1, 2147483398]
@@ -269,8 +273,8 @@ mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
         -- We want a non-negative number, but we can't just take the abs
         -- of sMaybeNegative as -minBound == minBound.
         s       = sMaybeNegative .&. maxBound
-        (q, s1) = s `divMod` 2147483562
-        s2      = q `mod` 2147483398
+        (q, s1) = s `divMod` k1
+        s2      = q `mod` k2
 
 createStdGen :: Integer -> StdGen
 createStdGen s = mkStdGen32 $ fromIntegral s
@@ -511,21 +515,21 @@ int32Count :: Integer
 int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1  -- GHC ticket #3982
 
 stdRange :: (Int,Int)
-stdRange = (1, 2147483562)
+stdRange = (1, fromIntegral k1)
 
 stdNext :: StdGen -> (Int, StdGen)
 -- Returns values in the range stdRange
 stdNext (StdGen s1 s2) = (fromIntegral z', StdGen s1'' s2'')
-        where   z'   = if z < 1 then z + 2147483562 else z
+        where   z'   = if z < 1 then z + k1 else z
                 z    = s1'' - s2''
 
                 k    = s1 `quot` 53668
                 s1'  = 40014 * (s1 - k * 53668) - k * 12211
-                s1'' = if s1' < 0 then s1' + 2147483563 else s1'
+                s1'' = if s1' < 0 then s1' + k1 + 1 else s1'
 
                 k'   = s2 `quot` 52774
                 s2'  = 40692 * (s2 - k' * 52774) - k' * 3791
-                s2'' = if s2' < 0 then s2' + 2147483399 else s2'
+                s2'' = if s2' < 0 then s2' + k2 + 1 else s2'
 
 stdSplit            :: StdGen -> (StdGen, StdGen)
 stdSplit std@(StdGen s1 s2)
@@ -535,10 +539,10 @@ stdSplit std@(StdGen s1 s2)
                         left    = StdGen new_s1 t2
                         right   = StdGen t1 new_s2
 
-                        new_s1 | s1 == 2147483562 = 1
+                        new_s1 | s1 == k1         = 1
                                | otherwise        = s1 + 1
 
-                        new_s2 | s2 == 1          = 2147483398
+                        new_s2 | s2 == 1          = k2
                                | otherwise        = s2 - 1
 
                         StdGen t1 t2 = snd (next std)
