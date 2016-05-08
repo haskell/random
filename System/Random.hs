@@ -46,11 +46,12 @@ module System.Random
 
         -- * Random number generators
 
+          GenRange(..)
 #ifdef ENABLE_SPLITTABLEGEN
-          RandomGen(next, genRange)
+        , RandomGen(next, genRange)
         , SplittableGen(split)
 #else
-          RandomGen(next, genRange, split)
+        , RandomGen(next, genRange, split)
 #endif
         -- ** Standard random number generators
         , StdGen
@@ -143,6 +144,8 @@ getTime = do
 -- Minimal complete definition: 'next' and 'split'.
 #endif
 
+newtype GenRange g = GenRange (Int, Int)
+
 class RandomGen g where
 
    -- |The 'next' operation returns an 'Int' that is uniformly distributed
@@ -155,22 +158,8 @@ class RandomGen g where
    --
    -- It is required that:
    --
-   -- * If @(a,b) = 'genRange' g@, then @a < b@.
-   --
-   -- * 'genRange' always returns a pair of defined 'Int's.
-   --
-   -- The second condition ensures that 'genRange' cannot examine its
-   -- argument, and hence the value it returns can be determined only by the
-   -- instance of 'RandomGen'.  That in turn allows an implementation to make
-   -- a single call to 'genRange' to establish a generator's range, without
-   -- being concerned that the generator returned by (say) 'next' might have
-   -- a different range to the generator passed to 'next'.
-   --
-   -- The default definition spans the full range of 'Int'.
-   genRange :: g -> (Int,Int)
-
-   -- default method
-   genRange _ = (minBound, maxBound)
+   -- * If @GenRange (a,b) = 'genRange'@, then @a < b@.
+   genRange :: GenRange g
 
 #ifdef ENABLE_SPLITTABLEGEN
 -- | The class 'SplittableGen' proivides a way to specify a random number
@@ -216,7 +205,7 @@ data StdGen
 
 instance RandomGen StdGen where
   next  = stdNext
-  genRange _ = stdRange
+  genRange = GenRange stdRange
 
 #ifdef ENABLE_SPLITTABLEGEN
 instance SplittableGen StdGen where
@@ -469,8 +458,10 @@ randomIvalInteger (l,h) rng
  | l > h     = randomIvalInteger (h,l) rng
  | otherwise = case (f 1 0 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
      where
-       (genlo, genhi) = genRange rng
-       b = fromIntegral genhi - fromIntegral genlo + 1
+       getRange :: RandomGen g => g -> GenRange g
+       getRange _ = genRange
+       GenRange (genlo, genhi) = getRange rng
+       genmag = fromIntegral genhi - fromIntegral genlo + 1
 
        -- Probabilities of the most likely and least likely result
        -- will differ at most by a factor of (1 +- 1/q).  Assuming the RandomGen
@@ -484,9 +475,9 @@ randomIvalInteger (l,h) rng
 
        -- generate random values until we exceed the target magnitude
        f mag v g | mag >= magtgt = (v, g)
-                 | otherwise = v' `seq`f (mag*b) v' g' where
-                        (x,g') = next g
-                        v' = (v * b + (fromIntegral x - fromIntegral genlo))
+                 | otherwise = v' `seq` f (mag * genmag) v' g' where
+                        (x, g') = next g
+                        v' = (v * genmag + (fromIntegral x - fromIntegral genlo))
 
 
 -- The continuous functions on the other hand take an [inclusive,exclusive) range.
