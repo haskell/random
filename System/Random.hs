@@ -169,9 +169,6 @@ class RandomGen g where
    -- The default definition spans the full range of 'Int'.
    genRange :: g -> (Int,Int)
 
-   -- default method
-   genRange _ = (minBound, maxBound)
-
 #ifdef ENABLE_SPLITTABLEGEN
 -- | The class 'SplittableGen' proivides a way to specify a random number
 --   generator that can be split into two new generators.
