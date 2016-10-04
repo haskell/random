@@ -398,7 +398,7 @@ instance Random Bool where
 
   random g        = randomR (minBound,maxBound) g
 
-{-# INLINE randomRFloating #-}
+{-# INLINABLE randomRFloating #-}
 randomRFloating :: (Fractional a, Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
 randomRFloating (l,h) g
     | l>h       = randomRFloating (h,l) g
