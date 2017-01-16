@@ -586,6 +586,15 @@ getStdRandom :: (StdGen -> (a,StdGen)) -> IO a
 getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
   where swap (v,g) = (g,v)
 
+#if !MIN_VERSION_base(4,6,0)
+atomicModifyIORef' :: IORef a -> (a -> (a,b)) -> IO b
+atomicModifyIORef' ref f = do
+  b <- atomicModifyIORef ref
+              (\x -> let (a, b) = f x
+                      in (a, a `seq` b))
+  b `seq` return b
+#endif
+
 {- $references
 
 1. FW #Burton# Burton and RL Page, /Distributed random number generation/,
