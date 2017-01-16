@@ -1,19 +1,19 @@
-name:		random
-version:	1.1
+name:           random
+version:        1.1
 
 
 
 
-license:	BSD3
-license-file:	LICENSE
-maintainer:	core-libraries-committee@haskell.org
-bug-reports:	https://github.com/haskell/random/issues
-synopsis:	random number library
+license:        BSD3
+license-file:   LICENSE
+maintainer:     core-libraries-committee@haskell.org
+bug-reports:    https://github.com/haskell/random/issues
+synopsis:       random number library
 category:       System
 description:
-	This package provides a basic random number generation
-	library, including the ability to split random number
-	generators.
+        This package provides a basic random number generation
+        library, including the ability to split random number
+        generators.
 
 extra-source-files:
   .travis.yml
@@ -34,7 +34,7 @@ cabal-version: >= 1.8
 Library
     exposed-modules:
         System.Random
-    extensions:	CPP
+    extensions: CPP
     GHC-Options: -O2
     build-depends: base >= 3 && < 5, time
 
