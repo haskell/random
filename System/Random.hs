@@ -42,8 +42,6 @@
 module System.Random
         (
 
-        -- $intro
-
         -- * Random number generators
 
 #ifdef ENABLE_SPLITTABLEGEN
@@ -255,7 +253,7 @@ The function 'mkStdGen' provides an alternative way of producing an initial
 generator, by mapping an 'Int' into a generator. Again, distinct arguments
 should be likely to produce distinct generators.
 -}
-mkStdGen :: Int -> StdGen -- why not Integer ?
+mkStdGen :: Int -> StdGen -- Haskell 98 report demands mkStdGen takes an Int.
 mkStdGen s = mkStdGen32 $ fromIntegral s
 
 {-
@@ -271,9 +269,6 @@ mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
         s       = sMaybeNegative .&. maxBound
         (q, s1) = s `divMod` 2147483562
         s2      = q `mod` 2147483398
-
-createStdGen :: Integer -> StdGen
-createStdGen s = mkStdGen32 $ fromIntegral s
 
 {- |
 With a source of random number supply in hand, the 'Random' class allows the
@@ -327,8 +322,7 @@ class Random a where
 
 -- | Produce an infinite list-equivalent of random values.
 {-# INLINE buildRandoms #-}
-buildRandoms :: RandomGen g
-             => (a -> as -> as)  -- ^ E.g. '(:)' but subject to fusion
+buildRandoms :: (a -> as -> as)  -- ^ E.g. '(:)' but subject to fusion
              -> (g -> (a,g))     -- ^ E.g. 'random'
              -> g                -- ^ A 'RandomGen' instance
              -> as
@@ -399,7 +393,7 @@ instance Random Bool where
   random g        = randomR (minBound,maxBound) g
 
 {-# INLINE randomRFloating #-}
-randomRFloating :: (Fractional a, Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
+randomRFloating :: (Fractional a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
 randomRFloating (l,h) g
     | l>h       = randomRFloating (h,l) g
     | otherwise = let (coef,g') = random g in
@@ -447,12 +441,6 @@ instance Random CDouble where
   random  = randomFrac
   -- random rng = case random rng of
   --             (x,rng') -> (realToFrac (x::Double), rng')
-
-mkStdRNG :: Integer -> IO StdGen
-mkStdRNG o = do
-    ct          <- getCPUTime
-    (sec, psec) <- getTime
-    return (createStdGen (sec * 12345 + psec + ct + o))
 
 randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
 randomBounded = randomR (minBound, maxBound)
@@ -564,8 +552,9 @@ getStdGen  = readIORef theStdGen
 
 theStdGen :: IORef StdGen
 theStdGen  = unsafePerformIO $ do
-   rng <- mkStdRNG 0
-   newIORef rng
+   (sec, psec) <- getTime
+   ct          <- getCPUTime
+   newIORef $ mkStdGen32 $ fromInteger (sec * 12345 + psec + ct)
 
 -- |Applies 'split' to the current global random generator,
 -- updates it with one of the results, and returns the other.
