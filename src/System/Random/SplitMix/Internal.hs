@@ -8,7 +8,9 @@ module System.Random.SplitMix.Internal(
   ,nextWord64SplitMix
   ,SplitMix64(..)
   ,Random(..)
+  ,sampleWord64Random
   ,RandomT(..)
+  ,sampleWord64RandomT
   ) where
 
 import qualified  Data.Bits  as DB
@@ -109,7 +111,8 @@ instance Monad Random where
             (# a, _boringSeed #) = ma splitSeed
             in  unRandom# (f a) nextSeed
 
-
+sampleWord64Random :: Random Word64
+sampleWord64Random = Random# nextWord64SplitMix
 
 newtype RandomT m a = RandomT# { unRandomT# :: (SplitMix64 ->  m (a , SplitMix64) ) }
 
@@ -136,6 +139,10 @@ instance Monad m => Monad (RandomT m) where
             (a,_boring) <- ma fseed
             unRandomT# (f a) nextSeed
 
+sampleWord64RandomT :: Applicative m => RandomT m Word64
+sampleWord64RandomT = RandomT#  $ \ s ->
+                        let (# w, ngen #) = nextWord64SplitMix s
+                           in  pure (w, ngen)
 
 
 
