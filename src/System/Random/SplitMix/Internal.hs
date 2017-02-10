@@ -1,8 +1,14 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns, UnboxedTuples #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns, UnboxedTuples, MagicHash, GADTs #-}
+{-# LANGUAGE DeriveFunctor #-}
+
 
 module System.Random.SplitMix.Internal(
-  --mix32,
-  xorShiftR
+  nextSeedSplitMix
+  ,splitGeneratorSplitMix
+  ,nextWord64SplitMix
+  ,SplitMix64(..)
+  ,Random(..)
+  ,RandomT(..)
   ) where
 
 import qualified  Data.Bits  as DB
@@ -56,10 +62,17 @@ mixGamma = \ w -> runIdentity $!
       then return (mixedGamma `xor` 0xaaaaaaaaaaaaaaaa)
       else return mixedGamma
 
+{-
 
+theres a few different alternatives we could do for the RNG state
+
+-- this isn't quite expressible
+type SplitMix64 = (# Word64# , Word64# #)
+-}
 
 data SplitMix64 = SplitMix64 { sm64seed :: {-# UNPACK #-} !Word64
                               ,sm64Gamma :: {-# UNPACK #-} !Word64 }
+
 
 
 advanceSplitMix :: SplitMix64 -> SplitMix64
@@ -71,7 +84,53 @@ nextSeedSplitMix gen@(SplitMix64 result _) =  newgen `seq` (# result,newgen #)
     newgen = advanceSplitMix gen
 
 
-newtype RandomM  a =  RandomM (SplitMix64 -> (# a , SplitMix64 #))
+newtype Random  a =  Random# (SplitMix64 -> (# a , SplitMix64 #))
+  --deriving Functor
+
+
+
+newtype RandomT m a = RandomT# { unRandomT# :: (SplitMix64 -> (# m a , SplitMix64 #)) }
+
+instance Functor m => Functor (RandomT m) where
+  fmap = \ f (RandomT# mf) ->
+              RandomT# $  \ seed ->
+                       let  (# !ma , !s'  #) = mf seed
+                            !mb = fmap f ma
+                          in  (# mb , s' #)
+
+instance Applicative m => Applicative (RandomT m) where
+  pure = \ x ->  RandomT# $  \ s  -> (# pure x , s  #)
+  (<*>)  = \ (RandomT# frmb) (RandomT# rma) ->  RandomT# $ \ s ->
+                    let (# !fseed, !maseed #) = splitGeneratorSplitMix s
+                        (# !mf , _boringSeed #) = frmb fseed
+                        (# !ma , newSeed #) = rma  maseed
+                        in (#  mf <*> ma , newSeed  #)
+
+
+instance Monad m => Monad (RandomT m) where
+  (>>=) = \ (RandomT# ma) mf ->
+    RandomT# $  \ s ->
+      let
+         (# splitSeed, nextSeed #) = splitGeneratorSplitMix s
+         (# maRes, _boringSeed #) = ma splitSeed
+         (# mfRes , resultSeed  #)
+
+{-
+there are two models of RandomT m a we could do
+
+1)  s -> (m a , s)
+
+or
+
+2)  s -> m (a,s)
+
+-- The 'return' function leaves the state unchanged, while @>>=@ uses
+-- split on the rng state so that the final state of the first computation
+-- is independent of the second ...
+so lets try writing an instance using 1
+-}
+
+
 
 nextWord64SplitMix :: SplitMix64 -> (# Word64 , SplitMix64 #)
 nextWord64SplitMix gen = mixedRes `seq` (# mixedRes , newgen #)
@@ -87,70 +146,4 @@ splitGeneratorSplitMix gen = splitGen `seq`( nextNextGen `seq` (# splitGen , nex
     !splitGenGamma = mixGamma splitPreMixGamma
     !splitGen = SplitMix64 splitSeed splitGenGamma
 
-{-
 
-struct SplitMix64* split_generator(struct SplitMix64* generator) {
-  struct SplitMix64* new_generator = (struct SplitMix64*) malloc(sizeof(struct SplitMix64));
-  new_generator->seed = next_int64(generator);
-  new_generator->gamma = mix_gamma(next_seed(generator));
-  return new_generator;
-}
-
-inline void advance(struct SplitMix64* generator);
-inline uint64_t next_seed(struct SplitMix64* generator);
-
-inline void advance(struct SplitMix64* generator) {
-  generator->seed += generator->gamma;
-}
-
-inline uint64_t next_seed(struct SplitMix64* generator) {
-  uint64_t result = generator->seed;
-  advance(generator);
-  return result;
-}
-
-
-uint64_t next_int64(struct SplitMix64* generator) {
-  return mix64(next_seed(generator));
-}
-
-uint64_t next_bounded_int64(struct SplitMix64* generator, uint64_t bound) {
-  uint64_t threshold = -bound % bound;
-  while (1) {
-    uint64_t r = next_int64(generator);
-    if (r >= threshold) {
-      return r % bound;
-    }
-  }
-}
-
-
-
-struct SplitMix64 {
-  uint64_t seed;
-  uint64_t gamma;
-};
-uint64_t mix_gamma(uint64_t value) {
-  uint64_t mixed_gamma = mix64variant13(value) | 1;
-  int bit_count = pop_count(xor_shift(1, mixed_gamma));
-  if (bit_count >= 24) {
-    return mixed_gamma ^ 0xaaaaaaaaaaaaaaaa;
-  }
-  return mixed_gamma;
-}
-
-uint64_t mix64(uint64_t value) {
-  return xor_shift33(second_round_mix64(first_round_mix64(value)));
-
-inline uint64_t mix64variant13(uint64_t value) {
-  return xor_shift(31, second_round_mix64_variant13(first_round_mix64_variant13(value)));
-
-
-
-inline uint64_t first_round_mix64_variant13(uint64_t value) {
-  return xor_shift(30, value) * 0xbf58476d1ce4e5b9;
-}
-
-inline uint64_t second_round_mix64_variant13(uint64_t value) {
-  return xor_shift(27, value) * 0x94d049bb133111eb;
--}

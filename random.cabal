@@ -60,7 +60,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.10
+  build-depends:       base >=4.8 && <4.10, ghc-prim
 
   -- Directories containing source files.
   hs-source-dirs:      src
