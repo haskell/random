@@ -84,36 +84,65 @@ nextSeedSplitMix gen@(SplitMix64 result _) =  newgen `seq` (# result,newgen #)
     newgen = advanceSplitMix gen
 
 
-newtype Random  a =  Random# (SplitMix64 -> (# a , SplitMix64 #))
-  --deriving Functor
+newtype Random  a =  Random# {unRandom# ::  SplitMix64 -> (# a , SplitMix64 #)}
+
+instance  Functor Random where
+  fmap = \ f (Random# mf) ->
+              Random# $  \ seed ->
+                       let  (# !a , !s'  #) = mf seed
+                            !b =  f a
+                          in  (# b , s' #)
+
+instance Applicative Random where
+  pure = \ x ->  Random# $  \ s  -> (#  x , s  #)
+  (<*>)  = \ (Random# frmb) (Random# rma) ->  Random# $ \ s ->
+                    let (# fseed, maseed #) = splitGeneratorSplitMix s
+                        (# f , _boringSeed #) = frmb fseed
+                        (# a , newSeed #) = rma  maseed
+                        in (#  f a , newSeed  #)
+
+instance Monad Random where
+  (>>=) =
+    \(Random# ma) f ->
+      Random# $ \ s ->
+        let (# splitSeed , nextSeed #) = splitGeneratorSplitMix s
+            (# a, _boringSeed #) = ma splitSeed
+            in  unRandom# (f a) nextSeed
 
 
 
-newtype RandomT m a = RandomT# { unRandomT# :: (SplitMix64 -> (# m a , SplitMix64 #)) }
+newtype RandomT m a = RandomT# { unRandomT# :: (SplitMix64 ->  m (a , SplitMix64) ) }
 
 instance Functor m => Functor (RandomT m) where
   fmap = \ f (RandomT# mf) ->
               RandomT# $  \ seed ->
-                       let  (# !ma , !s'  #) = mf seed
-                            !mb = fmap f ma
-                          in  (# mb , s' #)
+                              fmap (\(a,s) -> (f a, s)  )   $ mf   seed
 
 instance Applicative m => Applicative (RandomT m) where
-  pure = \ x ->  RandomT# $  \ s  -> (# pure x , s  #)
+  pure = \ x ->  RandomT# $  \ s  ->  pure  ( x , s  )
   (<*>)  = \ (RandomT# frmb) (RandomT# rma) ->  RandomT# $ \ s ->
                     let (# !fseed, !maseed #) = splitGeneratorSplitMix s
-                        (# !mf , _boringSeed #) = frmb fseed
-                        (# !ma , newSeed #) = rma  maseed
-                        in (#  mf <*> ma , newSeed  #)
-
+                        mfOldSeed= frmb fseed
+                        mArgNewSeed = rma  maseed
+                        in (fmap (\(f,_s)-> \(x,newSeed)-> (f x, newSeed) ) mfOldSeed)
+                            <*> mArgNewSeed
 
 instance Monad m => Monad (RandomT m) where
-  (>>=) = \ (RandomT# ma) mf ->
-    RandomT# $  \ s ->
-      let
-         (# splitSeed, nextSeed #) = splitGeneratorSplitMix s
-         (# maRes, _boringSeed #) = ma splitSeed
-         (# mfRes , resultSeed  #)
+
+  (>>=) = \ (RandomT#  ma) f -> RandomT# $  \ s ->
+      let (# fseed, nextSeed #) = splitGeneratorSplitMix s
+       in
+          do
+            (a,_boring) <- ma fseed
+            unRandomT# (f a) nextSeed
+
+--instance Monad m => Monad (RandomT m) where
+--  (>>=) = \ (RandomT# ma) mf ->
+--    RandomT# $  \ s ->
+--      let
+--         (# splitSeed, nextSeed #) = splitGeneratorSplitMix s
+--         (# maRes, _boringSeed #) = ma splitSeed
+--         (# mfRes , resultSeed  #)
 
 {-
 there are two models of RandomT m a we could do
