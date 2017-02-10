@@ -136,28 +136,6 @@ instance Monad m => Monad (RandomT m) where
             (a,_boring) <- ma fseed
             unRandomT# (f a) nextSeed
 
---instance Monad m => Monad (RandomT m) where
---  (>>=) = \ (RandomT# ma) mf ->
---    RandomT# $  \ s ->
---      let
---         (# splitSeed, nextSeed #) = splitGeneratorSplitMix s
---         (# maRes, _boringSeed #) = ma splitSeed
---         (# mfRes , resultSeed  #)
-
-{-
-there are two models of RandomT m a we could do
-
-1)  s -> (m a , s)
-
-or
-
-2)  s -> m (a,s)
-
--- The 'return' function leaves the state unchanged, while @>>=@ uses
--- split on the rng state so that the final state of the first computation
--- is independent of the second ...
-so lets try writing an instance using 1
--}
 
 
 
