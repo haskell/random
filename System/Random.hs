@@ -599,7 +599,7 @@ random number generator/, Comm ACM, 33(1), Jan 1990, pp87-88.
 
 4. P #Hellekalek# Hellekalek, /Don\'t trust parallel Monte Carlo/,
 Department of Mathematics, University of Salzburg,
-<https://doi.org/10.1109/pads.1998.685273 doi:10.1109/pads.1998.685273>, 1998.
+<https://doi.org/10.1109/pads.1998.685273 doi:10.1109/pads.1998.685273>, <http://www.cs.tufts.edu/~nr/cs257/archive/peter-hellekalek/parallel-mc.pdf PDF>, 1998.
 
 5. Pierre #LEcuyer# L'Ecuyer, /Efficient and portable combined random
 number generators/, Comm ACM, 31(6), Jun 1988, pp742-749.
