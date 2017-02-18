@@ -51,7 +51,9 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:  System.Random.SplitMix.Internal
+  exposed-modules:
+    System.Random.SplitMix.Internal
+    System.Random.PCG.Internal
 
   -- Modules included in this library but not exported.
   -- other-modules:
