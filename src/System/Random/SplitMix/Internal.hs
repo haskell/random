@@ -15,7 +15,7 @@ module System.Random.SplitMix.Internal(
 
 import qualified  Data.Bits  as DB
 import Data.Bits (xor,(.|.))
-import Data.Word(Word64(..))
+import Data.Word(Word64)
 import Data.Functor.Identity
 
 {-# SPECIALIZE popCount :: Word64 -> Word64 #-}
@@ -48,7 +48,6 @@ mix64variant13 = \ w -> xorShiftR 31 $ secondRoundMix64Variant13 $ firstRoundMix
 firstRoundMix64Variant13 :: Word64 -> Word64
 firstRoundMix64Variant13 = \ w -> xorShiftR 30 w * 0xbf58476d1ce4e5b9
 
-
 secondRoundMix64Variant13 :: Word64 -> Word64
 secondRoundMix64Variant13 = \ w -> xorShiftR 27 w * 0x94d049bb133111eb
 
@@ -74,7 +73,6 @@ type SplitMix64 = (# Word64# , Word64# #)
 
 data SplitMix64 = SplitMix64 { sm64seed :: {-# UNPACK #-} !Word64
                               ,sm64Gamma :: {-# UNPACK #-} !Word64 }
-
 
 
 advanceSplitMix :: SplitMix64 -> SplitMix64
