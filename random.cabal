@@ -50,7 +50,7 @@ cabal-version:       >=1.10
 
 
 library
-  -- Modules exported by the library.
+  -- Modules exported` by the library.
   exposed-modules:
     System.Random.SplitMix.Internal
     System.Random.PCG.Internal
@@ -62,7 +62,10 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.10, ghc-prim
+  build-depends:       base >=4.8 && <4.12
+                      ,ghc-prim
+                      ,entropy == 0.3.*
+                  -- entropy will later be folded into random, probably
 
   -- Directories containing source files.
   hs-source-dirs:      src
