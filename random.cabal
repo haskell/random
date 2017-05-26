@@ -54,7 +54,12 @@ library
   exposed-modules:
     System.Random.SplitMix.Internal
     System.Random.PCG.Internal
+    Data.Distribution.FloatingInterval
+    Data.Distribution.Normal
+    Data.Distribution.Permutation
+    Data.Random.Utils
 
+  c-sources: cmmbits/floatsAndBits.cmm
   -- Modules included in this library but not exported.
   -- other-modules:
 
@@ -75,3 +80,17 @@ library
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
+
+test-suite word_and_float
+  type: exitcode-stdio-1.0
+  main-is: WordFloat.hs
+  hs-source-dirs:
+      testCast
+  ghc-options: -Wall
+  build-depends:
+      base == 4.*
+    , random
+    , tasty == 0.11.*
+    , tasty-hunit == 0.9.*
+  other-modules:
+  default-language: Haskell2010
