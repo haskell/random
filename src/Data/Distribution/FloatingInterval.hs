@@ -74,6 +74,7 @@ is then xor'd against the corrected unit interval number in this specific
 
 
 extracted docs from the original site:
+"""
    #include <stdint.h>
 
     (x >> 11) * (1. / (UINT64_C(1) << 53))
@@ -88,6 +89,9 @@ An alternative, faster multiplication-free operation is
        return u.d - 1.0;
     }
 The code above cooks up by bit manipulation a real number in the interval [1..2), and then subtracts one to obtain a real number in the interval [0..1). If x is chosen uniformly among 64-bit integers, d is chosen uniformly among dyadic rationals of the form k / 2−52.
+"""
+
+
  -}
 sampleUnitIntervalDoubleReallySloppyM ::  forall m . Monad m => (m Word64) -> m Double
 sampleUnitIntervalDoubleReallySloppyM mword = do

@@ -70,6 +70,7 @@ library
   build-depends:       base >=4.8 && <4.12
                       ,ghc-prim
                       ,entropy == 0.3.*
+                      ,numeric-extras == 0.1.*
                   -- entropy will later be folded into random, probably
 
   -- Directories containing source files.
