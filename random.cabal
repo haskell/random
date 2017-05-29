@@ -57,6 +57,7 @@ library
     Data.Distribution.FloatingInterval
     Data.Distribution.Normal
     Data.Distribution.Permutation
+    Data.Distribution.Integers
     Data.Random.Utils
 
   c-sources: cmmbits/floatsAndBits.cmm
@@ -71,6 +72,7 @@ library
                       ,ghc-prim
                       ,entropy == 0.3.*
                       ,numeric-extras == 0.1.*
+                      ,primitive >= 0.6
                   -- entropy will later be folded into random, probably
 
   -- Directories containing source files.
