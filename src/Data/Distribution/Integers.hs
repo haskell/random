@@ -4,9 +4,27 @@ module Data.Distribution.Integers where
 import Data.Word(Word64)
 import Data.Bits
 
---sampleWordRange :: Monad m => (m Word64) -> (Word64,Word64) -> Either
+{-
+this module could probably be generalized to support any @Integral a, FiniteBits a@
+or something like it, though my definition of sampleWordRangeSimplified
+assumes mod 2^n wrap around
+-}
 
-{- | @'sampleWordRangeSimplified' hi@ samples  the closed finite interval @[0,hi]@ -}
+{- | @'sampleWordRange' wordSampler (lo,hi)@ will return a uniform sample from the closed interval
+@[min lo hi, max lo hi]@ -}
+sampleWordRange :: Monad m => m Word64 -> (Word64,Word64) -> m Word64
+sampleWordRange mword (lo,hi)
+    | lo == hi = return lo
+    | otherwise =
+        do wd <- (sampleWordRangeSimplified mword difference) ; return (realLo + wd )
+  where
+    realLo = min lo hi
+    realHi = max lo hi
+    difference = realHi - realLo
+
+
+
+{- | @'sampleWordRangeSimplified' wordSampler hi@ samples  the closed finite interval @[0,hi]@ -}
 sampleWordRangeSimplified :: forall m . Monad m => m Word64 -> Word64 -> m Word64
 sampleWordRangeSimplified mwd upper
         | upper + 1 == 0 = mwd
