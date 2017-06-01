@@ -22,8 +22,8 @@ unitNormalPolarMethodM unitSampler boolSampler = getSample
     getSample = do
       x <- unitSampler
       y <- unitSampler
-      sqrtSumSq <- return $ hypot x y
-      straightSum <- return $ x*x + y * y
+      sqrtSumSq   <- return $ hypot x y
+      straightSum <- return $ x*x + y*y
       if straightSum > 1 || straightSum == 0
         --- the usual condition is  x^2 + y^2 > 1, but the same bound holds for the sqrt thereof
         then getSample

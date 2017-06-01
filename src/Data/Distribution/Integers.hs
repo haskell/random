@@ -11,7 +11,9 @@ assumes mod 2^n wrap around
 -}
 
 {- | @'sampleWordRange' wordSampler (lo,hi)@ will return a uniform sample from the closed interval
-@[min lo hi, max lo hi]@ -}
+@[min lo hi, max lo hi]@
+maybe should throw error instead, not sure :)
+-}
 sampleWordRange :: Monad m => m Word64 -> (Word64,Word64) -> m Word64
 sampleWordRange mword (lo,hi)
     | lo == hi = return lo

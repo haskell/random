@@ -37,6 +37,7 @@ binary32 bias == 127
 binary64 bias == 1023
 -}
 
+
 {- |  sampleUnitIntervalDoubleM uniformly samples over the [+0,1) interval  of
   representable floating point numbers
 
@@ -78,7 +79,7 @@ extracted docs from the original site:
    #include <stdint.h>
 
     (x >> 11) * (1. / (UINT64_C(1) << 53))
-This conversion guarantees that all dyadic rationals of the form k / 2−53 will be equally likely. Note that this conversion prefers the high bits of x, but you can alternatively use the lowest bits.
+This conversion guarantees that all dyadic rationals of the form k / 2^53 will be equally likely. Note that this conversion prefers the high bits of x, but you can alternatively use the lowest bits.
 
 An alternative, faster multiplication-free operation is
 
