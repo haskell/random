@@ -1,6 +1,11 @@
+{-# LANGUAGE ScopedTypeVariables, GADTs#-}
 module Data.Distribution.Permutation where
 
-import Control.Monad.Primitive
+import Control.Monad.Primitive as Prim
+import Data.Primitive.Array as DPA
+import Data.Word(Word32)
+import Control.Monad.ST
+--import Data.Distribution.Integers
 {- | this permutation algorithm is due to knuth.
 
 to construct a permutation of n symbols, @0... n-1@
@@ -13,5 +18,45 @@ forM [1 .. n-1] \j ->  pick a uniform sample s from the interval [j, n-1],
 then swap the values at A[j-1] and A[s]
 
 return the array A
+
+or to quote the fish-yates shuffle entry on wikipedia
+
+-- To shuffle an array a of n elements (indices 0..n-1):
+for i from 0 to n−2 do
+     j ← random integer such that i ≤ j < n
+     exchange a[i] and a[j]
+
+@`samplePermutation` integerSampler size@ for now is limited to allowing permutations over
+no more than 2^32 elements, mostly because if you're wanting larger permutations theres likely better
+algorithms available
 -}
---samplePermutation :: Monad m =>
+samplePermutation :: forall m .  Monad m => ((Word32,Word32)->m Word32) -> Word32 -> m (Array Int)
+samplePermutation intervalSample wSize
+  | wSize == 0 || wSize > 2^(31 ::  Int) = error "i'm not letting you do 0 or > 2^31  element permutations"
+  | otherwise = do
+    swapList :: [(Int,Int)] <-
+        mapM (\i -> do  jay <- intervalSample (i,wSize - 1) ; return (fromIntegral i,fromIntegral jay ) )  [0 ..  wSize - 2 ]
+    initArray :: Array Int  <- return $ fromListN (fromIntegral wSize) [0 .. fromIntegral (wSize - 1)]
+    return $ runST $ do theMarr <-  (thawArray  initArray 0 (fromIntegral wSize))
+                        executeArraySwaps swapList theMarr
+
+executeArraySwaps :: forall s m . (s~PrimState m,PrimMonad m) => [(Int,Int)]
+     -> MutableArray s Int -> m (Array  Int)
+executeArraySwaps [] _marr = error "you really shouldn't be invoking executeArraySwaps on empty things"
+executeArraySwaps  ls@((a,_):_) marr
+      | a /= 0 = error "the swap sequence list for executeArraySwaps doesn't start with a swap with zero, this is a bug!"
+      | otherwise = do swapSpots 0 ls ; unsafeFreezeArray marr
+    where
+      arrayLength :: Int
+      arrayLength = sizeofMutableArray marr
+      swapSpots :: Int -> [(Int,Int)] -> m ()
+      swapSpots ix [] | ix >= (arrayLength - 2) = return ()
+                      | otherwise = error "the swap list for executeArraySwaps is shorter than the array length"
+      swapSpots ix _ | ix >=  arrayLength = error "can't swap permutations beyond the array size in executeArraySwaps"
+      swapSpots ix ((from,to):rest)
+              | ix /=  from = error "bad coordinate mismatch "
+              | otherwise =  do aval <- readArray marr from ; bval <- readArray marr to
+                                writeArray marr from bval ; writeArray marr to aval
+                                swapSpots (ix +1) rest
+
+
