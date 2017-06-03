@@ -2,9 +2,14 @@
 module Data.Distribution.Permutation where
 
 import Control.Monad.Primitive as Prim
-import Data.Primitive.Array as DPA
+--import Data.Primitive.Array as DPA
 import Data.Word(Word32)
-import Control.Monad.ST
+import Data.Int(Int32)
+import Control.Monad.ST(runST)
+import Control.Monad(forM,forM_)
+import Data.Vector.Unboxed.Mutable as DVM
+import qualified Data.Vector.Unboxed as DV
+
 --import Data.Distribution.Integers
 {- | this permutation algorithm is due to knuth.
 
@@ -30,33 +35,38 @@ for i from 0 to n−2 do
 no more than 2^32 elements, mostly because if you're wanting larger permutations theres likely better
 algorithms available
 -}
-samplePermutation :: forall m .  Monad m => ((Word32,Word32)->m Word32) -> Word32 -> m (Array Int)
+samplePermutation :: forall m  .  (Monad m )=> ((Word32,Word32)->m Word32) -> Word32 -> m (DV.Vector  Int32)
 samplePermutation intervalSample wSize
   | wSize == 0 || wSize > 2^(31 ::  Int) = error "i'm not letting you do 0 or > 2^31  element permutations"
   | otherwise = do
-    swapList :: [(Int,Int)] <-
-        mapM (\i -> do  jay <- intervalSample (i,wSize - 1) ; return (fromIntegral i,fromIntegral jay ) )  [0 ..  wSize - 2 ]
-    initArray :: Array Int  <- return $ fromListN (fromIntegral wSize) [0 .. fromIntegral (wSize - 1)]
-    return $ runST $ do theMarr <-  (thawArray  initArray 0 (fromIntegral wSize))
-                        executeArraySwaps swapList theMarr
+    swapList :: [(Int,Int)] <- forM [0 ..  wSize - 2 ]
+                                    (\i -> do  jay <- intervalSample (i,wSize - 1) ;
+                                               return (fromIntegral i,fromIntegral jay ) )
+
+    return $ runST $
+       do vecM  <- DVM.unsafeNew (fromIntegral wSize)
+          forM_  [0 :: Int .. fromIntegral wSize - 1 ]
+                      (\ i -> DVM.write vecM i  (fromIntegral i :: Int32))
+          executeArraySwaps swapList vecM
 
 executeArraySwaps :: forall s m . (s~PrimState m,PrimMonad m) => [(Int,Int)]
-     -> MutableArray s Int -> m (Array  Int)
+     -> DVM.MVector s Int32 -> m (DV.Vector Int32)
 executeArraySwaps [] _marr = error "you really shouldn't be invoking executeArraySwaps on empty things"
 executeArraySwaps  ls@((a,_):_) marr
-      | a /= 0 = error "the swap sequence list for executeArraySwaps doesn't start with a swap with zero, this is a bug!"
-      | otherwise = do swapSpots 0 ls ; unsafeFreezeArray marr
+      | a /= 0 = error "the swap sequence list for executeArraySwaps doesn't start with a swap with zero"
+      | otherwise = do swapSpots 0 ls ; DV.unsafeFreeze marr
     where
       arrayLength :: Int
-      arrayLength = sizeofMutableArray marr
+      arrayLength = DVM.length marr
       swapSpots :: Int -> [(Int,Int)] -> m ()
-      swapSpots ix [] | ix >= (arrayLength - 2) = return ()
-                      | otherwise = error "the swap list for executeArraySwaps is shorter than the array length"
-      swapSpots ix _ | ix >=  arrayLength = error "can't swap permutations beyond the array size in executeArraySwaps"
+      swapSpots ix []
+          | ix >= (arrayLength - 2) = return ()
+          | otherwise = error "the swap list for executeArraySwaps is shorter than the array length"
+      swapSpots ix _
+              | ix >=  (arrayLength - 1 ) = error "can't swap permutations beyond the array size in executeArraySwaps"
       swapSpots ix ((from,to):rest)
               | ix /=  from = error "bad coordinate mismatch "
-              | otherwise =  do aval <- readArray marr from ; bval <- readArray marr to
-                                writeArray marr from bval ; writeArray marr to aval
+              | otherwise =  do DVM.swap marr from to
                                 swapSpots (ix +1) rest
 
 
