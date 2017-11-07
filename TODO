@@ -1,0 +1,15 @@
+Random TODO 
+
+* have fast gen float / double siblings
+* modern travis CI setup
+* moving the c code back into haskell
+* criterion benchmarks to compare
+* test suite to compare impls
+* test suite to validate determination of stream given several seeds
+* migrating the bad seed mitigation stuff from the Java sibling
+* emailing GUY!!!!
+* doc updates 
+* considering UX changes
+* RandomT?? 
+    * Should monadic bind do a split (a la quicheck )
+* cleanup big crush stuff and have that as an ancillary library     

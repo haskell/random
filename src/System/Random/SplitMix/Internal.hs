@@ -139,10 +139,12 @@ instance Monad m => Monad (RandomT m) where
 
 sampleWord64RandomT :: Applicative m => RandomT m Word64
 sampleWord64RandomT = RandomT#  $ \ s ->
-                        let (# w, ngen #) = nextWord64SplitMix s
+                        let (# !w, !ngen #) = nextWord64SplitMix s
                            in  pure (w, ngen)
 
-
+--instance PrimMonad m => PrimMonad (RandomT m) where
+--  primitive = \ m ->
+--  {-# INLINE #-}
 
 nextWord64SplitMix :: SplitMix64 -> (# Word64 , SplitMix64 #)
 nextWord64SplitMix gen = mixedRes `seq` (# mixedRes , newgen #)

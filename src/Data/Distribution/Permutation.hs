@@ -24,7 +24,7 @@ then swap the values at A[j-1] and A[s]
 
 return the array A
 
-or to quote the fish-yates shuffle entry on wikipedia
+or to quote the fisher-yates shuffle entry on wikipedia
 
 -- To shuffle an array a of n elements (indices 0..n-1):
 for i from 0 to n−2 do
@@ -35,7 +35,7 @@ for i from 0 to n−2 do
 no more than 2^32 elements, mostly because if you're wanting larger permutations theres likely better
 algorithms available
 -}
-samplePermutation :: forall m  .  (Monad m )=> ((Word32,Word32)->m Word32) -> Word32 -> m (DV.Vector  Int32)
+samplePermutation :: forall m  .  (Monad m) => ((Word32,Word32)->m Word32) -> Word32 -> m (DV.Vector  Int32)
 samplePermutation intervalSample wSize
   | wSize == 0 || wSize > 2^(31 ::  Int) = error "i'm not letting you do 0 or > 2^31  element permutations"
   | otherwise = do
