@@ -7,7 +7,7 @@
 #define DOUBLE_SIZE_WDS   2
 #endif
 
-stg_word64ToDoublezhPrivate(I64 w)
+cts_random_stg_word64ToDoublezhPrivate(I64 w)
 {
     D_ d;
     P_ ptr;
@@ -22,7 +22,7 @@ stg_word64ToDoublezhPrivate(I64 w)
     return (d);
 }
 
-stg_doubleToWord64zhPrivate(D_ d)
+cts_random_stg_doubleToWord64zhPrivate(D_ d)
 {
     I64 w;
     P_ ptr;
@@ -37,7 +37,7 @@ stg_doubleToWord64zhPrivate(D_ d)
     return (w);
 }
 
-stg_word32ToFloatzhPrivate(W_ w)
+cts_random_stg_word32ToFloatzhPrivate(W_ w)
 {
     F_ f;
     P_ ptr;
@@ -52,7 +52,7 @@ stg_word32ToFloatzhPrivate(W_ w)
     return (f);
 }
 
-stg_floatToWord32zhPrivate(F_ f)
+cts_random_stg_floatToWord32zhPrivate(F_ f)
 {
     W_ w;
     P_ ptr;

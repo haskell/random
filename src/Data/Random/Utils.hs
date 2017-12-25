@@ -80,7 +80,7 @@ is using CMM.
 castWord32ToFloat :: Word32 -> Float
 castWord32ToFloat (W32# w#) = F# (stgWord32ToFloat w#)
 
-foreign import prim "stg_word32ToFloatzhPrivate"
+foreign import prim "cts_random_stg_word32ToFloatzhPrivate"
     stgWord32ToFloat :: Word# -> Float#
 
 
@@ -93,7 +93,7 @@ foreign import prim "stg_word32ToFloatzhPrivate"
 castFloatToWord32 :: Float -> Word32
 castFloatToWord32 (F# f#) = W32# (stgFloatToWord32 f#)
 
-foreign import prim "stg_floatToWord32zhPrivate"
+foreign import prim "cts_random_stg_floatToWord32zhPrivate"
     stgFloatToWord32 :: Float# -> Word#
 
 
@@ -107,7 +107,7 @@ foreign import prim "stg_floatToWord32zhPrivate"
 castWord64ToDouble :: Word64 -> Double
 castWord64ToDouble (W64# w) = D# (stgWord64ToDouble w)
 
-foreign import prim "stg_word64ToDoublezhPrivate"
+foreign import prim "cts_random_stg_word64ToDoublezhPrivate"
 #if WORD_SIZE_IN_BITS == 64
     stgWord64ToDouble :: Word# -> Double#
 #else
@@ -124,7 +124,7 @@ foreign import prim "stg_word64ToDoublezhPrivate"
 castDoubleToWord64 :: Double -> Word64
 castDoubleToWord64 (D# d#) = W64# (stgDoubleToWord64 d#)
 
-foreign import prim "stg_doubleToWord64zhPrivate"
+foreign import prim "cts_random_stg_doubleToWord64zhPrivate"
 #if WORD_SIZE_IN_BITS == 64
     stgDoubleToWord64 :: Double# -> Word#
 #else
