@@ -6,7 +6,7 @@
 -- Standard PCG32 Random Number Generator with chosen streams, written in
 -- pure haskell. See <http://www.pcg-random.org> for details.
 --
-module System.Random.PCG.Internal
+module System.Random.PCG32.Internal
   ( -- * PCG 32
     PCG32 (..)
   , seed

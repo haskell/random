@@ -1,11 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, UnboxedTuples, MagicHash, GADTs #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, DeriveDataTypeable #-}
 
 
 module System.Random.SplitMix.Internal(
   nextSeedSplitMix
   ,splitGeneratorSplitMix
   ,nextWord64SplitMix
+  ,splitGeneratorSplitMix#
+  ,nextWord64SplitMix#
   ,SplitMix64(..)
   ,Random(..)
   ,sampleWord64Random
@@ -17,6 +19,7 @@ import qualified  Data.Bits  as DB
 import Data.Bits (xor,(.|.))
 import Data.Word(Word64)
 import Data.Functor.Identity
+import Data.Data(Data(),Typeable())
 
 {-# SPECIALIZE popCount :: Word64 -> Word64 #-}
 {-# SPECIALIZE popCount :: Int -> Word64 #-}
@@ -73,6 +76,7 @@ type SplitMix64 = (# Word64# , Word64# #)
 
 data SplitMix64 = SplitMix64 { sm64seed :: {-# UNPACK #-} !Word64
                               ,sm64Gamma :: {-# UNPACK #-} !Word64 }
+   deriving (Eq,Read,Show,Data,Typeable)
 
 
 advanceSplitMix :: SplitMix64 -> SplitMix64
@@ -96,7 +100,7 @@ instance  Functor Random where
 instance Applicative Random where
   pure = \ x ->  Random# $  \ s  -> (#  x , s  #)
   (<*>)  = \ (Random# frmb) (Random# rma) ->  Random# $ \ s ->
-                    let (# fseed, maseed #) = splitGeneratorSplitMix s
+                    let (# fseed, maseed #) = splitGeneratorSplitMix# s
                         (# f , _boringSeed #) = frmb fseed
                         (# a , newSeed #) = rma  maseed
                         in (#  f a , newSeed  #)
@@ -105,12 +109,12 @@ instance Monad Random where
   (>>=) =
     \(Random# ma) f ->
       Random# $ \ s ->
-        let (# splitSeed , nextSeed #) = splitGeneratorSplitMix s
+        let (# splitSeed , nextSeed #) = splitGeneratorSplitMix# s
             (# a, _boringSeed #) = ma splitSeed
             in  unRandom# (f a) nextSeed
 
 sampleWord64Random :: Random Word64
-sampleWord64Random = Random# nextWord64SplitMix
+sampleWord64Random = Random# nextWord64SplitMix#
 
 newtype RandomT m a = RandomT# { unRandomT# :: (SplitMix64 ->  m (a , SplitMix64) ) }
 
@@ -122,7 +126,7 @@ instance Functor m => Functor (RandomT m) where
 instance Applicative m => Applicative (RandomT m) where
   pure = \ x ->  RandomT# $  \ s  ->  pure  ( x , s  )
   (<*>)  = \ (RandomT# frmb) (RandomT# rma) ->  RandomT# $ \ s ->
-                    let (# !fseed, !maseed #) = splitGeneratorSplitMix s
+                    let (# !fseed, !maseed #) = splitGeneratorSplitMix# s
                         mfOldSeed= frmb fseed
                         mArgNewSeed = rma  maseed
                         in (fmap (\(f,_s)-> \(x,newSeed)-> (f x, newSeed) ) mfOldSeed)
@@ -131,7 +135,7 @@ instance Applicative m => Applicative (RandomT m) where
 instance Monad m => Monad (RandomT m) where
 
   (>>=) = \ (RandomT#  ma) f -> RandomT# $  \ s ->
-      let (# fseed, nextSeed #) = splitGeneratorSplitMix s
+      let (# fseed, nextSeed #) = splitGeneratorSplitMix# s
        in
           do
             (a,_boring) <- ma fseed
@@ -139,25 +143,36 @@ instance Monad m => Monad (RandomT m) where
 
 sampleWord64RandomT :: Applicative m => RandomT m Word64
 sampleWord64RandomT = RandomT#  $ \ s ->
-                        let (# !w, !ngen #) = nextWord64SplitMix s
+                        let (# !w, !ngen #) = nextWord64SplitMix# s
                            in  pure (w, ngen)
 
 --instance PrimMonad m => PrimMonad (RandomT m) where
 --  primitive = \ m ->
 --  {-# INLINE #-}
 
-nextWord64SplitMix :: SplitMix64 -> (# Word64 , SplitMix64 #)
-nextWord64SplitMix gen = mixedRes `seq` (# mixedRes , newgen #)
+nextWord64SplitMix# :: SplitMix64 -> (# Word64 , SplitMix64 #)
+nextWord64SplitMix# gen = mixedRes `seq` (# mixedRes , newgen #)
   where
     mixedRes = mix64 premixres
     (#  premixres , newgen  #) = nextSeedSplitMix  gen
 
-splitGeneratorSplitMix :: SplitMix64 -> (# SplitMix64 , SplitMix64 #)
-splitGeneratorSplitMix gen = splitGen `seq`( nextNextGen `seq` (# splitGen , nextNextGen #))
+{-# INLINE nextWord64SplitMix #-}
+nextWord64SplitMix :: SplitMix64 -> ( Word64 , SplitMix64 )
+nextWord64SplitMix gen = (mixedRes, newgen)
   where
-    (# splitSeed , nextGen  #) = nextWord64SplitMix gen
+    (# mixedRes,newgen #) = nextWord64SplitMix# gen
+
+
+splitGeneratorSplitMix# :: SplitMix64 -> (# SplitMix64 , SplitMix64 #)
+splitGeneratorSplitMix# gen = splitGen `seq`( nextNextGen `seq` (# splitGen , nextNextGen #))
+  where
+    (# splitSeed , nextGen  #) = nextWord64SplitMix# gen
     (# splitPreMixGamma , nextNextGen #) = nextSeedSplitMix nextGen
     !splitGenGamma = mixGamma splitPreMixGamma
     !splitGen = SplitMix64 splitSeed splitGenGamma
 
-
+{-# INLINE splitGeneratorSplitMix #-}
+splitGeneratorSplitMix :: SplitMix64 -> (SplitMix64 , SplitMix64)
+splitGeneratorSplitMix gen =  (splitGen, nextNextGen)
+    where
+      (# splitGen, nextNextGen #) = splitGeneratorSplitMix# gen

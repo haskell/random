@@ -13,7 +13,7 @@ module Data.Random.Utils(
     ,castDoubleToWord64
     ,castWord32ToFloat
     ,castFloatToWord32
-    ,CastIEEE(..)) where
+    ,RandomCastIEEE(..)) where
 import GHC.Word(Word32(..),Word64(..))
 import GHC.Prim (Word#,Float#,Double#)
 import GHC.Types
@@ -23,21 +23,25 @@ aa206346e6f12c9f88fdf051185741761ea88fbb
 of the ghc git repo, due for inclusion in ghc 8.4
 
 this should be move out of random into its own micro package for pre ghc 8.4 compat
+with conversion facilities  in ghc >= 8.4
+
+this copy has name mangling at the CMM layer for happy linking
+plus Random prefixing the class so it should be low headache
 -}
 
 
 
 
-class CastIEEE word ieee | word -> ieee , ieee -> word where
+class RandomCastIEEE word ieee | word -> ieee , ieee -> word where
     toIEEE :: word -> ieee
     fromIEEE :: ieee -> word
 
-instance CastIEEE Word32 Float where
+instance RandomCastIEEE Word32 Float where
   {-# INLINE toIEEE #-}
   {-# INLINE fromIEEE #-}
   toIEEE = castWord32ToFloat
   fromIEEE = castFloatToWord32
-instance CastIEEE Word64 Double where
+instance RandomCastIEEE Word64 Double where
   {-# INLINE toIEEE #-}
   {-# INLINE fromIEEE #-}
   toIEEE = castWord64ToDouble
