@@ -21,6 +21,20 @@ import Data.Word(Word64)
 import Data.Functor.Identity
 import Data.Data(Data(),Typeable())
 
+{-
+splitmix constants follows
+https://github.com/dmlloyd/openjdk/blob/67672eec97164de10a9ca83ddbcef6b42816ed04/src/java.base/share/classes/java/util/SplittableRandom.java
+
+see also
+http://hg.openjdk.java.net/jdk/jdk10/file/bffcbf07ea88/src/java.base/share/classes/java/util/SplittableRandom.java
+
+ie the variant found in JDK >=8
+
+see also discussion on the melissa o'neil pcg blog about
+splitmix
+http://www.pcg-random.org/posts/bugs-in-splitmix.html
+-}
+
 {-# SPECIALIZE popCount :: Word64 -> Word64 #-}
 {-# SPECIALIZE popCount :: Int -> Word64 #-}
 {-# SPECIALIZE popCount :: Word -> Word64 #-}
