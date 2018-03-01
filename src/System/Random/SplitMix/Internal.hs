@@ -90,7 +90,7 @@ type SplitMix64 = (# Word64# , Word64# #)
 
 data SplitMix64 = SplitMix64 { sm64seed :: {-# UNPACK #-} !Word64
                               ,sm64Gamma :: {-# UNPACK #-} !Word64 }
-   deriving (Eq,Read,Show,Data,Typeable)
+   deriving (Eq,Ord,Read,Show,Data,Typeable)
 
 
 advanceSplitMix :: SplitMix64 -> SplitMix64
