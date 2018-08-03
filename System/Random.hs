@@ -566,6 +566,9 @@ theStdGen :: IORef StdGen
 theStdGen  = unsafePerformIO $ do
    rng <- mkStdRNG 0
    newIORef rng
+-- We never want this to inline this, because we could end up with
+-- multiple generators, each starting from the initial value.
+{-# NOINLINE theStdGen #-}
 
 -- |Applies 'split' to the current global random generator,
 -- updates it with one of the results, and returns the other.
