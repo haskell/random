@@ -1,4 +1,4 @@
-https://travis-ci.org/cartazio/random.svg?branch=master
+![Build status](https://travis-ci.org/cartazio/random.svg?branch=master)
 
 # Random
 
