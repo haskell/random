@@ -34,9 +34,11 @@ cabal-version: >= 1.8
 Library
     exposed-modules:
         System.Random
-    extensions:	CPP
     GHC-Options: -O2
-    build-depends: base >= 3 && < 5, time
+    build-depends: base >= 3 && < 5
+                 , primitive
+                 , time
+                 , mtl
 
 source-repository head
     type:     git
