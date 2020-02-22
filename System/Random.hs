@@ -43,40 +43,47 @@
 
 #include "MachDeps.h"
 
-module System.Random where
--- 	(
+module System.Random
+	(
 
--- 	-- $intro
+	-- $intro
 
--- 	-- * Random number generators
+	-- * Random number generators
 
--- #ifdef ENABLE_SPLITTABLEGEN
--- 	  RandomGen(..)
--- 	, SplittableGen(..)
--- #else
--- 	  RandomGen(..)
--- #endif
---         , RandomPrimGen(..)
--- 	-- ** Standard random number generators
--- 	, StdGen
--- 	, mkStdGen
+#ifdef ENABLE_SPLITTABLEGEN
+	  RandomGen(..)
+	, SplittableGen(..)
+#else
+	  RandomGen(..)
+#endif
+        , MonadRandom(..)
+	-- ** Standard random number generators
+	, StdGen
+	, mkStdGen
 
--- 	-- ** The global random number generator
+        , genRandom
+        , genRandomR
+        , runStateGen
+        , runStateGen_
+        , runStateTGen
+        , runStateTGen_
 
--- 	-- $globalrng
+	-- ** The global random number generator
 
--- 	, getStdRandom
--- 	, getStdGen
--- 	, setStdGen
--- 	, newStdGen
+	-- $globalrng
 
--- 	-- * Random values of various types
--- 	, Random(..)
+	, getStdRandom
+	, getStdGen
+	, setStdGen
+	, newStdGen
 
--- 	-- * References
--- 	-- $references
+	-- * Random values of various types
+	, Random(..)
 
--- 	) where
+	-- * References
+	-- $references
+
+	) where
 
 import Prelude
 
@@ -254,7 +261,9 @@ instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
   uniformWord64R u = MWC.uniformR (0, u)
   uniformWord8 = MWC.uniform
   uniformWord16 = MWC.uniform
+  {-# INLINE uniformWord32 #-}
   uniformWord32 = MWC.uniform
+  {-# INLINE uniformWord64 #-}
   uniformWord64 = MWC.uniform
 
 -- | An opaque data type that carries the state of a pure generator at the type level
@@ -420,9 +429,10 @@ Minimal complete definition: 'randomR' and 'random'.
 -}
 
 class Random a where
+  randomRM :: MonadRandom g m => (a, a) -> g -> m a
+
   randomM :: MonadRandom g m => g -> m a
 
-  randomRM :: MonadRandom g m => (a, a) -> g -> m a
 
   -- | Takes a range /(lo,hi)/ and a random number generator
   -- /g/, and returns a random value uniformly distributed in the closed
@@ -518,9 +528,6 @@ instance Random Int        where
   randomM = fmap (fromIntegral :: Word64 -> Int) . uniformWord64
 #endif
 
-
-#ifndef __NHC__
--- Word is a type synonym in nhc98.
 instance Random Word        where
   randomR = bitmaskWithRejection
   randomRM = bitmaskWithRejectionM
@@ -531,27 +538,42 @@ instance Random Word        where
   random = first (fromIntegral :: Word64 -> Word) . genWord64
   randomM = fmap (fromIntegral :: Word64 -> Word) . uniformWord64
 #endif
-#endif
 
 instance Random Word8      where
+  {-# INLINE randomR #-}
   randomR     = bitmaskWithRejection
+  {-# INLINE random #-}
   random      = genWord8
-  randomM  = uniformWord8
-  randomRM = bitmaskWithRejectionM
+  {-# INLINE randomRM #-}
+  randomRM    = bitmaskWithRejectionM
+  {-# INLINE randomM #-}
+  randomM     = uniformWord8
 instance Random Word16     where
+  {-# INLINE randomR #-}
   randomR     = bitmaskWithRejection
+  {-# INLINE random #-}
   random      = genWord16
-  randomM  = uniformWord16
-  randomRM = bitmaskWithRejectionM
+  {-# INLINE randomRM #-}
+  randomRM    = bitmaskWithRejectionM
+  {-# INLINE randomM #-}
+  randomM     = uniformWord16
 instance Random Word32     where
+  {-# INLINE randomR #-}
   randomR     = bitmaskWithRejection
+  {-# INLINE random #-}
   random      = genWord32
+  {-# INLINE randomM #-}
   randomM  = uniformWord32
+  {-# INLINE randomRM #-}
   randomRM = bitmaskWithRejectionM
 instance Random Word64     where
+  {-# INLINE randomR #-}
   randomR     = bitmaskWithRejection
+  {-# INLINE random #-}
   random      = genWord64
+  {-# INLINE randomM #-}
   randomM  = uniformWord64
+  {-# INLINE randomRM #-}
   randomRM = bitmaskWithRejectionM
 
 instance Random CChar      where
@@ -678,9 +700,9 @@ randomRFloating (l,h) g
     | otherwise = let (coef,g') = random g in 
 		  (2.0 * (0.5*l + coef * (0.5*h - 0.5*l)), g')  -- avoid overflow
 
--- instance Random Double where
---   randomR = randomRFloating
---   -- random = nextDouble
+instance Random Double where
+  randomR = randomRFloating
+  random = randomDouble
 
 randomDouble :: RandomGen b => b -> (Double, b)
 randomDouble rng =
@@ -694,9 +716,9 @@ randomDouble rng =
     mask53 = twoto53 - 1
 
 
--- instance Random Float where
---   randomR = randomRFloating
---   -- random = nextFloat
+instance Random Float where
+  randomR = randomRFloating
+  random = randomFloat
 
 randomFloat :: RandomGen b => b -> (Float, b)
 randomFloat rng =
