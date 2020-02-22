@@ -277,20 +277,20 @@ genRandom = randomM GenState
 genRandomR :: (RandomGen g, Random a, MonadState g m) => (a, a) -> m a
 genRandomR r = randomRM r GenState
 
-runStateGen :: g -> State g a -> (a, g)
+runStateGen :: RandomGen g => g -> State g a -> (a, g)
 runStateGen g = flip runState g
 
-runStateGen_ :: g -> State g a -> a
+runStateGen_ :: RandomGen g => g -> State g a -> a
 runStateGen_ g = fst . flip runState g
 
-runStateTGen :: g -> StateT g m a -> m (a, g)
+runStateTGen :: RandomGen g => g -> StateT g m a -> m (a, g)
 runStateTGen g = flip runStateT g
 
-runStateTGen_ :: Functor f => g -> StateT g f a -> f a
+runStateTGen_ :: (RandomGen g, Functor f) => g -> StateT g f a -> f a
 runStateTGen_ g = fmap fst . flip runStateT g
 
-randomList :: (Random a, RandomGen g, Num a) => Int -> g -> ([a], g)
-randomList n g = runStateGen g $ replicateM n (genRandomR (1, 6))
+randomList :: (Random a, RandomGen g, Num a) => Int -> g -> [a]
+randomList n g = runStateGen_ g $ replicateM n (genRandomR (1, 6))
 
 
 -- | Example:
@@ -304,9 +304,7 @@ rlist :: Int -> ([Word64], [Word64])
 rlist n = (xs, ys)
   where
     xs = runStateGen_ (mkGen 217 :: StdGen) (randomListM GenState n) :: [Word64]
-    ys = runST $ do
-      gen <- MWC.create
-      randomListM gen n
+    ys = runST $ MWC.create >>= (`randomListM` n)
 
 
 randomListM' :: MonadRandom g m => Seed g -> Int -> m (g, [Word64])
