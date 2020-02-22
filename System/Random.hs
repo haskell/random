@@ -89,6 +89,7 @@ import Data.Functor.Identity
 import Data.Int
 import Data.Word
 import Foreign.C.Types
+import qualified System.Random.MWC as MWC
 
 #ifdef __NHC__
 import CPUTime		( getCPUTime )
@@ -239,21 +240,28 @@ class Monad m => MonadRandom g m where
   uniformWord64 :: g -> m Word64
   uniformWord64 = uniformWord64R maxBound
 
-data SysRandom
-
-data Gen s
+data SysRandom = SysRandom
 
 -- Example /dev/urandom
 instance MonadIO m => MonadRandom SysRandom m
 
 -- Example mwc-random
-instance (s ~ PrimState m, PrimMonad m) => MonadRandom (Gen s) m
+instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
+  type Seed (MWC.Gen s) = MWC.Seed
+  restore = MWC.restore
+  save = MWC.save
+  uniformWord32R u = MWC.uniformR (0, u)
+  uniformWord64R u = MWC.uniformR (0, u)
+  uniformWord8 = MWC.uniform
+  uniformWord16 = MWC.uniform
+  uniformWord32 = MWC.uniform
+  uniformWord64 = MWC.uniform
 
 -- | An opaque data type that carries the state of a pure generator at the type level
-data GenState s g = GenState
+data GenState g = GenState
 
-instance (MonadState g m, RandomGen g) => MonadRandom (GenState s g) m where
-  type Seed (GenState s g) = GenSeed g
+instance (MonadState g m, RandomGen g) => MonadRandom (GenState g) m where
+  type Seed (GenState g) = GenSeed g
   restore s = GenState <$ put (mkGen s)
   save _ = saveGen <$> get
   uniformWord32R r _ = state (genWord32R r)
@@ -272,14 +280,43 @@ genRandomR r = randomRM r GenState
 runStateGen :: g -> State g a -> (a, g)
 runStateGen g = flip runState g
 
-runStateGen_ :: (RandomGen g, Random a) => g -> State g a -> a
+runStateGen_ :: g -> State g a -> a
 runStateGen_ g = fst . flip runState g
 
-runStateTGen :: (RandomGen g, Random a) => g -> StateT g m a -> m (a, g)
+runStateTGen :: g -> StateT g m a -> m (a, g)
 runStateTGen g = flip runStateT g
 
-runStateTGen_ :: (RandomGen g, Random a, Functor f) => g -> StateT g f a -> f a
+runStateTGen_ :: Functor f => g -> StateT g f a -> f a
 runStateTGen_ g = fmap fst . flip runStateT g
+
+randomList :: (Random a, RandomGen g, Num a) => Int -> g -> ([a], g)
+randomList n g = runStateGen g $ replicateM n (genRandomR (1, 6))
+
+
+-- | Example:
+--
+-- λ> runStateGen_ (mkGen 217 :: StdGen) (randomListM GenState 10) :: [Word64]
+-- [1,2,3,5,5,2,5,1,4,1]
+randomListM :: (Random a, MonadRandom g m, Num a) => g -> Int -> m [a]
+randomListM gen n = replicateM n (randomRM (1, 6) gen)
+
+rlist :: Int -> ([Word64], [Word64])
+rlist n = (xs, ys)
+  where
+    xs = runStateGen_ (mkGen 217 :: StdGen) (randomListM GenState n) :: [Word64]
+    ys = runST $ do
+      gen <- MWC.create
+      randomListM gen n
+
+
+randomListM' :: MonadRandom g m => Seed g -> Int -> m (g, [Word64])
+randomListM' seed n = do
+  gen <- restore seed
+  xs <- replicateM n (randomRM (1, 6) gen)
+  return (gen, xs)
+
+-- someActionM :: (RandomGen g, Random a, MonadState g m, Num a) => Int -> m [a]
+-- someActionM n = replicateM n (genRandomR (1, 6))
 
 
 {- |
@@ -455,26 +492,26 @@ instance Random Int8       where
   randomR = bitmaskWithRejection
   random = first (fromIntegral :: Word8 -> Int8) . genWord8
   randomM = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 instance Random Int16      where
   randomR = bitmaskWithRejection
   random = first (fromIntegral :: Word16 -> Int16) . genWord16
   randomM = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 instance Random Int32      where
   randomR = bitmaskWithRejection
   random = first (fromIntegral :: Word32 -> Int32) . genWord32
   randomM = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 instance Random Int64      where
   randomR = bitmaskWithRejection
   random = first (fromIntegral :: Word64 -> Int64) . genWord64
   randomM = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 
 instance Random Int        where
   randomR = bitmaskWithRejection
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 #if WORD_SIZE_IN_BITS < 64
   random = first (fromIntegral :: Word32 -> Int) . genWord32
   randomM = fmap (fromIntegral :: Word32 -> Int) . uniformWord32
@@ -488,7 +525,7 @@ instance Random Int        where
 -- Word is a type synonym in nhc98.
 instance Random Word        where
   randomR = bitmaskWithRejection
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 #if WORD_SIZE_IN_BITS < 64
   random = first (fromIntegral :: Word32 -> Word) . genWord32
   randomM = fmap (fromIntegral :: Word32 -> Word) . uniformWord32
@@ -502,22 +539,22 @@ instance Random Word8      where
   randomR     = bitmaskWithRejection
   random      = genWord8
   randomM  = uniformWord8
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 instance Random Word16     where
   randomR     = bitmaskWithRejection
   random      = genWord16
   randomM  = uniformWord16
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 instance Random Word32     where
   randomR     = bitmaskWithRejection
   random      = genWord32
   randomM  = uniformWord32
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 instance Random Word64     where
   randomR     = bitmaskWithRejection
   random      = genWord64
   randomM  = uniformWord64
-  randomRM = bitmaskWithRejectionPrim
+  randomRM = bitmaskWithRejectionM
 
 instance Random CChar      where
   randomR (CChar b, CChar t)               = first CChar . randomR (b, t)
@@ -773,13 +810,13 @@ bitmaskWithRejection (bottom, top)
             else (x', g')
 {-# INLINE bitmaskWithRejection #-}
 
-bitmaskWithRejectionPrim ::
+bitmaskWithRejectionM ::
      (MonadRandom g m, FiniteBits a, Num a, Ord a, Random a)
   => (a, a)
   -> g
   -> m a
-bitmaskWithRejectionPrim (bottom, top) gen
-  | bottom > top = bitmaskWithRejectionPrim (top, bottom) gen
+bitmaskWithRejectionM (bottom, top) gen
+  | bottom > top = bitmaskWithRejectionM (top, bottom) gen
   | bottom == top = pure top
   | otherwise = (bottom +) <$> go
   where
@@ -791,7 +828,7 @@ bitmaskWithRejectionPrim (bottom, top) gen
       if x' >= range
         then go
         else pure x'
-{-# INLINE bitmaskWithRejectionPrim #-}
+{-# INLINE bitmaskWithRejectionM #-}
 
 
 int32Count :: Integer

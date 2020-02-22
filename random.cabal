@@ -39,6 +39,7 @@ Library
                  , primitive
                  , time
                  , mtl
+                 , mwc-random
 
 source-repository head
     type:     git
