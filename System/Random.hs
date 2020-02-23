@@ -98,22 +98,16 @@ import Data.Word
 import Foreign.C.Types
 import qualified System.Random.MWC as MWC
 
-#ifdef __NHC__
-import CPUTime		( getCPUTime )
-import Foreign.Ptr      ( Ptr, nullPtr )
-import Foreign.C	( CTime, CUInt )
-#else
 import System.CPUTime	( getCPUTime )
 import Data.Time	( getCurrentTime, UTCTime(..) )
 import Data.Ratio       ( numerator, denominator )
-#endif
 import Data.Char	( isSpace, chr, ord )
 import System.IO.Unsafe ( unsafePerformIO )
-import Data.IORef       ( IORef, newIORef, readIORef, writeIORef )
+import Data.IORef       ( IORef, newIORef, readIORef, writeIORef,
 #if MIN_VERSION_base (4,6,0)
-import Data.IORef       ( atomicModifyIORef' )
+                          atomicModifyIORef' )
 #else
-import Data.IORef       ( atomicModifyIORef )
+                          atomicModifyIORef )
 #endif
 import Numeric		( readDec )
 
@@ -267,11 +261,11 @@ instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
   uniformWord64 = MWC.uniform
 
 -- | An opaque data type that carries the state of a pure generator at the type level
-data GenState g = GenState
+data PureGen g = PureGen
 
-instance (MonadState g m, RandomGen g) => MonadRandom (GenState g) m where
-  type Seed (GenState g) = GenSeed g
-  restore s = GenState <$ put (mkGen s)
+instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
+  type Seed (PureGen g) = GenSeed g
+  restore s = PureGen <$ put (mkGen s)
   save _ = saveGen <$> get
   uniformWord32R r _ = state (genWord32R r)
   uniformWord64R r _ = state (genWord64R r)
@@ -281,19 +275,19 @@ instance (MonadState g m, RandomGen g) => MonadRandom (GenState g) m where
   uniformWord64 _ = state genWord64
 
 genRandom :: (RandomGen g, Random a, MonadState g m) => m a
-genRandom = randomM GenState
+genRandom = randomM PureGen
 
 genRandomR :: (RandomGen g, Random a, MonadState g m) => (a, a) -> m a
-genRandomR r = randomRM r GenState
+genRandomR r = randomRM r PureGen
 
 runStateGen :: RandomGen g => g -> State g a -> (a, g)
-runStateGen g = flip runState g
+runStateGen = flip runState
 
 runStateGen_ :: RandomGen g => g -> State g a -> a
 runStateGen_ g = fst . flip runState g
 
 runStateTGen :: RandomGen g => g -> StateT g m a -> m (a, g)
-runStateTGen g = flip runStateT g
+runStateTGen = flip runStateT
 
 runStateTGen_ :: (RandomGen g, Functor f) => g -> StateT g f a -> f a
 runStateTGen_ g = fmap fst . flip runStateT g
@@ -304,7 +298,7 @@ randomList n g = runStateGen_ g $ replicateM n (genRandomR (1, 6))
 
 -- | Example:
 --
--- λ> runStateGen_ (mkGen 217 :: StdGen) (randomListM GenState 10) :: [Word64]
+-- λ> runStateGen_ (mkGen 217 :: StdGen) (randomListM PureGen 10) :: [Word64]
 -- [1,2,3,5,5,2,5,1,4,1]
 randomListM :: (Random a, MonadRandom g m, Num a) => g -> Int -> m [a]
 randomListM gen n = replicateM n (randomRM (1, 6) gen)
@@ -312,7 +306,7 @@ randomListM gen n = replicateM n (randomRM (1, 6) gen)
 rlist :: Int -> ([Word64], [Word64])
 rlist n = (xs, ys)
   where
-    xs = runStateGen_ (mkGen 217 :: StdGen) (randomListM GenState n) :: [Word64]
+    xs = runStateGen_ (mkGen 217 :: StdGen) (randomListM PureGen n) :: [Word64]
     ys = runST $ MWC.create >>= (`randomListM` n)
 
 
