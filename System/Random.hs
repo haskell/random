@@ -41,8 +41,6 @@
 --
 -----------------------------------------------------------------------------
 
-#include "MachDeps.h"
-
 module System.Random
 	(
 
@@ -111,14 +109,7 @@ import Data.IORef       ( IORef, newIORef, readIORef, writeIORef,
 #endif
 import Numeric		( readDec )
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.Exts         ( build )
-#else
--- | A dummy variant of build without fusion.
-{-# INLINE build #-}
-build :: ((a -> [a] -> [a]) -> [a] -> [a]) -> [a]
-build g = g (:) []
-#endif
 
 #if !MIN_VERSION_base (4,6,0)
 atomicModifyIORef' :: IORef a -> (a -> (a,b)) -> IO b
@@ -129,20 +120,11 @@ atomicModifyIORef' ref f = do
     b `seq` return b
 #endif
 
--- The standard nhc98 implementation of Time.ClockTime does not match
--- the extended one expected in this module, so we lash-up a quick
--- replacement here.
-#ifdef __NHC__
-foreign import ccall "time.h time" readtime :: Ptr CTime -> IO CTime
-getTime :: IO (Integer, Integer)
-getTime = do CTime t <- readtime nullPtr;  return (toInteger t, 0)
-#else
 getTime :: IO (Integer, Integer)
 getTime = do
   utc <- getCurrentTime
   let daytime = toRational $ utctDayTime utc
   return $ quotRem (numerator daytime) (denominator daytime)
-#endif
 
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
