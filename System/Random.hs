@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -78,6 +80,9 @@ module System.Random
 	-- * Random values of various types
 	, Random(..)
 
+        -- * Default generators
+        , uniformByteArrayPrim
+
 	-- * References
 	-- $references
 
@@ -90,8 +95,9 @@ import Control.Monad.ST
 import Control.Monad.Primitive
 import Control.Monad.State.Strict
 import Data.Bits
-import Data.Functor.Identity
 import Data.Int
+import Data.Primitive.Types (Prim)
+import Data.Primitive.ByteArray
 import Data.Word
 import Foreign.C.Types
 import qualified System.Random.MWC as MWC
@@ -160,6 +166,10 @@ class RandomGen g where
   genWord64R :: Word64 -> g -> (Word64, g)
   genWord64R m = randomIvalIntegral (minBound, m)
 
+  genBytes :: Int -> g -> (ByteArray, g)
+  genBytes n g = runST $ runStateTGen g $ uniformByteArrayPrim n PureGen
+  {-# INLINE genBytes #-}
+
 
   -- |The 'genRange' operation yields the range of values returned by
   -- the generator.
@@ -215,11 +225,55 @@ class Monad m => MonadRandom g m where
   uniformWord32 = uniformWord32R maxBound
   uniformWord64 :: g -> m Word64
   uniformWord64 = uniformWord64R maxBound
+  uniformBytes :: Int -> g -> m ByteArray
+  default uniformBytes :: PrimMonad m => Int -> g -> m ByteArray
+  uniformBytes = uniformByteArrayPrim
+  {-# INLINE uniformBytes #-}
+
+uniformByteArrayPrim :: forall g m . (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteArray
+uniformByteArrayPrim n0 gen = do
+  let n = max 0 n0
+      (n64, nrem) = n `quotRem` 8
+  ma :: MutableByteArray (PrimState m) <- newByteArray n
+  let go :: (PrimMonad m, Prim a) => (g -> m a) -> Int -> Int -> m ()
+      go f i k
+        | i < k = do
+          w <- f gen
+          writeByteArray ma i w
+          go f (i + 1) k
+        | otherwise = return ()
+  go uniformWord64 0 n64
+  go uniformWord8 (n - nrem) n
+  unsafeFreezeByteArray ma
+{-# INLINE uniformByteArrayPrim #-}
+
+-- g = mkStdGen 217
+-- genBytes 20 g
+-- -- TODO: benchmark this version against StateT version.
+-- genByteArray :: RandomGen b => Int -> b -> (ByteArray, b)
+-- genByteArray n0 g0 = runST $ do
+--   let n = max 0 n0
+--       nrem = n `rem` 8
+--       n64 = n - nrem
+--   ma <- newByteArray n
+--   let go64 i g | i < n64 =
+--                    case genWord64 g of
+--                      (w64, g') -> writeByteArray ma i w64 >> go64 (i + 1) g'
+--                | otherwise = pure g
+--       go8  i g | i < n =
+--                    case genWord8 g of
+--                      (w8, g') -> writeByteArray  ma i w8 >> go8 (i + 1) g'
+--                | otherwise = pure g
+--   g' <- go8 n64 =<< go64 0 g0
+--   a <- unsafeFreezeByteArray ma
+--   pure (a, g')
+
 
 data SysRandom = SysRandom
 
 -- Example /dev/urandom
-instance MonadIO m => MonadRandom SysRandom m
+instance MonadIO m => MonadRandom SysRandom m where
+  uniformBytes n gen = liftIO $ uniformByteArrayPrim n gen
 
 -- Example mwc-random
 instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
@@ -248,12 +302,17 @@ instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
   uniformWord16 _ = state genWord16
   uniformWord32 _ = state genWord32
   uniformWord64 _ = state genWord64
+  uniformBytes n _ = state (genBytes n)
 
 genRandom :: (RandomGen g, Random a, MonadState g m) => m a
 genRandom = randomM PureGen
 
 genRandomR :: (RandomGen g, Random a, MonadState g m) => (a, a) -> m a
 genRandomR r = randomRM r PureGen
+
+-- | Split current generator and update the state with one part, while returning the other.
+splitGen :: (MonadState g m, RandomGen g) => m g
+splitGen = state split
 
 runStateGen :: RandomGen g => g -> State g a -> (a, g)
 runStateGen = flip runState
