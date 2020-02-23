@@ -136,13 +136,6 @@ getTime = do
 #endif
 
 class RandomGen g where
-  type GenSeed g :: *
-  type GenSeed g = Word64
-
-  mkGen :: GenSeed g -> g
-
-  saveGen :: g -> GenSeed g
-
   -- |The 'next' operation returns an 'Int' that is uniformly distributed
   -- in the range returned by 'genRange' (including both end points),
   -- and a new generator.
@@ -246,9 +239,9 @@ instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
 data PureGen g = PureGen
 
 instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
-  type Seed (PureGen g) = GenSeed g
-  restore s = PureGen <$ put (mkGen s)
-  save _ = saveGen <$> get
+  type Seed (PureGen g) = g
+  restore g = PureGen <$ put g
+  save _ = get
   uniformWord32R r _ = state (genWord32R r)
   uniformWord64R r _ = state (genWord64R r)
   uniformWord8 _ = state genWord8
@@ -288,7 +281,7 @@ randomListM gen n = replicateM n (randomRM (1, 6) gen)
 rlist :: Int -> ([Word64], [Word64])
 rlist n = (xs, ys)
   where
-    xs = runStateGen_ (mkGen 217 :: StdGen) (randomListM PureGen n) :: [Word64]
+    xs = runStateGen_ (mkStdGen 217 :: StdGen) (randomListM PureGen n) :: [Word64]
     ys = runST $ MWC.create >>= (`randomListM` n)
 
 
@@ -332,11 +325,8 @@ data StdGen
  = StdGen !Int32 !Int32
 
 instance RandomGen StdGen where
-  type GenSeed StdGen = Int
   next  = stdNext
   genRange _ = stdRange
-  mkGen = mkStdGen
-  saveGen (StdGen h _) = fromIntegral h
   --                     ^  this is likely incorrect, but we'll switch to splitmix anyways
 
 #ifdef ENABLE_SPLITTABLEGEN
