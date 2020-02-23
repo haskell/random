@@ -236,40 +236,29 @@ class Monad m => MonadRandom g m where
 uniformByteArrayPrim :: forall g m . (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteArray
 uniformByteArrayPrim n0 gen = do
   let n = max 0 n0
-      (n64, nrem) = n `quotRem` 8
+      (n64, nrem64) = n `quotRem` 8
   ma :: MutableByteArray (PrimState m) <- newByteArray n
-  let go :: (PrimMonad m, Prim a) => (g -> m a) -> Int -> Int -> m ()
-      go f i k
-        | i < k = do
-          w <- f gen
-          writeByteArray ma i w
-          go f (i + 1) k
+  let go i k
+        | i < k = uniformWord64 gen >>= writeByteArray ma i >> go (i + 1) k
         | otherwise = return ()
-  go uniformWord64 0 n64
-  go uniformWord8 (n - nrem) n
+      write :: (PrimMonad m, Prim a) => a -> Int -> Int -> Int -> m (Int, Int)
+      write w i krem s
+        | krem >= s = (i + s, krem - s) <$ writeByteArray ma n64 w
+        | otherwise = pure (i, krem)
+      {-# INLINE write #-}
+      getChunk :: (Integral a, FiniteBits a) => Word64 -> a -> a
+      getChunk w64 mask =
+        fromIntegral ((w64 `unsafeShiftR` finiteBitSize mask) .&. fromIntegral mask)
+      {-# INLINE getChunk #-}
+  go 0 n64
+  when (nrem64 > 0) $ do
+    w64 <- uniformWord64 gen
+    (n32, nrem32) <- write (getChunk w64 (maxBound :: Word32)) n64 nrem64 4
+    (n16, nrem16) <- write (getChunk w64 (maxBound :: Word16)) n32 nrem32 2
+    when (nrem16 == 1) $
+      writeByteArray ma n16 (getChunk w64 (maxBound :: Word8))
   unsafeFreezeByteArray ma
 {-# INLINE uniformByteArrayPrim #-}
-
--- g = mkStdGen 217
--- genBytes 20 g
--- -- TODO: benchmark this version against StateT version.
--- genByteArray :: RandomGen b => Int -> b -> (ByteArray, b)
--- genByteArray n0 g0 = runST $ do
---   let n = max 0 n0
---       nrem = n `rem` 8
---       n64 = n - nrem
---   ma <- newByteArray n
---   let go64 i g | i < n64 =
---                    case genWord64 g of
---                      (w64, g') -> writeByteArray ma i w64 >> go64 (i + 1) g'
---                | otherwise = pure g
---       go8  i g | i < n =
---                    case genWord8 g of
---                      (w8, g') -> writeByteArray  ma i w8 >> go8 (i + 1) g'
---                | otherwise = pure g
---   g' <- go8 n64 =<< go64 0 g0
---   a <- unsafeFreezeByteArray ma
---   pure (a, g')
 
 
 data SysRandom = SysRandom
