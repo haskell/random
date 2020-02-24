@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -102,6 +103,12 @@ import Data.Word
 import Foreign.C.Types
 import qualified System.Random.MWC as MWC
 
+import Foreign.Ptr (plusPtr)
+import Foreign.Storable (peekByteOff, pokeByteOff)
+import Foreign.Marshal.Alloc (alloca)
+import Data.ByteString.Builder.Prim (word64LE)
+import Data.ByteString.Builder.Prim.Internal (runF)
+
 import System.CPUTime	( getCPUTime )
 import Data.Time	( getCurrentTime, UTCTime(..) )
 import Data.Ratio       ( numerator, denominator )
@@ -115,7 +122,7 @@ import Data.IORef       ( IORef, newIORef, readIORef, writeIORef,
 #endif
 import Numeric		( readDec )
 
-import GHC.Exts         ( build )
+import GHC.Exts         ( Ptr(..), build, byteArrayContents#, unsafeCoerce# )
 
 #if !MIN_VERSION_base (4,6,0)
 atomicModifyIORef' :: IORef a -> (a -> (a,b)) -> IO b
@@ -124,6 +131,15 @@ atomicModifyIORef' ref f = do
             (\x -> let (a, b) = f x
                     in (a, a `seq` b))
     b `seq` return b
+#endif
+
+mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
+{-# INLINE mutableByteArrayContentsCompat #-}
+#if !MIN_VERSION_primitive(0,7,0)
+mutableByteArrayContentsCompat (MutableByteArray arr#)
+  = Ptr (byteArrayContents# (unsafeCoerce# arr#))
+#else
+mutableByteArrayContentsCompat = mutableByteArrayContents
 #endif
 
 getTime :: IO (Integer, Integer)
@@ -233,30 +249,32 @@ class Monad m => MonadRandom g m where
   uniformBytes = uniformByteArrayPrim
   {-# INLINE uniformBytes #-}
 
-uniformByteArrayPrim :: forall g m . (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteArray
+
+-- | This function will efficiently generate a sequence of random bytes in a platform
+-- independent manner. Memory allocated will be pinned, so it is safe to use for FFI
+-- calls.
+uniformByteArrayPrim :: (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteArray
 uniformByteArrayPrim n0 gen = do
   let n = max 0 n0
       (n64, nrem64) = n `quotRem` 8
-  ma :: MutableByteArray (PrimState m) <- newByteArray n
-  let go i k
-        | i < k = uniformWord64 gen >>= writeByteArray ma i >> go (i + 1) k
-        | otherwise = return ()
-      write :: (PrimMonad m, Prim a) => a -> Int -> Int -> Int -> m (Int, Int)
-      write w i krem s
-        | krem >= s = (i + s, krem - s) <$ writeByteArray ma n64 w
-        | otherwise = pure (i, krem)
-      {-# INLINE write #-}
-      getChunk :: (Integral a, FiniteBits a) => Word64 -> a -> a
-      getChunk w64 mask =
-        fromIntegral ((w64 `unsafeShiftR` finiteBitSize mask) .&. fromIntegral mask)
-      {-# INLINE getChunk #-}
-  go 0 n64
+  ma <- newPinnedByteArray n
+  let go i ptr
+        | i < n64 = do
+          w64 <- uniformWord64 gen
+          unsafeIOToPrim $ runF word64LE w64 ptr
+          go (i + 1) (ptr `plusPtr` 8)
+        | otherwise = return ptr
+  ptr <- go 0 (mutableByteArrayContentsCompat ma)
   when (nrem64 > 0) $ do
     w64 <- uniformWord64 gen
-    (n32, nrem32) <- write (getChunk w64 (maxBound :: Word32)) n64 nrem64 4
-    (n16, nrem16) <- write (getChunk w64 (maxBound :: Word16)) n32 nrem32 2
-    when (nrem16 == 1) $
-      writeByteArray ma n16 (getChunk w64 (maxBound :: Word8))
+    -- in order not to mess up the byte order we write generated Word64 into a temporary
+    -- pointer and then copy only the missing bytes over to the array
+    unsafeIOToPrim $
+      alloca $ \w64ptr -> do
+        runF word64LE w64 w64ptr
+        forM_ [0 .. nrem64 - 1] $ \i -> do
+          w8 :: Word8 <- peekByteOff w64ptr i
+          pokeByteOff ptr i w8
   unsafeFreezeByteArray ma
 {-# INLINE uniformByteArrayPrim #-}
 
@@ -319,7 +337,7 @@ runStateTGen_ :: (RandomGen g, Functor f) => g -> StateT g f a -> f a
 runStateTGen_ g = fmap fst . flip runStateT g
 
 randomList :: (Random a, RandomGen g, Num a) => Int -> g -> [a]
-randomList n g = runStateGen_ g $ replicateM n (genRandomR (1, 6))
+randomList n g = runStateGen_ g $ replicateM n (randomM PureGen)
 
 
 -- | Example:
@@ -341,9 +359,6 @@ randomListM' seed n = do
   gen <- restore seed
   xs <- replicateM n (randomRM (1, 6) gen)
   return (gen, xs)
-
--- someActionM :: (RandomGen g, Random a, MonadState g m, Num a) => Int -> m [a]
--- someActionM n = replicateM n (genRandomR (1, 6))
 
 
 {- |
