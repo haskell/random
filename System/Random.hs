@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -68,6 +70,7 @@ module System.Random
         , runStateGen_
         , runStateTGen
         , runStateTGen_
+        , runPureGenST
 
 	-- ** The global random number generator
 
@@ -81,8 +84,10 @@ module System.Random
 	-- * Random values of various types
 	, Random(..)
 
-        -- * Default generators
+        -- * Generators for sequences of bytes
         , uniformByteArrayPrim
+        , uniformByteStringPrim
+        , genByteString
 
 	-- * References
 	-- $references
@@ -103,11 +108,14 @@ import Data.Word
 import Foreign.C.Types
 import qualified System.Random.MWC as MWC
 
+import GHC.ForeignPtr
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (peekByteOff, pokeByteOff)
 import Foreign.Marshal.Alloc (alloca)
 import Data.ByteString.Builder.Prim (word64LE)
 import Data.ByteString.Builder.Prim.Internal (runF)
+import Data.ByteString.Internal (ByteString(PS))
+import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
 
 import System.CPUTime	( getCPUTime )
 import Data.Time	( getCurrentTime, UTCTime(..) )
@@ -182,9 +190,9 @@ class RandomGen g where
   genWord64R :: Word64 -> g -> (Word64, g)
   genWord64R m = randomIvalIntegral (minBound, m)
 
-  genBytes :: Int -> g -> (ByteArray, g)
-  genBytes n g = runST $ runStateTGen g $ uniformByteArrayPrim n PureGen
-  {-# INLINE genBytes #-}
+  genByteArray :: Int -> g -> (ByteArray, g)
+  genByteArray n g = runPureGenST g $ uniformByteArrayPrim n
+  {-# INLINE genByteArray #-}
 
 
   -- |The 'genRange' operation yields the range of values returned by
@@ -244,10 +252,10 @@ class Monad m => MonadRandom g m where
   uniformWord32 = uniformWord32R maxBound
   uniformWord64 :: g -> m Word64
   uniformWord64 = uniformWord64R maxBound
-  uniformBytes :: Int -> g -> m ByteArray
-  default uniformBytes :: PrimMonad m => Int -> g -> m ByteArray
-  uniformBytes = uniformByteArrayPrim
-  {-# INLINE uniformBytes #-}
+  uniformByteArray :: Int -> g -> m ByteArray
+  default uniformByteArray :: PrimMonad m => Int -> g -> m ByteArray
+  uniformByteArray = uniformByteArrayPrim
+  {-# INLINE uniformByteArray #-}
 
 
 -- | This function will efficiently generate a sequence of random bytes in a platform
@@ -261,14 +269,19 @@ uniformByteArrayPrim n0 gen = do
   let go i ptr
         | i < n64 = do
           w64 <- uniformWord64 gen
+          -- Writing 8 bytes at a time in a Little-endian order gives us platform
+          -- portability
           unsafeIOToPrim $ runF word64LE w64 ptr
           go (i + 1) (ptr `plusPtr` 8)
         | otherwise = return ptr
   ptr <- go 0 (mutableByteArrayContentsCompat ma)
   when (nrem64 > 0) $ do
     w64 <- uniformWord64 gen
-    -- in order not to mess up the byte order we write generated Word64 into a temporary
-    -- pointer and then copy only the missing bytes over to the array
+    -- In order to not mess up the byte order we write generated Word64 into a temporary
+    -- pointer and then copy only the missing bytes over to the array. It is tempting to
+    -- simply generate as many bytes as we still need using smaller generators
+    -- (eg. uniformWord8), but that would result in inconsistent tail when total length is
+    -- slightly varied.
     unsafeIOToPrim $
       alloca $ \w64ptr -> do
         runF word64LE w64 w64ptr
@@ -279,11 +292,51 @@ uniformByteArrayPrim n0 gen = do
 {-# INLINE uniformByteArrayPrim #-}
 
 
+pinnedMutableByteArrayToByteString :: MutableByteArray RealWorld -> ByteString
+pinnedMutableByteArrayToByteString mba =
+  PS (pinnedMutableByteArrayToForeignPtr mba) 0 (sizeofMutableByteArray mba)
+{-# INLINE pinnedMutableByteArrayToByteString #-}
+
+pinnedMutableByteArrayToForeignPtr :: MutableByteArray RealWorld -> ForeignPtr a
+pinnedMutableByteArrayToForeignPtr mba@(MutableByteArray mba#) =
+  case mutableByteArrayContentsCompat mba of
+    Ptr addr# -> ForeignPtr addr# (PlainPtr mba#)
+{-# INLINE pinnedMutableByteArrayToForeignPtr #-}
+
+-- | Generate a ByteString using a pure generator. For monadic counterpart see
+-- `uniformByteStringPrim`.
+--
+-- @since 1.2
+uniformByteStringPrim ::
+     (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteString
+uniformByteStringPrim n g = do
+  ba@(ByteArray ba#) <- uniformByteArray n g
+  if isByteArrayPinned ba
+    then unsafeIOToPrim $
+         pinnedMutableByteArrayToByteString <$> unsafeThawByteArray ba
+    else return $ fromShort (SBS ba#)
+{-# INLINE uniformByteStringPrim #-}
+
+-- | Generate a ByteString using a pure generator. For monadic counterpart see
+-- `uniformByteStringPrim`.
+--
+-- @since 1.2
+genByteString :: RandomGen g => Int -> g -> (ByteString, g)
+genByteString n g = runPureGenST g (uniformByteStringPrim n)
+{-# INLINE genByteString #-}
+
+-- | Run an effectful generating action in `ST` monad using a pure generator.
+--
+-- @since 1.2
+runPureGenST :: RandomGen g => g -> (forall s . PureGen g -> StateT g (ST s) a) -> (a, g)
+runPureGenST g action = runST $ runStateTGen g $ action PureGen
+{-# INLINE runPureGenST #-}
+
 data SysRandom = SysRandom
 
 -- Example /dev/urandom
 instance MonadIO m => MonadRandom SysRandom m where
-  uniformBytes n gen = liftIO $ uniformByteArrayPrim n gen
+  uniformByteArray n gen = liftIO $ uniformByteArrayPrim n gen
 
 -- Example mwc-random
 instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
@@ -312,7 +365,7 @@ instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
   uniformWord16 _ = state genWord16
   uniformWord32 _ = state genWord32
   uniformWord64 _ = state genWord64
-  uniformBytes n _ = state (genBytes n)
+  uniformByteArray n _ = state (genByteArray n)
 
 genRandom :: (RandomGen g, Random a, MonadState g m) => m a
 genRandom = randomM PureGen
@@ -393,7 +446,6 @@ data StdGen
 instance RandomGen StdGen where
   next  = stdNext
   genRange _ = stdRange
-  --                     ^  this is likely incorrect, but we'll switch to splitmix anyways
 
 #ifdef ENABLE_SPLITTABLEGEN
 instance SplittableGen StdGen where
