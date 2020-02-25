@@ -29,7 +29,7 @@ cabal-version: >= 1.8
 Library
     exposed-modules:
         System.Random
-    GHC-Options: -O2
+    ghc-options: -Wall
     build-depends: base >= 3 && < 5
                  , bytestring
                  , primitive
