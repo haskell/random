@@ -62,7 +62,6 @@ module System.Random
   -- * Stateful interface for pure generators
   , splitGen
   , genRandom
-  , genRandomR
   , runStateGen
   , runStateGen_
   , runStateTGen
@@ -325,12 +324,6 @@ instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
 genRandom :: (RandomGen g, Random a, MonadState g m) => m a
 genRandom = randomM PureGen
 
--- | Generate a random value within a range in a state monad
---
--- @since 1.2
-genRandomR :: (RandomGen g, Random a, MonadState g m) => (a, a) -> m a
-genRandomR r = randomRM r PureGen
-
 -- | Split current generator and update the state with one part, while returning the other.
 --
 -- @since 1.2
@@ -445,11 +438,18 @@ Minimal complete definition: 'randomR' and 'random'.
 
 -}
 
+
+class Uniform a where
+  uniform :: MonadRandom g m => g -> m a
+
+class UniformRange a where
+  uniformR :: MonadRandom g m => (a, a) -> g -> m a
+
+
+{-# DEPRECATED randomR "In favor of `uniformR`" #-}
+{-# DEPRECATED randomRIO "In favor of `uniformR`" #-}
+{-# DEPRECATED randomIO "In favor of `uniformR`" #-}
 class Random a where
-  randomRM :: MonadRandom g m => (a, a) -> g -> m a
-
-  randomM :: MonadRandom g m => g -> m a
-
 
   -- | Takes a range /(lo,hi)/ and a random number generator
   -- /g/, and returns a random value uniformly distributed in the closed
@@ -459,7 +459,8 @@ class Random a where
   -- depending on the implementation and the interval.
   {-# INLINE randomR #-}
   randomR :: RandomGen g => (a, a) -> g -> (a, g)
-  randomR r g = runStateGen g (genRandomR r)
+  default randomR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
+  randomR r g = runStateGen g (uniformR r PureGen)
 
   -- | The same as 'randomR', but using a default range determined by the type:
   --
@@ -473,6 +474,11 @@ class Random a where
   {-# INLINE random #-}
   random  :: RandomGen g => g -> (a, g)
   random g = runStateGen g genRandom
+
+  {-# INLINE randomM #-}
+  randomM :: MonadRandom g m => g -> m a
+  default randomM :: (MonadRandom g m, Uniform a) => g -> m a
+  randomM = uniform
 
   -- | Plural variant of 'randomR', producing an infinite list of
   -- random values instead of returning a new generator.
@@ -510,205 +516,218 @@ buildRandoms cons rand = go
 
 
 instance Random Integer where
-  randomR ival g = randomIvalInteger ival g
   random g = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
+  randomM g = uniformR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
-instance Random Int8       where
-  randomR = bitmaskWithRejection
-  random = first (fromIntegral :: Word8 -> Int8) . genWord8
-  randomM = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
-  randomRM = bitmaskWithRejectionRM
-instance Random Int16      where
-  randomR = bitmaskWithRejection
-  random = first (fromIntegral :: Word16 -> Int16) . genWord16
-  randomM = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
-  randomRM = bitmaskWithRejectionRM
-instance Random Int32      where
-  randomR = bitmaskWithRejection
-  random = first (fromIntegral :: Word32 -> Int32) . genWord32
-  randomM = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
-  randomRM = bitmaskWithRejectionRM
-instance Random Int64      where
-  randomR = bitmaskWithRejection
-  random = first (fromIntegral :: Word64 -> Int64) . genWord64
-  randomM = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
-  randomRM = bitmaskWithRejectionRM
+instance UniformRange Integer where
+  --uniformR ival g = randomIvalInteger ival g -- FIXME
+
+instance Random Int8
+instance Uniform Int8 where
+  uniform = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
+instance UniformRange Int8 where
+
+instance Random Int16
+instance Uniform Int16 where
+  uniform = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
+instance UniformRange Int16 where
+
+instance Random Int32
+instance Uniform Int32 where
+  uniform = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
+instance UniformRange Int32 where
+
+instance Random Int64
+instance Uniform Int64 where
+  uniform = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
+instance UniformRange Int64 where
 
 instance Random Int        where
   randomR = bitmaskWithRejection
-  randomRM = bitmaskWithRejectionRM
+instance Uniform Int where
 #if WORD_SIZE_IN_BITS < 64
-  random = first (fromIntegral :: Word32 -> Int) . genWord32
-  randomM = fmap (fromIntegral :: Word32 -> Int) . uniformWord32
+  uniform = fmap (fromIntegral :: Word32 -> Int) . uniformWord32
 #else
-  random = first (fromIntegral :: Word64 -> Int) . genWord64
-  randomM = fmap (fromIntegral :: Word64 -> Int) . uniformWord64
+  uniform = fmap (fromIntegral :: Word64 -> Int) . uniformWord64
 #endif
+instance UniformRange Int where
 
-instance Random Word        where
-  randomR = bitmaskWithRejection
-  randomRM = bitmaskWithRejectionRM
+instance Random Word
+instance Uniform Word where
 #if WORD_SIZE_IN_BITS < 64
-  random = first (fromIntegral :: Word32 -> Word) . genWord32
-  randomM = fmap (fromIntegral :: Word32 -> Word) . uniformWord32
+  uniform = fmap (fromIntegral :: Word32 -> Word) . uniformWord32
 #else
-  random = first (fromIntegral :: Word64 -> Word) . genWord64
-  randomM = fmap (fromIntegral :: Word64 -> Word) . uniformWord64
+  uniform = fmap (fromIntegral :: Word64 -> Word) . uniformWord64
 #endif
+instance UniformRange Word where
+  {-# INLINE uniformR #-}
+  uniformR    = bitmaskWithRejectionRM
 
-instance Random Word8      where
-  {-# INLINE randomR #-}
-  randomR     = bitmaskWithRejection
-  {-# INLINE random #-}
-  random      = genWord8
-  {-# INLINE randomRM #-}
-  randomRM    = bitmaskWithRejectionRM
-  {-# INLINE randomM #-}
-  randomM     = uniformWord8
-instance Random Word16     where
-  {-# INLINE randomR #-}
-  randomR     = bitmaskWithRejection
-  {-# INLINE random #-}
-  random      = genWord16
-  {-# INLINE randomRM #-}
-  randomRM    = bitmaskWithRejectionRM
-  {-# INLINE randomM #-}
-  randomM     = uniformWord16
-instance Random Word32     where
-  {-# INLINE randomR #-}
-  randomR     = bitmaskWithRejection
-  {-# INLINE random #-}
-  random      = genWord32
-  {-# INLINE randomM #-}
-  randomM  = uniformWord32
-  {-# INLINE randomRM #-}
-  randomRM = bitmaskWithRejectionRM
-instance Random Word64     where
-  {-# INLINE randomR #-}
-  randomR     = bitmaskWithRejection
-  {-# INLINE random #-}
-  random      = genWord64
-  {-# INLINE randomM #-}
-  randomM  = uniformWord64
-  {-# INLINE randomRM #-}
-  randomRM = bitmaskWithRejectionRM
+instance Random Word8
+instance Uniform Word8 where
+  {-# INLINE uniform #-}
+  uniform     = uniformWord8
+instance UniformRange Word8 where
+  {-# INLINE uniformR #-}
+  uniformR    = bitmaskWithRejectionRM
 
-instance Random CChar      where
-  randomR (CChar b, CChar t)               = first CChar . randomR (b, t)
-  random                                   = first CChar . random
-  randomM                               = fmap CChar . randomM
-  randomRM (CChar b, CChar t)           = fmap CChar . randomRM (b, t)
-instance Random CSChar     where
-  randomR (CSChar b, CSChar t)             = first CSChar . randomR (b, t)
-  random                                   = first CSChar . random
-  randomM                               = fmap CSChar . randomM
-  randomRM (CSChar b, CSChar t)         = fmap CSChar . randomRM (b, t)
-instance Random CUChar     where
-  randomR (CUChar b, CUChar t)             = first CUChar . randomR (b, t)
-  random                                   = first CUChar . random
-  randomM                               = fmap CUChar . randomM
-  randomRM (CUChar b, CUChar t)         = fmap CUChar . randomRM (b, t)
-instance Random CShort     where
-  randomR (CShort b, CShort t)             = first CShort . randomR (b, t)
-  random                                   = first CShort . random
-  randomM                               = fmap CShort . randomM
-  randomRM (CShort b, CShort t)         = fmap CShort . randomRM (b, t)
-instance Random CUShort    where
-  randomR (CUShort b, CUShort t)           = first CUShort . randomR (b, t)
-  random                                   = first CUShort . random
-  randomM                               = fmap CUShort . randomM
-  randomRM (CUShort b, CUShort t)       = fmap CUShort . randomRM (b, t)
-instance Random CInt       where
-  randomR (CInt b, CInt t)                 = first CInt . randomR (b, t)
-  random                                   = first CInt . random
-  randomM                               = fmap CInt . randomM
-  randomRM (CInt b, CInt t)             = fmap CInt . randomRM (b, t)
-instance Random CUInt      where
-  randomR (CUInt b, CUInt t)               = first CUInt . randomR (b, t)
-  random                                   = first CUInt . random
-  randomM                               = fmap CUInt . randomM
-  randomRM (CUInt b, CUInt t)           = fmap CUInt . randomRM (b, t)
-instance Random CLong      where
-  randomR (CLong b, CLong t)               = first CLong . randomR (b, t)
-  random                                   = first CLong . random
-  randomM                               = fmap CLong . randomM
-  randomRM (CLong b, CLong t)           = fmap CLong . randomRM (b, t)
-instance Random CULong     where
-  randomR (CULong b, CULong t)             = first CULong . randomR (b, t)
-  random                                   = first CULong . random
-  randomM                               = fmap CULong . randomM
-  randomRM (CULong b, CULong t)         = fmap CULong . randomRM (b, t)
-instance Random CPtrdiff   where
-  randomR (CPtrdiff b, CPtrdiff t)         = first CPtrdiff . randomR (b, t)
-  random                                   = first CPtrdiff . random
-  randomM                               = fmap CPtrdiff . randomM
-  randomRM (CPtrdiff b, CPtrdiff t)     = fmap CPtrdiff . randomRM (b, t)
-instance Random CSize      where
-  randomR (CSize b, CSize t)               = first CSize . randomR (b, t)
-  random                                   = first CSize . random
-  randomM                               = fmap CSize . randomM
-  randomRM (CSize b, CSize t)           = fmap CSize . randomRM (b, t)
-instance Random CWchar     where
-  randomR (CWchar b, CWchar t)             = first CWchar . randomR (b, t)
-  random                                   = first CWchar . random
-  randomM                               = fmap CWchar . randomM
-  randomRM (CWchar b, CWchar t)         = fmap CWchar . randomRM (b, t)
-instance Random CSigAtomic where
-  randomR (CSigAtomic b, CSigAtomic t)     = first CSigAtomic . randomR (b, t)
-  random                                   = first CSigAtomic . random
-  randomM                               = fmap CSigAtomic . randomM
-  randomRM (CSigAtomic b, CSigAtomic t) = fmap CSigAtomic . randomRM (b, t)
-instance Random CLLong     where
-  randomR (CLLong b, CLLong t)             = first CLLong . randomR (b, t)
-  random                                   = first CLLong . random
-  randomM                               = fmap CLLong . randomM
-  randomRM (CLLong b, CLLong t)         = fmap CLLong . randomRM (b, t)
-instance Random CULLong    where
-  randomR (CULLong b, CULLong t)           = first CULLong . randomR (b, t)
-  random                                   = first CULLong . random
-  randomM                               = fmap CULLong . randomM
-  randomRM (CULLong b, CULLong t)       = fmap CULLong . randomRM (b, t)
-instance Random CIntPtr    where
-  randomR (CIntPtr b, CIntPtr t)           = first CIntPtr . randomR (b, t)
-  random                                   = first CIntPtr . random
-  randomM                               = fmap CIntPtr . randomM
-  randomRM (CIntPtr b, CIntPtr t)       = fmap CIntPtr . randomRM (b, t)
-instance Random CUIntPtr   where
-  randomR (CUIntPtr b, CUIntPtr t)         = first CUIntPtr . randomR (b, t)
-  random                                   = first CUIntPtr . random
-  randomM                               = fmap CUIntPtr . randomM
-  randomRM (CUIntPtr b, CUIntPtr t)     = fmap CUIntPtr . randomRM (b, t)
-instance Random CIntMax    where
-  randomR (CIntMax b, CIntMax t)           = first CIntMax . randomR (b, t)
-  random                                   = first CIntMax . random
-  randomM                               = fmap CIntMax . randomM
-  randomRM (CIntMax b, CIntMax t)       = fmap CIntMax . randomRM (b, t)
-instance Random CUIntMax   where
-  randomR (CUIntMax b, CUIntMax t)         = first CUIntMax . randomR (b, t)
-  random                                   = first CUIntMax . random
-  randomM                               = fmap CUIntMax . randomM
-  randomRM (CUIntMax b, CUIntMax t)     = fmap CUIntMax . randomRM (b, t)
+instance Random Word16
+instance Uniform Word16 where
+  {-# INLINE uniform #-}
+  uniform     = uniformWord16
+instance UniformRange Word16 where
+  {-# INLINE uniformR #-}
+  uniformR    = bitmaskWithRejectionRM
 
-instance Random Char where
-  randomR (a,b) g =
-       case (randomIvalInteger (toInteger (ord a), toInteger (ord b)) g) of
-         (x,g') -> (chr x, g')
-  random g  = randomR (minBound,maxBound) g
+instance Random Word32
+instance Uniform Word32 where
+  {-# INLINE uniform #-}
+  uniform  = uniformWord32
+instance UniformRange Word32 where
+  {-# INLINE uniformR #-}
+  uniformR = bitmaskWithRejectionRM
+
+instance Random Word64
+instance Uniform Word64 where
+  {-# INLINE uniform #-}
+  uniform  = uniformWord64
+instance UniformRange Word64 where
+  {-# INLINE uniformR #-}
+  uniformR = bitmaskWithRejectionRM
+
+
+instance Random CChar
+instance Uniform CChar where
+  uniform                     = fmap CChar . uniform
+instance UniformRange CChar where
+  uniformR (CChar b, CChar t) = fmap CChar . uniformR (b, t)
+
+instance Random CSChar
+instance Uniform CSChar where
+  uniform                       = fmap CSChar . uniform
+instance UniformRange CSChar where
+  uniformR (CSChar b, CSChar t) = fmap CSChar . uniformR (b, t)
+
+instance Random CUChar
+instance Uniform CUChar where
+  uniform                       = fmap CUChar . uniform
+instance UniformRange CUChar where
+  uniformR (CUChar b, CUChar t) = fmap CUChar . uniformR (b, t)
+
+instance Random CShort
+instance Uniform CShort where
+  uniform                       = fmap CShort . uniform
+instance UniformRange CShort where
+  uniformR (CShort b, CShort t) = fmap CShort . uniformR (b, t)
+
+instance Random CUShort
+instance Uniform CUShort where
+  uniform                         = fmap CUShort . uniform
+instance UniformRange CUShort where
+  uniformR (CUShort b, CUShort t) = fmap CUShort . uniformR (b, t)
+
+instance Random CInt
+instance Uniform CInt where
+  uniform                   = fmap CInt . uniform
+instance UniformRange CInt where
+  uniformR (CInt b, CInt t) = fmap CInt . uniformR (b, t)
+
+instance Random CUInt
+instance Uniform CUInt where
+  uniform                     = fmap CUInt . uniform
+instance UniformRange CUInt where
+  uniformR (CUInt b, CUInt t) = fmap CUInt . uniformR (b, t)
+
+instance Random CLong
+instance Uniform CLong where
+  uniform                     = fmap CLong . uniform
+instance UniformRange CLong where
+  uniformR (CLong b, CLong t) = fmap CLong . uniformR (b, t)
+
+instance Random CULong
+instance Uniform CULong where
+  uniform                       = fmap CULong . uniform
+instance UniformRange CULong where
+  uniformR (CULong b, CULong t) = fmap CULong . uniformR (b, t)
+
+instance Random CPtrdiff
+instance Uniform CPtrdiff where
+  uniform                           = fmap CPtrdiff . uniform
+instance UniformRange CPtrdiff where
+  uniformR (CPtrdiff b, CPtrdiff t) = fmap CPtrdiff . uniformR (b, t)
+
+instance Random CSize
+instance Uniform CSize where
+  uniform                     = fmap CSize . uniform
+instance UniformRange CSize where
+  uniformR (CSize b, CSize t) = fmap CSize . uniformR (b, t)
+
+instance Random CWchar
+instance Uniform CWchar where
+  uniform                       = fmap CWchar . uniform
+instance UniformRange CWchar where
+  uniformR (CWchar b, CWchar t) = fmap CWchar . uniformR (b, t)
+
+instance Random CSigAtomic
+instance Uniform CSigAtomic where
+  uniform                               = fmap CSigAtomic . uniform
+instance UniformRange CSigAtomic where
+  uniformR (CSigAtomic b, CSigAtomic t) = fmap CSigAtomic . uniformR (b, t)
+
+instance Random CLLong
+instance Uniform CLLong where
+  uniform                       = fmap CLLong . uniform
+instance UniformRange CLLong where
+  uniformR (CLLong b, CLLong t) = fmap CLLong . uniformR (b, t)
+
+instance Random CULLong
+instance Uniform CULLong where
+  uniform                         = fmap CULLong . uniform
+instance UniformRange CULLong where
+  uniformR (CULLong b, CULLong t) = fmap CULLong . uniformR (b, t)
+
+instance Random CIntPtr
+instance Uniform CIntPtr where
+  uniform                         = fmap CIntPtr . uniform
+instance UniformRange CIntPtr where
+  uniformR (CIntPtr b, CIntPtr t) = fmap CIntPtr . uniformR (b, t)
+
+instance Random CUIntPtr
+instance Uniform CUIntPtr where
+  uniform                           = fmap CUIntPtr . uniform
+instance UniformRange CUIntPtr where
+  uniformR (CUIntPtr b, CUIntPtr t) = fmap CUIntPtr . uniformR (b, t)
+
+instance Random CIntMax
+instance Uniform CIntMax where
+  uniform                         = fmap CIntMax . uniform
+instance UniformRange CIntMax where
+  uniformR (CIntMax b, CIntMax t) = fmap CIntMax . uniformR (b, t)
+
+instance Random CUIntMax
+instance Uniform CUIntMax where
+  uniform                           = fmap CUIntMax . uniform
+instance UniformRange CUIntMax where
+  uniformR (CUIntMax b, CUIntMax t) = fmap CUIntMax . uniformR (b, t)
+
+instance Random Char
+instance Uniform Char where
+  uniform = uniformR (minBound, maxBound)
+instance UniformRange Char where
+  -- FIXME
 
 instance Random Bool where
-  randomR (a,b) g =
-      case (randomIvalInteger (bool2Int a, bool2Int b) g) of
-        (x, g') -> (int2Bool x, g')
-       where
-         bool2Int :: Bool -> Integer
-         bool2Int False = 0
-         bool2Int True  = 1
-
-         int2Bool :: Int -> Bool
-         int2Bool 0 = False
-         int2Bool _ = True
-
-  random g  = randomR (minBound,maxBound) g
+instance Uniform Bool where
+  uniform = uniformR (minBound, maxBound)
+instance UniformRange Bool where
+  uniformR (a, b) g = int2Bool <$> uniformR (bool2Int a, bool2Int b) g
+    where
+      bool2Int :: Bool -> Int
+      bool2Int False = 0
+      bool2Int True = 1
+      int2Bool :: Int -> Bool
+      int2Bool 0 = False
+      int2Bool _ = True
 
 {-# INLINE randomRFloating #-}
 randomRFloating :: (Fractional a, Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
@@ -720,6 +739,9 @@ randomRFloating (l,h) g
 instance Random Double where
   randomR = randomRFloating
   random = randomDouble
+  randomM = uniformR (0, 1)
+
+instance UniformRange Double
 
 randomDouble :: RandomGen b => b -> (Double, b)
 randomDouble rng =
@@ -736,6 +758,9 @@ randomDouble rng =
 instance Random Float where
   randomR = randomRFloating
   random = randomFloat
+  randomM = uniformR (0, 1)
+
+instance UniformRange Float
 
 randomFloat :: RandomGen b => b -> (Float, b)
 randomFloat rng =
