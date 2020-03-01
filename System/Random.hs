@@ -71,6 +71,7 @@ module System.Random
   , PrimGen
   , runPrimGenST
   , runPrimGenIO
+  , splitPrimGen
   , atomicPrimGen
 
   -- ** The global random number generator
@@ -359,6 +360,17 @@ atomicPrimGen op (PrimGen gVar) =
   atomicModifyMutVar' gVar $ \g ->
     case op g of
       (a, g') -> (g', a)
+
+
+-- | Split `PrimGen` into atomically updated current generator and a newly created that is
+-- returned.
+--
+-- @since 1.2
+splitPrimGen ::
+     (RandomGen g, PrimMonad m)
+  => PrimGen (PrimState m) g
+  -> m (PrimGen (PrimState m) g)
+splitPrimGen = atomicPrimGen split >=> restore
 
 runPrimGenST :: RandomGen g => g -> (forall s . PrimGen s g -> ST s a) -> (a, g)
 runPrimGenST g action = runST $ do
