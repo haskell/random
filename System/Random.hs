@@ -40,9 +40,7 @@
 --   instance of 'Random' allows one to generate random values of type
 --   'Float'.
 --
--- This implementation uses the Portable Combined Generator of L'Ecuyer
--- ["System.Random\#LEcuyer"] for 32-bit computers, transliterated by
--- Lennart Augustsson.  It has a period of roughly 2.30584e18.
+-- This implementation uses the SplitMix algorithm [1].
 --
 -----------------------------------------------------------------------------
 
@@ -111,16 +109,11 @@ import Foreign.Ptr (plusPtr)
 import Foreign.Storable (peekByteOff, pokeByteOff)
 import GHC.ForeignPtr
 
-import Data.Char (chr, isSpace, ord)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, atomicModifyIORef')
-import Data.Ratio (denominator, numerator)
-import Data.Time (UTCTime(..), getCurrentTime)
-import System.CPUTime (getCPUTime)
 import System.IO.Unsafe (unsafePerformIO)
+import qualified System.Random.SplitMix as SM
 
 import GHC.Exts (Ptr(..), build, byteArrayContents#, unsafeCoerce#)
-import Numeric (readDec)
-
 
 mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 {-# INLINE mutableByteArrayContentsCompat #-}
@@ -130,12 +123,6 @@ mutableByteArrayContentsCompat (MutableByteArray arr#)
 #else
 mutableByteArrayContentsCompat = mutableByteArrayContents
 #endif
-
-getTime :: IO (Integer, Integer)
-getTime = do
-  utc <- getCurrentTime
-  let daytime = toRational $ utctDayTime utc
-  return $ quotRem (numerator daytime) (denominator daytime)
 
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
@@ -193,11 +180,7 @@ class RandomGen g where
   genRange _ = (minBound, maxBound)
 
   -- |The 'split' operation allows one to obtain two distinct random number
-  -- generators. This is very useful in functional programs (for example, when
-  -- passing a random number generator down to recursive calls), but very
-  -- little work has been done on statistically robust implementations of
-  -- 'split' (["System.Random\#Burton", "System.Random\#Hellekalek"]
-  -- are the only examples we know of).
+  -- generators.
   split    :: g -> (g, g)
 
 
@@ -343,66 +326,13 @@ runStateTGen_ :: (RandomGen g, Functor f) => g -> StateT g f a -> f a
 runStateTGen_ g = fmap fst . flip runStateT g
 
 
-{- |
-The 'StdGen' instance of 'RandomGen' has a 'genRange' of at least 30 bits.
-
-The result of repeatedly using 'next' should be at least as statistically
-robust as the /Minimal Standard Random Number Generator/ described by
-["System.Random\#Park", "System.Random\#Carta"].
-Until more is known about implementations of 'split', all we require is
-that 'split' deliver generators that are (a) not identical and
-(b) independently robust in the sense just given.
-
-The 'Show' and 'Read' instances of 'StdGen' provide a primitive way to save the
-state of a random number generator.
-It is required that @'read' ('show' g) == g@.
-
-In addition, 'reads' may be used to map an arbitrary string (not necessarily one
-produced by 'show') onto a value of type 'StdGen'. In general, the 'Read'
-instance of 'StdGen' has the following properties:
-
-* It guarantees to succeed on any string.
-
-* It guarantees to consume only a finite portion of the string.
-
-* Different argument strings are likely to result in different results.
-
--}
-
-data StdGen
- = StdGen !Int32 !Int32
+type StdGen = SM.SMGen
 
 instance RandomGen StdGen where
-  next  = stdNext
-  genRange _ = stdRange
-
-  split = stdSplit
-
-instance Show StdGen where
-  showsPrec p (StdGen s1 s2) =
-     showsPrec p s1 .
-     showChar ' ' .
-     showsPrec p s2
-
-instance Read StdGen where
-  readsPrec _p = \ r ->
-     case try_read r of
-       r'@[_] -> r'
-       _      -> [stdFromString r] -- because it shouldn't ever fail.
-    where
-      try_read r = do
-         (s1, r1) <- readDec (dropWhile isSpace r)
-         (s2, r2) <- readDec (dropWhile isSpace r1)
-         return (StdGen s1 s2, r2)
-
-{-
- If we cannot unravel the StdGen from a string, create
- one based on the string given.
--}
-stdFromString         :: String -> (StdGen, String)
-stdFromString s        = (mkStdGen num, rest)
-  where (cs, rest) = splitAt 6 s
-        num        = foldl (\a x -> x + 3 * a) 1 (map ord cs)
+  next = SM.nextInt
+  genWord32 = SM.nextWord32
+  genWord64 = SM.nextWord64
+  split = SM.splitSMGen
 
 
 {- |
@@ -411,24 +341,7 @@ generator, by mapping an 'Int' into a generator. Again, distinct arguments
 should be likely to produce distinct generators.
 -}
 mkStdGen :: Int -> StdGen -- why not Integer ?
-mkStdGen s = mkStdGen32 $ fromIntegral s
-
-{-
-From ["System.Random\#LEcuyer"]: "The integer variables s1 and s2 ... must be
-initialized to values in the range [1, 2147483562] and [1, 2147483398]
-respectively."
--}
-mkStdGen32 :: Int32 -> StdGen
-mkStdGen32 sMaybeNegative = StdGen (s1+1) (s2+1)
-  where
-    -- We want a non-negative number, but we can't just take the abs
-    -- of sMaybeNegative as -minBound == minBound.
-    s       = sMaybeNegative .&. maxBound
-    (q, s1) = s `divMod` 2147483562
-    s2      = q `mod` 2147483398
-
-createStdGen :: Integer -> StdGen
-createStdGen s = mkStdGen32 $ fromIntegral s
+mkStdGen s = SM.mkSMGen $ fromIntegral s
 
 {- |
 With a source of random number supply in hand, the 'Random' class allows the
@@ -792,15 +705,6 @@ randomFloat rng =
 --   -- random rng = case random rng of
 --   --                  (x,rng') -> (realToFrac (x::Double), rng')
 
-mkStdRNG :: Integer -> IO StdGen
-mkStdRNG o = do
-    ct          <- getCPUTime
-    (sec, psec) <- getTime
-    return (createStdGen (sec * 12345 + psec + ct + o))
-
-randomBounded :: (RandomGen g, Random a, Bounded a) => g -> (a, g)
-randomBounded = randomR (minBound, maxBound)
-
 -- The two integer functions below take an [inclusive,inclusive] range.
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
 randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
@@ -831,25 +735,6 @@ randomIvalInteger (l,h) rng
                  | otherwise = v' `seq`f (mag*b) v' g' where
                         (x,g') = next g
                         v' = (v * b + (fromIntegral x - fromIntegral genlo))
-
-
--- The continuous functions on the other hand take an [inclusive,exclusive) range.
-randomFrac :: (RandomGen g, Fractional a) => g -> (a, g)
-randomFrac = randomIvalDouble (0::Double,1) realToFrac
-
-randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
-randomIvalDouble (l,h) fromDouble rng
-  | l > h     = randomIvalDouble (h,l) fromDouble rng
-  | otherwise =
-       case (randomIvalInteger (toInteger (minBound::Int32), toInteger (maxBound::Int32)) rng) of
-         (x, rng') ->
-           let
-             scaled_x =
-               fromDouble (0.5*l + 0.5*h) +                   -- previously (l+h)/2, overflowed
-               fromDouble ((0.5*h - 0.5*l) / (0.5 * realToFrac int32Count)) *  -- avoid overflow
-               fromIntegral (x::Int32)
-           in
-             (scaled_x, rng')
 
 
 bitmaskWithRejection ::
@@ -912,42 +797,6 @@ bitmaskWithRejection32M = bitmaskWithRejectionM uniformWord32
 bitmaskWithRejection64M :: MonadRandom g m => Word64 -> g -> m Word64
 bitmaskWithRejection64M = bitmaskWithRejectionM uniformWord64
 
-int32Count :: Integer
-int32Count = toInteger (maxBound::Int32) - toInteger (minBound::Int32) + 1  -- GHC ticket #3982
-
-stdRange :: (Int,Int)
-stdRange = (1, 2147483562)
-
-stdNext :: StdGen -> (Int, StdGen)
--- Returns values in the range stdRange
-stdNext (StdGen s1 s2) = (fromIntegral z', StdGen s1'' s2'')
-  where z'   = if z < 1 then z + 2147483562 else z
-        z    = s1'' - s2''
-
-        k    = s1 `quot` 53668
-        s1'  = 40014 * (s1 - k * 53668) - k * 12211
-        s1'' = if s1' < 0 then s1' + 2147483563 else s1'
-
-        k'   = s2 `quot` 52774
-        s2'  = 40692 * (s2 - k' * 52774) - k' * 3791
-        s2'' = if s2' < 0 then s2' + 2147483399 else s2'
-
-stdSplit            :: StdGen -> (StdGen, StdGen)
-stdSplit std@(StdGen s1 s2)
-                     = (left, right)
-                       where
-                        -- no statistical foundation for this!
-                        left    = StdGen new_s1 t2
-                        right   = StdGen t1 new_s2
-
-                        new_s1 | s1 == 2147483562 = 1
-                               | otherwise        = s1 + 1
-
-                        new_s2 | s2 == 1          = 2147483398
-                               | otherwise        = s2 - 1
-
-                        StdGen t1 t2 = snd (next std)
-
 -- The global random number generator
 
 {- $globalrng #globalrng#
@@ -968,9 +817,8 @@ getStdGen :: IO StdGen
 getStdGen  = readIORef theStdGen
 
 theStdGen :: IORef StdGen
-theStdGen  = unsafePerformIO $ do
-   rng <- mkStdRNG 0
-   newIORef rng
+theStdGen  = unsafePerformIO $ SM.initSMGen >>= newIORef
+{-# NOINLINE theStdGen #-}
 
 -- |Applies 'split' to the current global random generator,
 -- updates it with one of the results, and returns the other.
@@ -993,22 +841,10 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 
 {- $references
 
-1. FW #Burton# Burton and RL Page, /Distributed random number generation/,
-Journal of Functional Programming, 2(2):203-212, April 1992.
-
-2. SK #Park# Park, and KW Miller, /Random number generators -
-good ones are hard to find/, Comm ACM 31(10), Oct 1988, pp1192-1201.
-
-3. DG #Carta# Carta, /Two fast implementations of the minimal standard
-random number generator/, Comm ACM, 33(1), Jan 1990, pp87-88.
-
-4. P #Hellekalek# Hellekalek, /Don\'t trust parallel Monte Carlo/,
-Department of Mathematics, University of Salzburg,
-<http://random.mat.sbg.ac.at/~peter/pads98.ps>, 1998.
-
-5. Pierre #LEcuyer# L'Ecuyer, /Efficient and portable combined random
-number generators/, Comm ACM, 31(6), Jun 1988, pp742-749.
-
-The Web site <http://random.mat.sbg.ac.at/> is a great source of information.
+1. Guy L. Steele, Jr., Doug Lea, and Christine H. Flood. 2014. Fast splittable
+pseudorandom number generators. In Proceedings of the 2014 ACM International
+Conference on Object Oriented Programming Systems Languages & Applications
+(OOPSLA '14). ACM, New York, NY, USA, 453-472. DOI:
+https://doi.org/10.1145/2660193.2660195
 
 -}

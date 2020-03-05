@@ -33,9 +33,8 @@ Library
     build-depends: base >= 3 && < 5
                  , bytestring
                  , primitive
-                 , time
                  , mtl
-                 , mwc-random
+                 , splitmix
 
 source-repository head
     type:     git
