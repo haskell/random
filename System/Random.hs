@@ -76,6 +76,8 @@ module System.Random
   , newStdGen
 
   -- * Random values of various types
+  , Uniform(..)
+  , UniformRange(..)
   , Random(..)
 
   -- * Generators for sequences of bytes
