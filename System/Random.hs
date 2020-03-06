@@ -11,6 +11,8 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 
+#include "MachDeps.h"
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Random
@@ -238,8 +240,22 @@ class RandomGen g where
   -- |The 'next' operation returns an 'Int' that is uniformly distributed
   -- in the range returned by 'genRange' (including both end points),
   -- and a new generator.
-  next     :: g -> (Int, g)
-  -- `next` can be deprecated over time
+  {-# DEPRECATE next "Use genWord32[R] or genWord64[R]" #-}
+  next :: g -> (Int, g)
+  next g = (minR + fromIntegral w, g') where
+    (minR, maxR) = genRange g
+    range = fromIntegral $ maxR - minR
+    -- https://hackage.haskell.org/package/ghc-prim-0.5.3/docs/GHC-Prim.html#g:1
+    -- GHC always implements Int using the primitive type Int#, whose size
+    -- equals the MachDeps.h constant WORD_SIZE_IN_BITS. [...] Currently GHC
+    -- itself has only 32-bit and 64-bit variants [...].
+#if WORD_SIZE_IN_BITS == 32
+    (w, g') = genWord32R range g
+#elif WORD_SIZE_IN_BITS == 64
+    (w, g') = genWord64R range g
+#else
+# error unsupported WORD_SIZE_IN_BITS
+#endif
 
   genWord8 :: g -> (Word8, g)
   genWord8 = first fromIntegral . genWord32R (fromIntegral (maxBound :: Word8))
