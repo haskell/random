@@ -244,16 +244,16 @@ class RandomGen g where
   next :: g -> (Int, g)
   next g = (minR + fromIntegral w, g') where
     (minR, maxR) = genRange g
-    range = minR `unsignedDiff` maxR
+    range = fromIntegral $ maxR - minR
+    -- https://hackage.haskell.org/package/ghc-prim-0.5.3/docs/GHC-Prim.html#g:1
+    -- GHC always implements Int using the primitive type Int#, whose size
+    -- equals the MachDeps.h constant WORD_SIZE_IN_BITS. [...] Currently GHC
+    -- itself has only 32-bit and 64-bit variants [...].
 #if WORD_SIZE_IN_BITS == 32
     (w, g') = genWord32R range g
 #elif WORD_SIZE_IN_BITS == 64
     (w, g') = genWord64R range g
 #else
--- https://hackage.haskell.org/package/ghc-prim-0.5.3/docs/GHC-Prim.html#g:1
--- GHC always implements Int using the primitive type Int#, whose size equals
--- the MachDeps.h constant WORD_SIZE_IN_BITS. [...] Currently GHC itself has
--- only 32-bit and 64-bit variants [...].
 # error unsupported WORD_SIZE_IN_BITS
 #endif
 
@@ -306,19 +306,6 @@ class RandomGen g where
   -- generators.
   split    :: g -> (g, g)
 
--- | x `unsignedDiff` y is the difference between x and y as an unsigned number.
-unsignedDiff :: Integral a => Int -> Int -> a
-unsignedDiff x y
-  | y < x                                      = unsignedDiff y x
-  | x < 0 && y < 0                             = x' - y'
-  | x < 0 {- && y >= 0 (implied) -}            = x' + y'
-  | otherwise {- x >= 0 && y >= 0 (implied) -} = y' - x'
-  where
-    -- 'fromIntegral' conversion to unsigned type preserves magnitude but not
-    -- sign so x' and y' are implicitly the absolute values of x and y,
-    -- respectively
-    x' = fromIntegral x
-    y' = fromIntegral y
 
 class Monad m => MonadRandom g m where
   type Seed g :: *
