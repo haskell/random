@@ -40,6 +40,72 @@
 --   instance of 'Random' allows one to generate random values of type
 --   'Float'.
 --
+-- [/Example for RNG Implementors:/]
+--
+-- For example, we can define a [linear congruential
+-- generator](https://en.wikipedia.org/wiki/Linear_congruential_generator):
+--
+-- >>> let lcg = (\n -> (n * 1103515245 + 12345) `mod` 2^31) :: Word32 -> Word32
+-- >>> lcg 42
+-- 1250496027
+--
+-- And then make it an instance of `RandomGen`:
+--
+-- >>> data LcgGen = LcgGen Word32
+--
+-- >>> :{
+-- instance RandomGen LcgGen where
+--   next (LcgGen w) = (fromIntegral x, LcgGen x)
+--     where
+--       x = lcg w
+--   split (LcgGen w) = (LcgGen x, LcgGen y)
+--     where
+--       x = lcg w
+--       y = lcg x
+-- :}
+--
+-- >>> :{
+-- let randomListM :: (Random a, MonadRandom g m, Num a, Uniform a) => g -> Int -> m [a]
+--     randomListM gen n = replicateM n (uniform gen)
+-- :}
+--
+-- >>> :{
+-- let rolls :: [Word32]
+--     rolls = runStateGen_
+--               (LcgGen 1729 :: LcgGen)
+--               (randomListM PureGen 10 >>= \xs -> return $ map ((+1) . (`mod` 6)) xs)
+-- :}
+--
+-- >>> rolls
+-- [1,6,5,2,3,2,5,2,3,2]
+--
+-- Importantly, this implementation will not be as efficient as it
+-- could be because the random values are converted to 'Integer' and
+-- then to desired type.
+--
+-- Instead we should define (where @unBuildWord32 :: Word32 ->
+-- (Word16, Word16)@ is a function to pull apart a 'Word32' into a
+-- pair of 'Word16'):
+--
+-- >>> data LcgGen' = LcgGen' Word32
+--
+-- >>> :set -fno-warn-missing-methods
+--
+-- >>> :{
+-- instance RandomGen LcgGen' where
+--   genWord16 (LcgGen' w) = (y, LcgGen' x)
+--     where
+--      x = lcg w
+--      (y, _) = unBuildWord32 x
+--   genWord32 (LcgGen' w) = (x, LcgGen' x)
+--     where
+--       x = lcg w
+--   split (LcgGen' w) = (LcgGen' x, LcgGen' y)
+--     where
+--       x = lcg w
+--       y = lcg x
+-- :}
+--
 -- This implementation uses the SplitMix algorithm [1].
 --
 -----------------------------------------------------------------------------
@@ -134,6 +200,21 @@ import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
 
+-- $setup
+-- >>> import Foreign.Marshal.Alloc (alloca)
+-- >>> import Foreign.Storable (peekByteOff, pokeByteOff)
+-- >>> import System.IO.Unsafe (unsafePerformIO)
+-- >>> :{
+-- unBuildWord32 :: Word32 -> (Word16, Word16)
+-- unBuildWord32 w = unsafePerformIO $ alloca f
+--   where
+--     f :: Ptr Word16 -> IO (Word16, Word16)
+--     f p = do pokeByteOff p 0 w
+--              w0 <- peekByteOff p 0
+--              w1 <- peekByteOff p 1
+--              return (w0, w1)
+-- :}
+
 #if !MIN_VERSION_primitive(0,7,0)
 import Data.Primitive.Types (Addr(..))
 
@@ -149,6 +230,10 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
 --
+-- N.B. Using 'next' is inefficient as all operations go via
+-- 'Integer'. See
+-- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks)
+-- for more details.
 class RandomGen g where
   -- |The 'next' operation returns an 'Int' that is uniformly distributed
   -- in the range returned by 'genRange' (including both end points),
