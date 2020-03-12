@@ -42,29 +42,75 @@
 --   instance of 'Random' allows one to generate random values of type
 --   'Float'.
 --
+-- This implementation uses the SplitMix algorithm [1].
+--
 -- [/Example for RNG Implementors:/]
 --
--- For example, we can define a [linear congruential
--- generator](https://en.wikipedia.org/wiki/Linear_congruential_generator):
+-- Suppose you want to use a [permuted congruential
+-- generator](https://en.wikipedia.org/wiki/Permuted_congruential_generator)
+-- as the source of entropy (FIXME: is that the correct
+-- terminology). You can make it an instance of `RandomGen`:
 --
--- >>> let lcg = (\n -> (n * 1103515245 + 12345) `mod` 2^31) :: Word32 -> Word32
--- >>> lcg 42
--- 1250496027
---
--- And then make it an instance of `RandomGen`:
---
--- >>> data LcgGen = LcgGen Word32
+-- >>> data PCGen = PCGen !Word64 !Word64
 --
 -- >>> :{
--- instance RandomGen LcgGen where
---   next (LcgGen w) = (fromIntegral x, LcgGen x)
---     where
---       x = lcg w
---   split (LcgGen w) = (LcgGen x, LcgGen y)
---     where
---       x = lcg w
---       y = lcg x
+-- let stepGen :: PCGen -> (Word32, PCGen)
+--     stepGen (PCGen state inc) = let
+--       newState = state * 6364136223846793005 + (inc .|. 1)
+--       xorShifted = fromIntegral (((state `shiftR` 18) `xor` state) `shiftR` 27) :: Word32
+--       rot = fromIntegral (state `shiftR` 59) :: Word32
+--       out = (xorShifted `shiftR` (fromIntegral rot)) .|. (xorShifted `shiftL` fromIntegral ((-rot) .&. 31))
+--       in (out, PCGen newState inc)
 -- :}
+--
+-- >>> fst $ stepGen $ snd $ stepGen (PCGen 17 29)
+-- 3288430965
+--
+-- >>> :{
+-- instance RandomGen PCGen where
+--   next g = (fromIntegral y, h)
+--     where
+--       (y, h) = stepGen g
+--   split _ = error "This PRNG is not splittable"
+-- :}
+--
+-- Importantly, this implementation will not be as efficient as it
+-- could be because the random values are converted to 'Integer' and
+-- then to desired type.
+--
+-- Instead we should define (where e.g. @unBuildWord32 :: Word32 ->
+-- (Word16, Word16)@ is a function to pull apart a 'Word32' into a
+-- pair of 'Word16'):
+--
+-- >>> data PCGen' = PCGen' !Word64 !Word64
+--
+-- >>> :set -fno-warn-missing-methods
+--
+-- >>> :{
+-- instance RandomGen PCGen' where
+--   genWord8  (PCGen' s i) = (z, PCGen' s' i')
+--     where
+--       (x, PCGen s' i') = stepGen (PCGen s i)
+--       y = fst $ unBuildWord32 x
+--       z = fst $ unBuildWord16 y
+--   genWord16 (PCGen' s i) = (y, PCGen' s' i')
+--     where
+--       (x, PCGen s' i') = stepGen (PCGen s i)
+--       y = fst $ unBuildWord32 x
+--   genWord32 (PCGen' s i) = (x, PCGen' s' i')
+--     where
+--       (x, PCGen s' i') = stepGen (PCGen s i)
+--   genWord64 (PCGen' s i) = (undefined, PCGen' s i)
+--     where
+--       (x, g)           = stepGen (PCGen s i)
+--       (y, PCGen s' i') = stepGen g
+--   split _ = error "This PRNG is not splittable"
+-- :}
+--
+-- [/Example for RNG Users:/]
+--
+-- Suppose you want to simulate rolls from a dice (yes I know it's a
+-- plural form but it's now common to use it as a singular form):
 --
 -- >>> :{
 -- let randomListM :: (Random a, MonadRandom g m, Num a, Uniform a) => g -> Int -> m [a]
@@ -74,41 +120,15 @@
 -- >>> :{
 -- let rolls :: [Word32]
 --     rolls = runStateGen_
---               (LcgGen 1729 :: LcgGen)
+--               (PCGen 17 29)
 --               (randomListM PureGen 10 >>= \xs -> return $ map ((+1) . (`mod` 6)) xs)
 -- :}
 --
 -- >>> rolls
--- [1,6,5,2,3,2,5,2,3,2]
+-- [1,4,2,4,2,2,3,1,5,1]
 --
--- Importantly, this implementation will not be as efficient as it
--- could be because the random values are converted to 'Integer' and
--- then to desired type.
---
--- Instead we should define (where @unBuildWord32 :: Word32 ->
--- (Word16, Word16)@ is a function to pull apart a 'Word32' into a
--- pair of 'Word16'):
---
--- >>> data LcgGen' = LcgGen' Word32
---
--- >>> :set -fno-warn-missing-methods
---
--- >>> :{
--- instance RandomGen LcgGen' where
---   genWord16 (LcgGen' w) = (y, LcgGen' x)
---     where
---      x = lcg w
---      (y, _) = unBuildWord32 x
---   genWord32 (LcgGen' w) = (x, LcgGen' x)
---     where
---       x = lcg w
---   split (LcgGen' w) = (LcgGen' x, LcgGen' y)
---     where
---       x = lcg w
---       y = lcg x
--- :}
---
--- This implementation uses the SplitMix algorithm [1].
+-- FIXME: What should we say about generating values from types other
+-- than Word8 etc?
 --
 -----------------------------------------------------------------------------
 
@@ -203,18 +223,21 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
 
 -- $setup
--- >>> import Foreign.Marshal.Alloc (alloca)
--- >>> import Foreign.Storable (peekByteOff, pokeByteOff)
--- >>> import System.IO.Unsafe (unsafePerformIO)
 -- >>> :{
 -- unBuildWord32 :: Word32 -> (Word16, Word16)
--- unBuildWord32 w = unsafePerformIO $ alloca f
---   where
---     f :: Ptr Word16 -> IO (Word16, Word16)
---     f p = do pokeByteOff p 0 w
---              w0 <- peekByteOff p 0
---              w1 <- peekByteOff p 1
---              return (w0, w1)
+-- unBuildWord32 w = (fromIntegral (shiftR w 16),
+--                    fromIntegral (fromIntegral (maxBound :: Word16) .&. w))
+-- :}
+--
+-- >>> :{
+-- unBuildWord16 :: Word16 -> (Word8, Word8)
+-- unBuildWord16 w = (fromIntegral (shiftR w 8),
+--                    fromIntegral (fromIntegral (maxBound :: Word8) .&. w))
+-- :}
+--
+-- >>> :{
+-- buildWord64 :: Word32 -> Word32 -> Word64
+-- buildWord64 w0 w1 = ((fromIntegral w1) `shiftL` 32) .|. (fromIntegral w0)
 -- :}
 
 #if !MIN_VERSION_primitive(0,7,0)
@@ -231,16 +254,16 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
---
--- N.B. Using 'next' is inefficient as all operations go via
--- 'Integer'. See
--- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks)
--- for more details.
 {-# DEPRECATED next "Use genWord32[R] or genWord64[R]" #-}
 class RandomGen g where
-  -- |The 'next' operation returns an 'Int' that is uniformly distributed
-  -- in the range returned by 'genRange' (including both end points),
-  -- and a new generator.
+  -- |The 'next' operation returns an 'Int' that is uniformly
+  -- distributed in the range returned by 'genRange' (including both
+  -- end points), and a new generator. Using 'next' is inefficient as
+  -- all operations go via 'Integer'. See
+  -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks)
+  -- for more details. It is thus deprecated. If you need random
+  -- values from other types you will need to construct a suitable
+  -- conversion function.
   next :: g -> (Int, g)
   next g = (minR + fromIntegral w, g') where
     (minR, maxR) = genRange g
@@ -278,7 +301,6 @@ class RandomGen g where
   genByteArray :: Int -> g -> (ByteArray, g)
   genByteArray n g = runPureGenST g $ uniformByteArrayPrim n
   {-# INLINE genByteArray #-}
-
 
   -- |The 'genRange' operation yields the range of values returned by
   -- the generator.
