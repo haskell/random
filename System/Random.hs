@@ -195,6 +195,8 @@ module System.Random
   -- * References
   -- $references
 
+  -- * Internals
+  , bitmaskWithRejection -- FIXME Export this in a better way, e.g. in System.Random.Impl or something like that
   ) where
 
 import Control.Arrow
@@ -255,6 +257,7 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
 {-# DEPRECATED next "Use genWord32[R] or genWord64[R]" #-}
+{-# DEPRECATED genRange "Use genWord32[R] or genWord64[R]" #-}
 class RandomGen g where
   -- |The 'next' operation returns an 'Int' that is uniformly
   -- distributed in the range returned by 'genRange' (including both
@@ -307,7 +310,7 @@ class RandomGen g where
   --
   -- It is required that:
   --
-  -- * If @(a,b) = 'genRange' g@, then @a < b@.
+  -- * If @(a, b) = 'genRange' g@, then @a <= b@.
   --
   -- * 'genRange' always returns a pair of defined 'Int's.
   --
@@ -319,15 +322,12 @@ class RandomGen g where
   -- a different range to the generator passed to 'next'.
   --
   -- The default definition spans the full range of 'Int'.
-  genRange :: g -> (Int,Int)
-
-  -- default method
+  genRange :: g -> (Int, Int)
   genRange _ = (minBound, maxBound)
 
-  -- |The 'split' operation allows one to obtain two distinct random number
+  -- | The 'split' operation allows one to obtain two distinct random number
   -- generators.
-  split    :: g -> (g, g)
-
+  split :: g -> (g, g)
 
 class Monad m => MonadRandom g m where
   type Seed g :: *

@@ -1,3 +1,5 @@
+module Legacy.Random1283 (main) where
+
 import Control.Concurrent
 import Control.Monad hiding (empty)
 import Data.Sequence (ViewL(..), empty, fromList, viewl, (<|), (|>), (><))
