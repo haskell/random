@@ -119,13 +119,11 @@ import Data.ByteString.Builder.Prim (word64LE)
 import Data.ByteString.Builder.Prim.Internal (runF)
 import Data.ByteString.Internal (ByteString(PS))
 import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
-import Data.Char (isSpace, ord)
 import Data.Int
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
 import Data.Primitive.ByteArray
 import Data.Primitive.MutVar
 import Data.Primitive.Types as Primitive (Prim, sizeOf)
-import Data.Ratio (denominator, numerator)
 import Data.Word
 import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
