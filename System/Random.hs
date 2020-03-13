@@ -58,13 +58,21 @@ module System.Random
   , mkStdGen
 
   -- * Stateful interface for pure generators
+  -- ** Based on StateT
+  , PureGen
   , splitGen
   , genRandom
-  , runStateGen
-  , runStateGen_
-  , runStateTGen
-  , runStateTGen_
+  , runGenState
+  , runGenState_
+  , runGenStateT
+  , runGenStateT_
   , runPureGenST
+  -- ** Based on PrimMonad
+  , PrimGen
+  , runPrimGenST
+  , runPrimGenIO
+  , splitPrimGen
+  , atomicPrimGen
 
   -- ** The global random number generator
 
@@ -90,38 +98,38 @@ module System.Random
 
   ) where
 
-import Prelude
-
 import Control.Arrow
+import Control.Monad.IO.Class
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Control.Monad.State.Strict
 import Data.Bits
-import Data.Int
-import Data.Primitive.ByteArray
-import Data.Word
-import Foreign.C.Types
-
 import Data.ByteString.Builder.Prim (word64LE)
 import Data.ByteString.Builder.Prim.Internal (runF)
 import Data.ByteString.Internal (ByteString(PS))
 import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
+import Data.Char (isSpace, ord)
+import Data.Int
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
+import Data.Primitive.ByteArray
+import Data.Primitive.MutVar
+import Data.Ratio (denominator, numerator)
+import Data.Word
+import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (peekByteOff, pokeByteOff)
+import GHC.Exts (Ptr(..), build)
 import GHC.ForeignPtr
-
-import Data.IORef (IORef, newIORef, readIORef, writeIORef, atomicModifyIORef')
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
-
-import GHC.Exts (Ptr(..), build, byteArrayContents#, unsafeCoerce#)
 
 mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 {-# INLINE mutableByteArrayContentsCompat #-}
 #if !MIN_VERSION_primitive(0,7,0)
-mutableByteArrayContentsCompat (MutableByteArray arr#)
-  = Ptr (byteArrayContents# (unsafeCoerce# arr#))
+mutableByteArrayContentsCompat mba =
+  case mutableByteArrayContents mba of
+    Addr addr# -> Ptr addr#
 #else
 mutableByteArrayContentsCompat = mutableByteArrayContents
 #endif
@@ -284,7 +292,7 @@ genByteString n g = runPureGenST g (uniformByteStringPrim n)
 --
 -- @since 1.2
 runPureGenST :: RandomGen g => g -> (forall s . PureGen g -> StateT g (ST s) a) -> (a, g)
-runPureGenST g action = runST $ runStateTGen g $ action PureGen
+runPureGenST g action = runST $ runGenStateT g $ action PureGen
 {-# INLINE runPureGenST #-}
 
 
@@ -315,18 +323,68 @@ genRandom = randomM PureGen
 splitGen :: (MonadState g m, RandomGen g) => m g
 splitGen = state split
 
-runStateGen :: RandomGen g => g -> State g a -> (a, g)
-runStateGen = flip runState
+runGenState :: RandomGen g => g -> State g a -> (a, g)
+runGenState = flip runState
 
-runStateGen_ :: RandomGen g => g -> State g a -> a
-runStateGen_ g = fst . flip runState g
+runGenState_ :: RandomGen g => g -> State g a -> a
+runGenState_ g = fst . flip runState g
 
-runStateTGen :: RandomGen g => g -> StateT g m a -> m (a, g)
-runStateTGen = flip runStateT
+runGenStateT :: RandomGen g => g -> StateT g m a -> m (a, g)
+runGenStateT = flip runStateT
 
-runStateTGen_ :: (RandomGen g, Functor f) => g -> StateT g f a -> f a
-runStateTGen_ g = fmap fst . flip runStateT g
+runGenStateT_ :: (RandomGen g, Functor f) => g -> StateT g f a -> f a
+runGenStateT_ g = fmap fst . flip runStateT g
 
+-- | This is a wrapper wround pure generator that can be used in an effectful environment.
+-- It is safe in presence of concurrency since all operations are performed atomically.
+--
+-- @since 1.2
+newtype PrimGen s g = PrimGen (MutVar s g)
+
+instance (s ~ PrimState m, PrimMonad m, RandomGen g) =>
+         MonadRandom (PrimGen s g) m where
+  type Seed (PrimGen s g) = g
+  restore = fmap PrimGen . newMutVar
+  save (PrimGen gVar) = readMutVar gVar
+  uniformWord32R r = atomicPrimGen (genWord32R r)
+  uniformWord64R r = atomicPrimGen (genWord64R r)
+  uniformWord8 = atomicPrimGen genWord8
+  uniformWord16 = atomicPrimGen genWord16
+  uniformWord32 = atomicPrimGen genWord32
+  uniformWord64 = atomicPrimGen genWord64
+  uniformByteArray n = atomicPrimGen (genByteArray n)
+
+-- | Apply a pure operation to generator atomically.
+atomicPrimGen :: PrimMonad m => (g -> (a, g)) -> PrimGen (PrimState m) g -> m a
+atomicPrimGen op (PrimGen gVar) =
+  atomicModifyMutVar' gVar $ \g ->
+    case op g of
+      (a, g') -> (g', a)
+
+
+-- | Split `PrimGen` into atomically updated current generator and a newly created that is
+-- returned.
+--
+-- @since 1.2
+splitPrimGen ::
+     (RandomGen g, PrimMonad m)
+  => PrimGen (PrimState m) g
+  -> m (PrimGen (PrimState m) g)
+splitPrimGen = atomicPrimGen split >=> restore
+
+runPrimGenST :: RandomGen g => g -> (forall s . PrimGen s g -> ST s a) -> (a, g)
+runPrimGenST g action = runST $ do
+  primGen :: PrimGen s g <- restore g
+  res <- action primGen
+  g' <- save primGen
+  pure (res, g')
+
+runPrimGenIO :: (RandomGen g, MonadIO m) => g -> (PrimGen RealWorld g -> m a) -> m (a, g)
+runPrimGenIO g action = do
+  primGen :: PrimGen s g <- liftIO $ restore g
+  res <- action primGen
+  g' <- liftIO $ save primGen
+  pure (res, g')
 
 type StdGen = SM.SMGen
 
@@ -375,7 +433,7 @@ class Random a where
   {-# INLINE randomR #-}
   randomR :: RandomGen g => (a, a) -> g -> (a, g)
   default randomR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
-  randomR r g = runStateGen g (uniformR r PureGen)
+  randomR r g = runGenState g (uniformR r PureGen)
 
   -- | The same as 'randomR', but using a default range determined by the type:
   --
@@ -388,7 +446,7 @@ class Random a where
   -- * For 'Integer', the range is (arbitrarily) the range of 'Int'.
   {-# INLINE random #-}
   random  :: RandomGen g => g -> (a, g)
-  random g = runStateGen g genRandom
+  random g = runGenState g genRandom
 
   {-# INLINE randomM #-}
   randomM :: MonadRandom g m => g -> m a
@@ -639,7 +697,7 @@ instance UniformRange Bool where
     where
       bool2Int :: Bool -> Int
       bool2Int False = 0
-      bool2Int True = 1
+      bool2Int True  = 1
       int2Bool :: Int -> Bool
       int2Bool 0 = False
       int2Bool _ = True
@@ -782,11 +840,11 @@ bitmaskWithRejectionRM (bottom, top) gen
 {-# INLINE bitmaskWithRejectionRM #-}
 
 bitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g m) => (g -> m a) -> a -> g -> m a
-bitmaskWithRejectionM uniform range gen = go
+bitmaskWithRejectionM genUniform range gen = go
   where
     mask = complement zeroBits `shiftR` countLeadingZeros (range .|. 1)
     go = do
-      x <- uniform gen
+      x <- genUniform gen
       let x' = x .&. mask
       if x' >= range
         then go
