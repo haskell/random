@@ -12,23 +12,21 @@ description:
   This package provides a basic random number generation
   library, including the ability to split random number
   generators.
-
 extra-source-files:
   README.md
   CHANGELOG.md
+build-type: Custom
+cabal-version: >=1.10
 
-
-
-build-type: Simple
--- cabal-version 1.8 needed because "the field 'build-depends: random' refers
--- to a library which is defined within the same package"
-cabal-version: >= 1.8
-
-
+custom-setup
+  setup-depends:
+      base
+    , Cabal
+    , cabal-doctest >=1.0.6
 
 Library
-    exposed-modules:
-        System.Random
+    exposed-modules: System.Random
+    default-language: Haskell2010
     ghc-options: -Wall
     build-depends: base >= 3 && < 5
                  , bytestring
@@ -60,3 +58,12 @@ Test-Suite TestRandomIOs
     hs-source-dirs: tests
     build-depends:  base >= 3 && < 5, random
     ghc-options:    -rtsopts -O2 -with-rtsopts=-M1M
+
+Test-Suite doctests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          doctests.hs
+  build-depends:    base
+                  , doctest >=0.15
+                  , random
+  default-language: Haskell2010
