@@ -10,7 +10,7 @@
 -- $ cabal test TestRandomRs --test-options="+RTS -M1M -RTS"
 -- TestRandomRs: Heap exhausted;
 
-module Main where
+module Legacy.TestRandomRs where
 
 import Control.Monad (liftM, replicateM)
 import System.Random (randomRs, getStdGen)

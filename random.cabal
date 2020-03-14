@@ -1,69 +1,83 @@
-name:		random
-version:	1.2
-
-
-license:	BSD3
-license-file:	LICENSE
-maintainer:	core-libraries-committee@haskell.org
-bug-reports:	https://github.com/haskell/random/issues
-synopsis:	random number library
-category:       System
+cabal-version:      >=1.10
+name:               random
+version:            1.2
+license:            BSD3
+license-file:       LICENSE
+maintainer:         core-libraries-committee@haskell.org
+bug-reports:        https://github.com/haskell/random/issues
+synopsis:           random number library
 description:
-  This package provides a basic random number generation
-  library, including the ability to split random number
-  generators.
+    This package provides a basic random number generation
+    library, including the ability to split random number
+    generators.
+
+category:           System
+build-type:         Custom
 extra-source-files:
-  README.md
-  CHANGELOG.md
-build-type: Custom
-cabal-version: >=1.10
-
-custom-setup
-  setup-depends:
-      base
-    , Cabal
-    , cabal-doctest >=1.0.6
-
-Library
-    exposed-modules: System.Random
-    default-language: Haskell2010
-    ghc-options: -Wall
-    build-depends: base >= 3 && < 5
-                 , bytestring
-                 , primitive
-                 , mtl
-                 , splitmix
+    README.md
+    CHANGELOG.md
 
 source-repository head
     type:     git
     location: http://git.haskell.org/packages/random.git
 
-Test-Suite T7936
-    type:           exitcode-stdio-1.0
-    main-is:        T7936.hs
-    hs-source-dirs: tests
-    build-depends:  base >= 3 && < 5, random
-    ghc-options:    -rtsopts -O2
+custom-setup
+    setup-depends:
+        base -any,
+        Cabal -any,
+        cabal-doctest >=1.0.6
 
-Test-Suite TestRandomRs
-    type:           exitcode-stdio-1.0
-    main-is:        TestRandomRs.hs
-    hs-source-dirs: tests
-    build-depends:  base >= 3 && < 5, random
-    ghc-options:    -rtsopts -O2 -with-rtsopts=-M1M
+library
+    exposed-modules:  System.Random
+    default-language: Haskell2010
+    ghc-options:      -Wall
+    build-depends:
+        base >=3 && <5,
+        bytestring -any,
+        primitive -any,
+        mtl -any,
+        splitmix -any
 
-Test-Suite TestRandomIOs
-    type:           exitcode-stdio-1.0
-    main-is:        TestRandomIOs.hs
-    hs-source-dirs: tests
-    build-depends:  base >= 3 && < 5, random
-    ghc-options:    -rtsopts -O2 -with-rtsopts=-M1M
+test-suite legacy
+    type:             exitcode-stdio-1.0
+    main-is:          Legacy.hs
+    hs-source-dirs:   tests
+    other-modules:
+        Legacy.T7936
+        Legacy.TestRandomIOs
+        Legacy.TestRandomRs
+        Legacy.Random1283
+        Legacy.RangeTest
 
-Test-Suite doctests
-  type:             exitcode-stdio-1.0
-  hs-source-dirs:   tests
-  main-is:          doctests.hs
-  build-depends:    base
-                  , doctest >=0.15
-                  , random
-  default-language: Haskell2010
+    default-language: Haskell2010
+    ghc-options:      -with-rtsopts=-M4M
+    build-depends:
+        base -any,
+        containers -any,
+        random -any
+
+test-suite doctests
+    type:             exitcode-stdio-1.0
+    main-is:          doctests.hs
+    hs-source-dirs:   tests
+    default-language: Haskell2010
+    build-depends:
+        base -any,
+        doctest >=0.15,
+        random -any
+
+test-suite spec
+    type:           exitcode-stdio-1.0
+    main-is:        Spec.hs
+    hs-source-dirs: tests
+    other-modules:
+        Spec.Bitmask
+        Spec.Range
+
+    ghc-options:    -Wall
+    build-depends:
+        base -any,
+        random -any,
+        tasty -any,
+        tasty-smallcheck -any,
+        tasty-expected-failure -any
