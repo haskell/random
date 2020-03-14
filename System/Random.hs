@@ -84,8 +84,6 @@
 --
 -- >>> data PCGen' = PCGen' !Word64 !Word64
 --
--- >>> :set -fno-warn-missing-methods
---
 -- >>> :{
 -- instance RandomGen PCGen' where
 --   genWord8  (PCGen' s i) = (z, PCGen' s' i')
@@ -226,6 +224,8 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
 
 -- $setup
+-- >>> :set -XFlexibleContexts
+-- >>> :set -fno-warn-missing-methods
 -- >>> :{
 -- unBuildWord32 :: Word32 -> (Word16, Word16)
 -- unBuildWord32 w = (fromIntegral (shiftR w 16),
@@ -521,6 +521,15 @@ runPrimGenST g action = runST $ do
 runPrimGenST_ :: RandomGen g => g -> (forall s . PrimGen s g -> ST s a) -> a
 runPrimGenST_ g action = fst $ runPrimGenST g action
 
+-- | Functions like 'runPrimGenIO' are necessary for example if you
+-- wish to write a function like
+--
+-- >>> let ioGen gen = withBinaryFile "foo.txt" WriteMode $ \h -> ((randomM gen) :: IO Word32) >>= (hPutStr h . show)
+--
+-- and then run it
+--
+-- >>> runPrimGenIO_ (mkStdGen 1729) ioGen
+--
 runPrimGenIO :: (RandomGen g, MonadIO m) => g -> (PrimGen RealWorld g -> m a) -> m (a, g)
 runPrimGenIO g action = do
   primGen <- liftIO $ restore g
