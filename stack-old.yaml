@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-15.1
+resolver: lts-11.22
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -34,7 +34,23 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
-extra-deps: []
+extra-deps:
+  # We require a splitmix version that supports the "random" flag. When this
+  # flag is set to false, splitmix does not depend on the random package. We
+  # require the flag to be set to false to avoid a circular dependency:
+  #     random -> splitmix -> random.
+  # The oldest splitmix version to support the "random" flag is 0.0.3. LTS
+  # snapshots prior to lts-14 contain older versions of splitmix. To make sure
+  # the build goes through, we pin the splitmix version here.
+  #
+  # Note that although the resolver defined in this file comes with a splitmix
+  # >= 0.0.3 by default, this stack.yaml is also used in CI, where the resolver
+  # is overridden, making this explicit pinning of splitmix necessary.
+- splitmix-0.0.4@sha256:fb9bb8b54a2e76c8a021fe5c4c3798047e1f60e168379a1f80693047fe00ad0e,4813
+  # Not contained in all snapshots we want to test against
+- doctest-0.16.2@sha256:2f96e9bbe9aee11b47453c82c24b3dc76cdbb8a2a7c984dfd60b4906d08adf68,6942
+- cabal-doctest-1.0.8@sha256:34dff6369d417df2699af4e15f06bc181d495eca9c51efde173deae2053c197c,1491
+- primitive-0.6.4.0@sha256:5b6a2c3cc70a35aabd4565fcb9bb1dd78fe2814a36e62428a9a1aae8c32441a1,2079
 
 # Override default flag values for local packages and extra-deps
 flags:
