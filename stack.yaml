@@ -47,6 +47,8 @@ extra-deps:
   # >= 0.0.3 by default, this stack.yaml is also used in CI, where the resolver
   # is overridden, making this explicit pinning of splitmix necessary.
 - splitmix-0.0.4@sha256:fb9bb8b54a2e76c8a021fe5c4c3798047e1f60e168379a1f80693047fe00ad0e,4813
+  # Not contained in all snapshots we want to test against
+- cabal-doctest-1.0.8@sha256:34dff6369d417df2699af4e15f06bc181d495eca9c51efde173deae2053c197c,1491
 
 # Override default flag values for local packages and extra-deps
 flags:
