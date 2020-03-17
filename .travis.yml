@@ -97,21 +97,21 @@ jobs:
   #  compiler: ": #stack 7.10.3"
   #  addons: {apt: {packages: [libgmp-dev]}}
 
-  #- env: BUILD=stack ARGS="--resolver lts-7"
-  #  compiler: ": #stack 8.0.1"
-  #  addons: {apt: {packages: [libgmp-dev]}}
+  # - env: BUILD=stack ARGS="--resolver lts-7"
+  #   compiler: ": #stack 8.0.1"
+  #   addons: {apt: {packages: [libgmp-dev]}}
 
-  #- env: BUILD=stack ARGS="--resolver lts-9"
-  #  compiler: ": #stack 8.0.2"
-  #  addons: {apt: {packages: [libgmp-dev]}}
+  # - env: BUILD=stack ARGS="--resolver lts-9"
+  #   compiler: ": #stack 8.0.2"
+  #   addons: {apt: {packages: [libgmp-dev]}}
 
-  #- env: BUILD=stack ARGS="--resolver lts-11"
-  #  compiler: ": #stack 8.2.2"
-  #  addons: {apt: {packages: [libgmp-dev]}}
+  - env: BUILD=stack ARGS="--resolver lts-11 --stack-yaml stack-old.yaml"
+    compiler: ": #stack 8.2.2"
+    addons: {apt: {packages: [libgmp-dev]}}
 
-  #- env: BUILD=stack ARGS="--resolver lts-12"
-  #  compiler: ": #stack 8.4.4"
-  #  addons: {apt: {packages: [libgmp-dev]}}
+  - env: BUILD=stack ARGS="--resolver lts-12 --stack-yaml stack-old.yaml"
+    compiler: ": #stack 8.4.4"
+    addons: {apt: {packages: [libgmp-dev]}}
 
   - env: BUILD=stack ARGS="--resolver lts-14"
     compiler: ": #stack 8.6.5"
