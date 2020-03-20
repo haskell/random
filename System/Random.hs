@@ -223,6 +223,18 @@ import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
 
+#if !MIN_VERSION_primitive(0,7,0)
+import Data.Primitive.Types (Addr(..))
+
+mutableByteArrayContentsCompat mba =
+  case mutableByteArrayContents mba of
+    Addr addr# -> Ptr addr#
+#else
+mutableByteArrayContentsCompat = mutableByteArrayContents
+#endif
+mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
+{-# INLINE mutableByteArrayContentsCompat #-}
+
 -- $setup
 -- >>> :set -XFlexibleContexts
 -- >>> :set -fno-warn-missing-methods
@@ -242,18 +254,6 @@ import qualified System.Random.SplitMix as SM
 -- buildWord64 :: Word32 -> Word32 -> Word64
 -- buildWord64 w0 w1 = ((fromIntegral w1) `shiftL` 32) .|. (fromIntegral w0)
 -- :}
-
-#if !MIN_VERSION_primitive(0,7,0)
-import Data.Primitive.Types (Addr(..))
-
-mutableByteArrayContentsCompat mba =
-  case mutableByteArrayContents mba of
-    Addr addr# -> Ptr addr#
-#else
-mutableByteArrayContentsCompat = mutableByteArrayContents
-#endif
-mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
-{-# INLINE mutableByteArrayContentsCompat #-}
 
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
