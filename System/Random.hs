@@ -629,26 +629,27 @@ mkStdGen s = SM.mkSMGen $ fromIntegral s
 
 -- $uniform
 --
--- Type classes 'Uniform' and 'UniformRange' are unrelated type
--- classes. This is deliberate decision because there're types which
--- could have instance for one type class but not the other.
+-- @random@ has two type classes for generation of random numbers:
+-- 'Uniform' and 'UniformRange'. One for generating every possible
+-- value and another for generating every value in range. In other
+-- libraries this functionality frequently bundled into single type
+-- class but here we have two type classes because there're types
+-- which could have instance for one type class but not the other.
 --
 -- For example: 'Integer', 'Float', 'Double' have instance for
 -- @UniformRange@ but there's no way to define @Uniform@.
 --
 -- Conversely there're types where @Uniform@ instance is possible
--- while @UniformRange@ is not. One example is:
---
--- > instance (Uniform a, Uniform b) => Uniform (a,b)
---
--- This instance is very straightforward. @UniformRange@ isn't very
--- sensible even if try to define one compatible with 'Ord' we'll run
--- into problem that we don't know how many values inhabit @b@
--- therefore we don't even know how many values we need to generate.
---
--- Another example is points on sphere cirle. Again @Uniform@ is
--- obvious, while @UniformRange@ is impossible since there isn't even
--- order between values.
+-- while @UniformRange@ is not. One example is tuples: @(a,b)@. While
+-- @Uniform@ instance is straightforward it's not clear how to define
+-- @UniformRange@. We could try to generate values that @a <= x <= b@
+-- But to do that we need to know number of elements of tuple's second
+-- type parameter @b@ which we don't have.
+-- 
+-- Or type could have no order at all. Take for example
+-- angle. Defining @Uniform@ instance is again straghtforward: just
+-- generate value in @[0,2π)@ range. But for any two pair of angles
+-- there're two ranges: clockwise and counterclockwise.
 
 
 -- | Generate every possible value for data type with equal probability.
