@@ -237,6 +237,7 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 {-# INLINE mutableByteArrayContentsCompat #-}
 
 -- $setup
+-- >>> import System.IO (IOMode(WriteMode), hPutStr, withBinaryFile)
 -- >>> :set -XFlexibleContexts
 -- >>> :set -fno-warn-missing-methods
 -- >>> :{
