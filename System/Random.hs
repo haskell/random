@@ -84,8 +84,6 @@
 --
 -- >>> data PCGen' = PCGen' !Word64 !Word64
 --
--- >>> :set -fno-warn-missing-methods
---
 -- >>> :{
 -- instance RandomGen PCGen' where
 --   genWord8  (PCGen' s i) = (z, PCGen' s' i')
@@ -184,6 +182,7 @@ module System.Random
   , newStdGen
 
   -- * Random values of various types
+  -- $uniform
   , Uniform(..)
   , UniformRange(..)
   , Random(..)
@@ -238,6 +237,9 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 {-# INLINE mutableByteArrayContentsCompat #-}
 
 -- $setup
+-- >>> import System.IO (IOMode(WriteMode), hPutStr, withBinaryFile)
+-- >>> :set -XFlexibleContexts
+-- >>> :set -fno-warn-missing-methods
 -- >>> :{
 -- unBuildWord32 :: Word32 -> (Word16, Word16)
 -- unBuildWord32 w = (fromIntegral (shiftR w 16),
@@ -529,6 +531,15 @@ runPrimGenST g action = runST $ do
 runPrimGenST_ :: RandomGen g => g -> (forall s . PrimGen s g -> ST s a) -> a
 runPrimGenST_ g action = fst $ runPrimGenST g action
 
+-- | Functions like 'runPrimGenIO' are necessary for example if you
+-- wish to write a function like
+--
+-- >>> let ioGen gen = withBinaryFile "foo.txt" WriteMode $ \h -> ((randomM gen) :: IO Word32) >>= (hPutStr h . show)
+--
+-- and then run it
+--
+-- >>> runPrimGenIO_ (mkStdGen 1729) ioGen
+--
 runPrimGenIO :: (RandomGen g, MonadIO m) => g -> (PrimGen RealWorld g -> m a) -> m (a, g)
 runPrimGenIO g action = do
   primGen <- liftIO $ thawGen $ PrimGen g
@@ -616,9 +627,45 @@ should be likely to produce distinct generators.
 mkStdGen :: Int -> StdGen
 mkStdGen s = SM.mkSMGen $ fromIntegral s
 
+
+-- $uniform
+--
+-- @random@ has two type classes for generation of random numbers:
+-- 'Uniform' and 'UniformRange'. One for generating every possible
+-- value and another for generating every value in range. In other
+-- libraries this functionality frequently bundled into single type
+-- class but here we have two type classes because there're types
+-- which could have instance for one type class but not the other.
+--
+-- For example: 'Integer', 'Float', 'Double' have instance for
+-- @UniformRange@ but there's no way to define @Uniform@.
+--
+-- Conversely there're types where @Uniform@ instance is possible
+-- while @UniformRange@ is not. One example is tuples: @(a,b)@. While
+-- @Uniform@ instance is straightforward it's not clear how to define
+-- @UniformRange@. We could try to generate values that @a <= x <= b@
+-- But to do that we need to know number of elements of tuple's second
+-- type parameter @b@ which we don't have.
+-- 
+-- Or type could have no order at all. Take for example
+-- angle. Defining @Uniform@ instance is again straghtforward: just
+-- generate value in @[0,2π)@ range. But for any two pair of angles
+-- there're two ranges: clockwise and counterclockwise.
+
+
+-- | Generate every possible value for data type with equal probability.
 class Uniform a where
   uniform :: MonadRandom g m => g -> m a
 
+-- | Generate every value in provided inclusive range with equal
+--   probability. So @uniformR (1,4)@ should generate values from set
+--   @[1,2,3,4]@. Inclusive range is used to allow to express any
+--   interval for fixed-size ints, enumerations etc.
+--
+--   Additionally in order to make function always defined order of
+--   elements in range shouldn't matter and following law should hold:
+--
+-- > uniformR (a,b) = uniform (b,a)
 class UniformRange a where
   uniformR :: MonadRandom g m => (a, a) -> g -> m a
 
@@ -626,6 +673,9 @@ class UniformRange a where
 {- |
 With a source of random number supply in hand, the 'Random' class allows the
 programmer to extract random values of a variety of types.
+
+Minimal complete definition: 'randomR' and 'random'.
+
 -}
 {-# DEPRECATED randomR "In favor of `uniformR`" #-}
 {-# DEPRECATED randomRIO "In favor of `uniformR`" #-}
