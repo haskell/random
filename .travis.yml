@@ -105,20 +105,24 @@ jobs:
   #   compiler: ": #stack 8.0.2"
   #   addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-11 --stack-yaml stack-old.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-old.yaml"
     compiler: ": #stack 8.2.2"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-12 --stack-yaml stack-old.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-old.yaml"
     compiler: ": #stack 8.4.4"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-14"
+  - env: BUILD=stack ARGS="--resolver lts-14.27" COVERALLS_STACK_YAML="stack-coveralls.yaml"
     compiler: ": #stack 8.6.5"
     addons: {apt: {packages: [libgmp-dev]}}
 
   - env: BUILD=stack ARGS="--resolver lts-15"
-    compiler: ": #stack 8.8.2"
+    compiler: ": #stack 8.8.3"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--resolver nightly"
+    compiler: ": #stack"
     addons: {apt: {packages: [libgmp-dev]}}
 
   # Nightly builds are allowed to fail
@@ -215,7 +219,7 @@ install:
       #  stack --no-terminal $ARGS solver --update-config)
 
       # Build the dependencies
-      stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
+      # stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
       ;;
     cabal)
       cabal --version
@@ -236,7 +240,15 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
+      BUILD_ARGS="--bench --no-run-benchmarks --haddock --no-haddock-deps"
+      if [ -n "${COVERALLS_STACK_YAML}" ] && [ -n "${COVERALLS_REPO_TOKEN}" ]; then
+         stack $ARGS --stack-yaml="$COVERALLS_STACK_YAML" test --coverage $BUILD_ARGS
+         stack $ARGS --stack-yaml="$COVERALLS_STACK_YAML" hpc report --all
+         travis_retry curl -L https://github.com/lehins/stack-hpc-coveralls/releases/download/0.0.5.0/shc.tar.gz | tar xz shc
+         STACK_YAML="$COVERALLS_STACK_YAML" ./shc --repo-token=$COVERALLS_REPO_TOKEN combined custom
+      else
+         stack --no-terminal $ARGS test $BUILD_ARGS
+      fi
       ;;
     cabal)
       cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES

@@ -1,6 +1,19 @@
-The Haskell Standard Library -- Random Number Generation
-========================================================
-[![Build Status](https://secure.travis-ci.org/idontgetoutmuch/random.svg?branch=master)](http://travis-ci.org/idontgetoutmuch/random)
+# The Haskell Standard Library
+
+## Random Number Generation
+
+### Status
+
+| Language | Travis | Coveralls |
+|:--------:|:------:|:---------:|
+| ![GitHub top language](https://img.shields.io/github/languages/top/idontgetoutmuch/random.svg) | [![Build Status](https://secure.travis-ci.org/idontgetoutmuch/random.svg?branch=master)](http://travis-ci.org/idontgetoutmuch/random) | [![Coverage Status](https://coveralls.io/repos/github/idontgetoutmuch/random/badge.svg?branch=master)](https://coveralls.io/github/idontgetoutmuch/random?branch=master)
+
+|      Package       | Hackage | Nightly | LTS |
+|:-------------------|:-------:|:-------:|:---:|
+|  [`random`](https://github.com/idontgetoutmuch/random)| [![Hackage](https://img.shields.io/hackage/v/random.svg)](https://hackage.haskell.org/package/random)| [![Nightly](https://www.stackage.org/package/random/badge/nightly)](https://www.stackage.org/nightly/package/random)| [![Nightly](https://www.stackage.org/package/random/badge/lts)](https://www.stackage.org/lts/package/random)
+
+
+### Description
 
 This library provides a basic interface for (splittable) random number generators.
 
