@@ -223,8 +223,6 @@ import GHC.Exts (Ptr(..), build)
 import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
-
-import Data.Char (chr, ord)
 import GHC.Float
 
 #if !MIN_VERSION_primitive(0,7,0)
@@ -1006,10 +1004,12 @@ instance Random Double where
   randomM = uniformR (0, 1)
 
 instance UniformRange Double where
+#if __GLASGOW_HASKELL__ >= 844
   uniformR (l, h) g = do
     w64 <- uniformWord64 g
     let x = castWord64ToDouble $ (w64 `shiftR` 12) .|. 0x3ff0000000000000
     return $ (h - l) * (x - 1.0) + l
+#endif
 
 randomDouble :: RandomGen b => b -> (Double, b)
 randomDouble rng =
@@ -1029,10 +1029,12 @@ instance Random Float where
   randomM = uniformR (0, 1)
 
 instance UniformRange Float where
+#if __GLASGOW_HASKELL__ >= 844
   uniformR (l, h) g = do
     w32 <- uniformWord32 g
     let x = castWord32ToFloat $ (w32 `shiftR` 9) .|. 0x3f800000
     return $ (h - l) * (x - 1.0) + l
+#endif
 
 randomFloat :: RandomGen b => b -> (Float, b)
 randomFloat rng =
