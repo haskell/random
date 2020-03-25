@@ -1004,11 +1004,15 @@ instance Random Double where
   randomM = uniformR (0, 1)
 
 instance UniformRange Double where
-#if __GLASGOW_HASKELL__ >= 844
+#if __GLASGOW_HASKELL__ >= 804
   uniformR (l, h) g = do
     w64 <- uniformWord64 g
     let x = castWord64ToDouble $ (w64 `shiftR` 12) .|. 0x3ff0000000000000
     return $ (h - l) * (x - 1.0) + l
+#else
+  uniformR (l, h) g = do
+  let x = fst $ randomDouble g
+  return $ (h - l) * x + l
 #endif
 
 randomDouble :: RandomGen b => b -> (Double, b)
@@ -1029,11 +1033,15 @@ instance Random Float where
   randomM = uniformR (0, 1)
 
 instance UniformRange Float where
-#if __GLASGOW_HASKELL__ >= 844
+#if __GLASGOW_HASKELL__ >= 804
   uniformR (l, h) g = do
     w32 <- uniformWord32 g
     let x = castWord32ToFloat $ (w32 `shiftR` 9) .|. 0x3f800000
     return $ (h - l) * (x - 1.0) + l
+#else
+  uniformR (l, h) g = do
+  let x = fst $ randomFloat g
+  return $ (h - l) * x + l
 #endif
 
 randomFloat :: RandomGen b => b -> (Float, b)
