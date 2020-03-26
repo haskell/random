@@ -19,4 +19,4 @@ singleton g x = result == x
     result = fst (bitmaskWithRejection (x, x) g)
 
 uniformBounded :: (RandomGen g, UniformRange a, Ord a) => g -> (a, a) -> Bool
-uniformBounded g (l, r) = runGenState_ g (\g -> (uniformR (l, r) g >>= \result -> return ((min l r) <= result)))
+uniformBounded g (l, r) = runGenState_ g (\g -> (uniformR (l, r) g >>= \result -> return ((min l r) <= result && result <= (max l r))))

@@ -1007,13 +1007,22 @@ instance UniformRange Double where
 #if __GLASGOW_HASKELL__ >= 804
   uniformR (l, h) g = do
     w64 <- uniformWord64 g
-    let x = castWord64ToDouble $ (w64 `shiftR` 12) .|. 0x3ff0000000000000
+    let x = castWord64ToDouble $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
     return $ (h - l) * (x - 1.0) + l
 #else
   uniformR (l, h) g = do
-  let x = fst $ randomDouble g
-  return $ (h - l) * x + l
+    x <- uniformDouble g
+    return $ (h - l) * x + l
 #endif
+
+-- A copy of 'randomDouble' required for old versions of GHC
+uniformDouble :: MonadRandom g m => g -> m Double
+uniformDouble g = do
+  w64 <- uniformWord64 g
+  return $ fromIntegral (mask53 .&. w64) /  fromIntegral twoto53
+  where
+    twoto53 = (2::Word64) ^ (53::Word64)
+    mask53 = twoto53 - 1
 
 randomDouble :: RandomGen b => b -> (Double, b)
 randomDouble rng =
@@ -1036,13 +1045,22 @@ instance UniformRange Float where
 #if __GLASGOW_HASKELL__ >= 804
   uniformR (l, h) g = do
     w32 <- uniformWord32 g
-    let x = castWord32ToFloat $ (w32 `shiftR` 9) .|. 0x3f800000
+    let x = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
     return $ (h - l) * (x - 1.0) + l
 #else
   uniformR (l, h) g = do
-  let x = fst $ randomFloat g
-  return $ (h - l) * x + l
+    x <- uniformFloat g
+    return $ (h - l) * x + l
 #endif
+
+-- A copy of 'randomFloat' required for old versions of GHC
+uniformFloat :: MonadRandom g m => g -> m Float
+uniformFloat g = do
+  w32 <- uniformWord32 g
+  return $ fromIntegral (mask24 .&. w32) /  fromIntegral twoto24
+   where
+     mask24 = twoto24 - 1
+     twoto24 = (2::Word32) ^ (24::Word32)
 
 randomFloat :: RandomGen b => b -> (Float, b)
 randomFloat rng =

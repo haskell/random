@@ -14,7 +14,7 @@ import qualified Spec.Bitmask as Range
 main :: IO ()
 main = defaultMain $ testGroup "Spec"
     [ bitmaskSpecWord32, bitmaskSpecWord64
-    , rangeSpecWord32, rangeSpecDouble, rangeSpecInt
+    , rangeSpecWord32, rangeSpecDouble, rangeSpecFloat, rangeSpecInt
     ]
 
 bitmaskSpecWord32 :: TestTree
@@ -39,8 +39,13 @@ rangeSpecWord32 = testGroup "uniformR (Word32)"
     ]
 
 rangeSpecDouble :: TestTree
-rangeSpecDouble = testGroup "uniformR (Word32)"
+rangeSpecDouble = testGroup "uniformR (Double)"
     [ SC.testProperty "(Double) uniform bounded" $ seeded $ Range.uniformBounded @StdGen @Double
+    ]
+
+rangeSpecFloat :: TestTree
+rangeSpecFloat = testGroup "uniformR (Float)"
+    [ SC.testProperty "(Float) uniform bounded" $ seeded $ Range.uniformBounded @StdGen @Float
     ]
 
 rangeSpecInt :: TestTree
