@@ -1004,25 +1004,25 @@ instance Random Double where
   randomM = uniformR (0, 1)
 
 instance UniformRange Double where
-#if __GLASGOW_HASKELL__ >= 804
   uniformR (l, h) g = do
     w64 <- uniformWord64 g
-    let x = castWord64ToDouble $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
-    return $ (h - l) * (x - 1.0) + l
-#else
-  uniformR (l, h) g = do
-    x <- uniformDouble g
+    let x = word64ToDoubleInUnitInterval w64
     return $ (h - l) * x + l
-#endif
 
--- A copy of 'randomDouble' required for old versions of GHC
-uniformDouble :: MonadRandom g m => g -> m Double
-uniformDouble g = do
-  w64 <- uniformWord64 g
-  return $ fromIntegral (mask53 .&. w64) /  fromIntegral twoto53
+-- | Turns a given uniformly distributed 'Word64' value into a uniformly
+-- distributed 'Double' value.
+word64ToDoubleInUnitInterval :: Word64 -> Double
+#if __GLASGOW_HASKELL__ >= 804
+word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
+  where
+    between1and2 = castWord64ToDouble $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
+#else
+word64ToDoubleInUnitInterval w64 = fromIntegral (mask53 .&. w64) /  fromIntegral twoto53
   where
     twoto53 = (2::Word64) ^ (53::Word64)
     mask53 = twoto53 - 1
+#endif
+{-# INLINE word64ToDoubleInUnitInterval #-}
 
 randomDouble :: RandomGen b => b -> (Double, b)
 randomDouble rng =
@@ -1042,25 +1042,25 @@ instance Random Float where
   randomM = uniformR (0, 1)
 
 instance UniformRange Float where
-#if __GLASGOW_HASKELL__ >= 804
   uniformR (l, h) g = do
     w32 <- uniformWord32 g
-    let x = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
-    return $ (h - l) * (x - 1.0) + l
-#else
-  uniformR (l, h) g = do
-    x <- uniformFloat g
+    let x = word32ToFloatInUnitInterval w32
     return $ (h - l) * x + l
-#endif
 
--- A copy of 'randomFloat' required for old versions of GHC
-uniformFloat :: MonadRandom g m => g -> m Float
-uniformFloat g = do
-  w32 <- uniformWord32 g
-  return $ fromIntegral (mask24 .&. w32) /  fromIntegral twoto24
-   where
-     mask24 = twoto24 - 1
-     twoto24 = (2::Word32) ^ (24::Word32)
+-- | Turns a given uniformly distributed 'Word32' value into a uniformly
+-- distributed 'Float' value.
+word32ToFloatInUnitInterval :: Word32 -> Float
+#if __GLASGOW_HASKELL__ >= 804
+word32ToFloatInUnitInterval w32 = between1and2 - 1.0
+  where
+    between1and2 = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
+#else
+word32ToFloatInUnitInterval w32 = fromIntegral (mask24 .&. w32) /  fromIntegral twoto24
+  where
+    mask24 = twoto24 - 1
+    twoto24 = (2::Word32) ^ (24::Word32)
+#endif
+{-# INLINE word32ToFloatInUnitInterval #-}
 
 randomFloat :: RandomGen b => b -> (Float, b)
 randomFloat rng =
