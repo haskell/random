@@ -4,17 +4,20 @@ module Main (main) where
 
 import Data.Word (Word32, Word64)
 import System.Random
+import Test.SmallCheck (monadic)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFail)
 import Test.Tasty.SmallCheck as SC
 
 import qualified Spec.Bitmask as Bitmask
 import qualified Spec.Bitmask as Range
+import qualified Spec.Run as Run
 
 main :: IO ()
 main = defaultMain $ testGroup "Spec"
     [ bitmaskSpecWord32, bitmaskSpecWord64
     , rangeSpecWord32, rangeSpecInt
+    , runSpec
     ]
 
 bitmaskSpecWord32 :: TestTree
@@ -44,6 +47,10 @@ rangeSpecInt = testGroup "uniformR (Int)"
     , expectFail $ SC.testProperty "(Int) bounded" $ seeded $ Range.bounded @StdGen @Int
     , SC.testProperty "(Int) singleton" $ seeded $ Range.singleton @StdGen @Int
     ]
+
+runSpec :: TestTree
+runSpec = testGroup "runGenState_ and runPrimGenIO_"
+    [ SC.testProperty "equal outputs" $ seeded $ \g -> monadic $ Run.runsEqual g ]
 
 -- | Create a StdGen instance from an Int and pass it to the given function.
 seeded :: (StdGen -> a) -> Int -> a
