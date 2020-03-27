@@ -1003,7 +1003,9 @@ word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
 {-# INLINE word64ToDoubleInUnitInterval #-}
 
 -- | These are now in 'GHC.Float' but unpatched in some versions so
--- for now we roll our own.
+-- for now we roll our own. See
+-- https://gitlab.haskell.org/ghc/ghc/-/blob/master/libraries/base/GHC/Float.hs
+-- (4bada77d58).
 {-# INLINE castWord32ToFloat #-}
 castWord32ToFloat :: Word32 -> Float
 castWord32ToFloat (W32# w#) = F# (stgWord32ToFloat w#)

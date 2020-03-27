@@ -1,3 +1,4 @@
+/* This comes as part of your Haskell installation */
 #include "Cmm.h"
 #include "MachDeps.h"
 
