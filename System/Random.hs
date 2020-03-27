@@ -262,6 +262,7 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 {-# DEPRECATED next "Use genWord32[R] or genWord64[R]" #-}
 {-# DEPRECATED genRange "Use genWord32[R] or genWord64[R]" #-}
 class RandomGen g where
+  {-# MINIMAL (next,genRange)|((genWord32|genWord32R),(genWord64|genWord64R)) #-}
   -- |The 'next' operation returns an 'Int' that is uniformly
   -- distributed in the range returned by 'genRange' (including both
   -- end points), and a new generator. Using 'next' is inefficient as
