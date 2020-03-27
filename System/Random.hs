@@ -218,8 +218,6 @@ import GHC.Exts (Ptr(..))
 import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
-import GHC.Float
-
 import Data.Bits
 import GHC.Base
 import GHC.Word
@@ -1000,33 +998,29 @@ instance UniformRange Double where
 -- | Turns a given uniformly distributed 'Word64' value into a uniformly
 -- distributed 'Double' value.
 word64ToDoubleInUnitInterval :: Word64 -> Double
-#if __GLASGOW_HASKELL__ >= 804
 word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
   where
     between1and2 = castWord64ToDouble $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
-#else
-word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
-  where
-    between1and2 = castWord64ToDouble' $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
-#endif
 {-# INLINE word64ToDoubleInUnitInterval #-}
 
-{-# INLINE castWord32ToFloat' #-}
-castWord32ToFloat' :: Word32 -> Float
-castWord32ToFloat' (W32# w#) = F# (stgWord32ToFloat' w#)
+-- | These are now in 'GHC.Float' but unpatched in some versions so
+-- for now we roll our own.
+{-# INLINE castWord32ToFloat #-}
+castWord32ToFloat :: Word32 -> Float
+castWord32ToFloat (W32# w#) = F# (stgWord32ToFloat w#)
 
 foreign import prim "stg_word32ToFloatyg"
-    stgWord32ToFloat' :: Word# -> Float#
+    stgWord32ToFloat :: Word# -> Float#
 
-{-# INLINE castWord64ToDouble' #-}
-castWord64ToDouble' :: Word64 -> Double
-castWord64ToDouble' (W64# w) = D# (stgWord64ToDouble' w)
+{-# INLINE castWord64ToDouble #-}
+castWord64ToDouble :: Word64 -> Double
+castWord64ToDouble (W64# w) = D# (stgWord64ToDouble w)
 
 foreign import prim "stg_word64ToDoubleyg"
 #if WORD_SIZE_IN_BITS == 64
-    stgWord64ToDouble' :: Word# -> Double#
+    stgWord64ToDouble :: Word# -> Double#
 #else
-    stgWord64ToDouble' :: Word64# -> Double#
+    stgWord64ToDouble :: Word64# -> Double#
 #endif
 
 randomDouble :: RandomGen b => b -> (Double, b)
@@ -1055,15 +1049,9 @@ instance UniformRange Float where
 -- | Turns a given uniformly distributed 'Word32' value into a uniformly
 -- distributed 'Float' value.
 word32ToFloatInUnitInterval :: Word32 -> Float
-#if __GLASGOW_HASKELL__ >= 804
 word32ToFloatInUnitInterval w32 = between1and2 - 1.0
   where
     between1and2 = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
-#else
-word32ToFloatInUnitInterval w32 = between1and2 - 1.0
-  where
-    between1and2 = castWord32ToFloat' $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
-#endif
 {-# INLINE word32ToFloatInUnitInterval #-}
 
 randomFloat :: RandomGen b => b -> (Float, b)
