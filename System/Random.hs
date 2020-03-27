@@ -218,7 +218,6 @@ import GHC.Exts (Ptr(..))
 import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
-import Data.Bits
 import GHC.Base
 import GHC.Word
 
@@ -996,7 +995,7 @@ instance UniformRange Double where
     return $ (h - l) * x + l
 
 -- | Turns a given uniformly distributed 'Word64' value into a uniformly
--- distributed 'Double' value.
+-- distributed 'Double' value in the range [0, 1).
 word64ToDoubleInUnitInterval :: Word64 -> Double
 word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
   where
@@ -1047,7 +1046,7 @@ instance UniformRange Float where
     return $ (h - l) * x + l
 
 -- | Turns a given uniformly distributed 'Word32' value into a uniformly
--- distributed 'Float' value.
+-- distributed 'Float' value in the range [0,1).
 word32ToFloatInUnitInterval :: Word32 -> Float
 word32ToFloatInUnitInterval w32 = between1and2 - 1.0
   where
