@@ -1,4 +1,4 @@
-/* This comes as part of your Haskell installation */
+/* From: https://gitlab.haskell.org/ghc/ghc/-/blob/6d172e63f3dd3590b0a57371efb8f924f1fcdf05/libraries/base/cbits/CastFloatWord.cmm */
 #include "Cmm.h"
 #include "MachDeps.h"
 
@@ -29,21 +29,6 @@ stg_word64ToDoubleyg(I64 w)
     return (d);
 }
 
-stg_doubleToWord64yg(D_ d)
-{
-    I64 w;
-    P_ ptr;
-
-    STK_CHK_GEN_N (DOUBLE_SIZE_WDS);
-
-    reserve DOUBLE_SIZE_WDS = ptr {
-        D_[ptr] = d;
-        w = I64[ptr];
-    }
-
-    return (w);
-}
-
 stg_word32ToFloatyg(W_ w)
 {
     F_ f;
@@ -57,21 +42,5 @@ stg_word32ToFloatyg(W_ w)
     }
 
     return (f);
-}
-
-stg_floatToWord32yg(F_ f)
-{
-    W_ w;
-    P_ ptr;
-
-    STK_CHK_GEN_N (1);
-
-    reserve 1 = ptr {
-        F_[ptr] = f;
-        // Fix #16617: use zero-extending (TO_ZXW_) here
-        w = TO_ZXW_(I32[ptr]);
-    }
-
-    return (w);
 }
 
