@@ -521,7 +521,7 @@ runPrimGenST_ g action = fst $ runPrimGenST g action
 -- | Functions like 'runPrimGenIO' are necessary for example if you
 -- wish to write a function like
 --
--- >>> let ioGen gen = withBinaryFile "foo.txt" WriteMode $ \h -> ((randomM gen) :: IO Word32) >>= (hPutStr h . show)
+-- >>> let ioGen gen = withBinaryFile "foo.txt" WriteMode $ \h -> ((uniform gen) :: IO Word32) >>= (hPutStr h . show)
 --
 -- and then run it
 --
