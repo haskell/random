@@ -7,6 +7,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GHCForeignImportPrim #-}
+{-# LANGUAGE UnliftedFFITypes #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
@@ -219,11 +221,16 @@ import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (peekByteOff, pokeByteOff)
-import GHC.Exts (Ptr(..), build)
+import GHC.Exts (Ptr(..))
 import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
 import GHC.Float
+
+import Data.Bits
+import GHC.Base
+import GHC.Word
+
 
 #if !MIN_VERSION_primitive(0,7,0)
 import Data.Primitive.Types (Addr(..))
@@ -1017,12 +1024,29 @@ word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
   where
     between1and2 = castWord64ToDouble $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
 #else
-word64ToDoubleInUnitInterval w64 = fromIntegral (mask53 .&. w64) /  fromIntegral twoto53
+word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
   where
-    twoto53 = (2::Word64) ^ (53::Word64)
-    mask53 = twoto53 - 1
+    between1and2 = castWord64ToDouble' $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
 #endif
 {-# INLINE word64ToDoubleInUnitInterval #-}
+
+{-# INLINE castWord32ToFloat' #-}
+castWord32ToFloat' :: Word32 -> Float
+castWord32ToFloat' (W32# w#) = F# (stgWord32ToFloat' w#)
+
+foreign import prim "stg_word32ToFloatyg"
+    stgWord32ToFloat' :: Word# -> Float#
+
+{-# INLINE castWord64ToDouble' #-}
+castWord64ToDouble' :: Word64 -> Double
+castWord64ToDouble' (W64# w) = D# (stgWord64ToDouble' w)
+
+foreign import prim "stg_word64ToDoubleyg"
+#if WORD_SIZE_IN_BITS == 64
+    stgWord64ToDouble' :: Word# -> Double#
+#else
+    stgWord64ToDouble' :: Word64# -> Double#
+#endif
 
 randomDouble :: RandomGen b => b -> (Double, b)
 randomDouble rng =
@@ -1055,10 +1079,9 @@ word32ToFloatInUnitInterval w32 = between1and2 - 1.0
   where
     between1and2 = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
 #else
-word32ToFloatInUnitInterval w32 = fromIntegral (mask24 .&. w32) /  fromIntegral twoto24
+word32ToFloatInUnitInterval w32 = between1and2 - 1.0
   where
-    mask24 = twoto24 - 1
-    twoto24 = (2::Word32) ^ (24::Word32)
+    between1and2 = castWord32ToFloat' $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
 #endif
 {-# INLINE word32ToFloatInUnitInterval #-}
 
