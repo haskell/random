@@ -57,15 +57,15 @@ test-suite legacy
         containers -any,
         random -any
 
--- test-suite doctests
---     type:             exitcode-stdio-1.0
---     main-is:          doctests.hs
---     hs-source-dirs:   tests
---     default-language: Haskell2010
---     build-depends:
---         base -any,
---         doctest >=0.15,
---         random -any
+test-suite doctests
+    type:             exitcode-stdio-1.0
+    main-is:          doctests.hs
+    hs-source-dirs:   tests
+    default-language: Haskell2010
+    build-depends:
+        base -any,
+        doctest >=0.15,
+        random -any
 
 test-suite spec
     type:           exitcode-stdio-1.0
