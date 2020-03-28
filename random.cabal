@@ -74,11 +74,13 @@ test-suite spec
     other-modules:
         Spec.Bitmask
         Spec.Range
+        Spec.Run
 
     ghc-options:    -Wall
     build-depends:
         base -any,
         random -any,
+        smallcheck -any,
         tasty -any,
         tasty-smallcheck -any,
         tasty-expected-failure -any
