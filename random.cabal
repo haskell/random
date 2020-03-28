@@ -37,6 +37,7 @@ library
         primitive >= 0.6.4.0 && <8,
         mtl -any,
         splitmix -any
+    c-sources: cbits/CastFloatWord.cmm
 
 test-suite legacy
     type:             exitcode-stdio-1.0
