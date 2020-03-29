@@ -134,6 +134,7 @@ module System.Random
 
     RandomGen(..)
   , MonadRandom(..)
+  , Frozen(..)
   , withGenM
   -- ** Standard random number generators
   , StdGen
