@@ -8,5 +8,5 @@ import System.Random
 runsEqual :: RandomGen g => g -> IO Bool
 runsEqual g = do
     let (pureResult :: Word64) = runGenState_ g uniform
-    (genResult :: Word64) <- runPrimGenIO_ g uniform
+    (genResult :: Word64) <- runMutGenIO_ g uniform
     return $ pureResult == genResult
