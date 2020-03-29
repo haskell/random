@@ -48,10 +48,8 @@
 --
 -- [/Example for RNG Implementors:/]
 --
--- Suppose you want to use a [permuted congruential
--- generator](https://en.wikipedia.org/wiki/Permuted_congruential_generator)
--- as the source of entropy (FIXME: is that the correct
--- terminology). You can make it an instance of `RandomGen`:
+-- Suppose you want to implement a [permuted congruential
+-- generator](https://en.wikipedia.org/wiki/Permuted_congruential_generator).
 --
 -- >>> data PCGen = PCGen !Word64 !Word64
 --
@@ -68,57 +66,28 @@
 -- >>> fst $ stepGen $ snd $ stepGen (PCGen 17 29)
 -- 3288430965
 --
+-- Once implemented it can made an instance of `RandomGen`:
+--
 -- >>> :{
 -- instance RandomGen PCGen where
---   next g = (fromIntegral y, h)
---     where
---       (y, h) = stepGen g
+--   genWord32 = stepGen
 --   split _ = error "This PRNG is not splittable"
--- :}
---
--- Importantly, this implementation will not be as efficient as it
--- could be because the random values are converted to 'Integer' and
--- then to desired type.
---
--- Instead we should define (where e.g. @unBuildWord32 :: Word32 ->
--- (Word16, Word16)@ is a function to pull apart a 'Word32' into a
--- pair of 'Word16'):
---
--- >>> newtype PCGen' = PCGen' { unPCGen :: PCGen }
---
--- >>> let stepGen' = second PCGen' . stepGen . unPCGen
---
--- >>> :{
--- instance RandomGen PCGen' where
---   genWord8 = first fromIntegral . stepGen'
---   genWord16 = first fromIntegral . stepGen'
---   genWord32 = stepGen'
---   genWord64 g = (buildWord64 x y, g'')
---       where
---       (x, g') = stepGen' g
---       (y, g'') = stepGen' g'
---       buildWord64 w0 w1 = ((fromIntegral w1) `shiftL` 32) .|. (fromIntegral w0)
 -- :}
 --
 -- [/Example for RNG Users:/]
 --
--- Suppose you want to simulate rolls from a dice (yes I know it's a
+-- Suppose you want to simulate a number of rolls from a dice (yes I know it's a
 -- plural form but it's now common to use it as a singular form):
 --
 -- >>> :{
--- let randomListM :: (MonadRandom g m, Num a, Uniform a) => g -> Int -> m [a]
---     randomListM gen n = replicateM n (uniform gen)
--- :}
---
--- >>> :{
--- let rolls :: [Word32]
---     rolls = runGenState_
+-- let rolls :: Int -> [Word]
+--     rolls n = runGenState_
 --               (PCGen 17 29)
---               (\g -> randomListM g 10 >>= \xs -> return $ map ((+1) . (`mod` 6)) xs)
+--               (\g -> replicateM n (uniformR (1, 6) g))
 -- :}
 --
--- >>> rolls
--- [1,4,2,4,2,2,3,1,5,1]
+-- >>> rolls 20
+-- [1,1,5,3,3,3,2,4,3,2,3,3,4,5,1,1,5,1,2,4]
 --
 -- FIXME: What should we say about generating values from types other
 -- than Word8 etc?
@@ -180,6 +149,7 @@ module System.Random
   -- * Random values of various types
   -- $uniform
   , Uniform(..)
+  , uniformListM
   , UniformRange(..)
   , Random(..)
 
@@ -246,56 +216,48 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
-{-# DEPRECATED next "Use genWord32[R] or genWord64[R]" #-}
-{-# DEPRECATED genRange "Use genWord32[R] or genWord64[R]" #-}
+{-# DEPRECATED next "No longer used" #-}
+{-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
-  {-# MINIMAL (next,genRange)|((genWord32|genWord32R),(genWord64|genWord64R)) #-}
+  {-# MINIMAL split,(genWord32|genWord64|(next,genRange)) #-}
   -- |The 'next' operation returns an 'Int' that is uniformly
   -- distributed in the range returned by 'genRange' (including both
   -- end points), and a new generator. Using 'next' is inefficient as
   -- all operations go via 'Integer'. See
   -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks)
-  -- for more details. It is thus deprecated. If you need random
-  -- values from other types you will need to construct a suitable
-  -- conversion function.
+  -- for more details. It is thus deprecated.
   next :: g -> (Int, g)
-  next g = (minR + fromIntegral w, g') where
-    (minR, maxR) = genRange g
-    range = fromIntegral $ maxR - minR
-#if WORD_SIZE_IN_BITS == 32
-    (w, g') = genWord32R range g
-#elif WORD_SIZE_IN_BITS == 64
-    (w, g') = genWord64R range g
-#else
--- https://hackage.haskell.org/package/ghc-prim-0.5.3/docs/GHC-Prim.html#g:1
--- GHC always implements Int using the primitive type Int#, whose size equals
--- the MachDeps.h constant WORD_SIZE_IN_BITS. [...] Currently GHC itself has
--- only 32-bit and 64-bit variants [...].
-# error unsupported WORD_SIZE_IN_BITS
-#endif
+  next g = runGenState g (uniformR (genRange g))
 
   genWord8 :: g -> (Word8, g)
-  genWord8 = first fromIntegral . genWord32R (fromIntegral (maxBound :: Word8))
+  genWord8 = first fromIntegral . genWord32
 
   genWord16 :: g -> (Word16, g)
-  genWord16 = first fromIntegral . genWord32R (fromIntegral (maxBound :: Word16))
+  genWord16 = first fromIntegral . genWord32
 
   genWord32 :: g -> (Word32, g)
-  genWord32 = genWord32R maxBound
+  genWord32 = randomIvalIntegral (minBound, maxBound)
+  -- Once `next` is removed, this implementation should be used instead:
+  -- first fromIntegral . genWord64
 
   genWord64 :: g -> (Word64, g)
-  genWord64 = genWord64R maxBound
+  genWord64 g =
+    case genWord32 g of
+      (l32, g') ->
+        case genWord32 g' of
+          (h32, g'') ->
+            ((fromIntegral h32 `unsafeShiftL` 32) .|. fromIntegral l32, g'')
 
   genWord32R :: Word32 -> g -> (Word32, g)
-  genWord32R m = randomIvalIntegral (minBound, m)
+  genWord32R m g = runGenState g (bitmaskWithRejectionM uniformWord32 m)
 
   genWord64R :: Word64 -> g -> (Word64, g)
-  genWord64R m = randomIvalIntegral (minBound, m)
+  genWord64R m g = runGenState g (bitmaskWithRejectionM uniformWord64 m)
 
   genByteArray :: Int -> g -> (ByteArray, g)
   genByteArray n g = runPureGenST g $ uniformByteArrayPrim n
-  {-# INLINE genByteArray #-}
 
+  {-# INLINE genByteArray #-}
   -- |The 'genRange' operation yields the range of values returned by
   -- the generator.
   --
@@ -322,7 +284,7 @@ class RandomGen g where
 
 class Monad m => MonadRandom g m where
   data Frozen g :: *
-  {-# MINIMAL freezeGen,thawGen,(uniformWord32R|uniformWord32),(uniformWord64R|uniformWord64) #-}
+  {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
   thawGen :: Frozen g -> m g
   freezeGen :: g -> m (Frozen g)
@@ -334,13 +296,16 @@ class Monad m => MonadRandom g m where
   uniformWord64R = bitmaskWithRejection64M
 
   uniformWord8 :: g -> m Word8
-  uniformWord8 = fmap fromIntegral . uniformWord32R (fromIntegral (maxBound :: Word8))
+  uniformWord8 = fmap fromIntegral . uniformWord32
   uniformWord16 :: g -> m Word16
-  uniformWord16 = fmap fromIntegral . uniformWord32R (fromIntegral (maxBound :: Word16))
+  uniformWord16 = fmap fromIntegral . uniformWord32
   uniformWord32 :: g -> m Word32
-  uniformWord32 = uniformWord32R maxBound
+  uniformWord32 = fmap fromIntegral . uniformWord64
   uniformWord64 :: g -> m Word64
-  uniformWord64 = uniformWord64R maxBound
+  uniformWord64 g = do
+    l32 <- uniformWord32 g
+    h32 <- uniformWord32 g
+    pure (unsafeShiftL (fromIntegral h32) 32 .|. fromIntegral l32)
   uniformByteArray :: Int -> g -> m ByteArray
   default uniformByteArray :: PrimMonad m => Int -> g -> m ByteArray
   uniformByteArray = uniformByteArrayPrim
@@ -354,6 +319,8 @@ withGenM fg action = do
   fg' <- freezeGen g
   pure (res, fg')
 
+uniformListM :: (MonadRandom g m, Uniform a) => g -> Int -> m [a]
+uniformListM gen n = replicateM n (uniform gen)
 
 -- | This function will efficiently generate a sequence of random bytes in a platform
 -- independent manner. Memory allocated will be pinned, so it is safe to use for FFI
@@ -470,7 +437,8 @@ runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g -> StateT g f a) ->
 runGenStateT_ g = fmap fst . runGenStateT g
 
 -- | This is a wrapper wround pure generator that can be used in an effectful environment.
--- It is safe in presence of concurrency since all operations are performed atomically.
+-- It is safe in presence of exceptions and concurrency since all operations are performed
+-- atomically.
 --
 -- @since 1.2
 newtype MutGen s g = MutGenI (MutVar s g)
@@ -739,7 +707,7 @@ instance Random Integer where
   randomM g = uniformR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
 instance UniformRange Integer where
-  --uniformR ival g = randomIvalInteger ival g -- FIXME
+  --niformR ival g = randomIvalInteger ival g -- FIXME
 
 instance Random Int8 where
   randomM = uniform
