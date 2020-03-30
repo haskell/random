@@ -28,6 +28,8 @@ main =
     "Spec"
     [ floatingSpec @Double
     , floatingSpec @Float
+    , floatingSpec @CDouble
+    , floatingSpec @CFloat
     , integralSpec @Word8
     , integralSpec @Word16
     , integralSpec @Word32
@@ -58,6 +60,8 @@ main =
     , integralSpec @CIntMax
     , integralSpec @CUIntMax
     , integralSpec @Integer
+    , rangeSpec @Char
+    , rangeSpec @Bool
     -- , bitmaskSpec @Word8
     -- , bitmaskSpec @Word16
     -- , bitmaskSpec @Word32
@@ -82,7 +86,7 @@ showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
 
 rangeSpec ::
      forall a.
-     (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, UniformRange a, Show a)
+     (SC.Serial IO a, Typeable a, Ord a, Random a, UniformRange a, Show a)
   => TestTree
 rangeSpec =
   testGroup ("Range (" ++ showsType @a ")")
@@ -121,6 +125,10 @@ seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
 
 
+instance Monad m => Serial m CFloat where
+  series = coerce <$> (series :: Series m Float)
+instance Monad m => Serial m CDouble where
+  series = coerce <$> (series :: Series m Double)
 instance Monad m => Serial m CChar where
   series = coerce <$> (series :: Series m Int8)
 instance Monad m => Serial m CSChar where

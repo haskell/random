@@ -925,6 +925,21 @@ instance Uniform CUIntMax where
 instance UniformRange CUIntMax where
   uniformR (CUIntMax b, CUIntMax t) = fmap CUIntMax . uniformR (b, t)
 
+instance Random CFloat where
+  randomR (CFloat l, CFloat h) = first CFloat . randomR (l, h)
+  random = first CFloat . random
+  randomM = fmap CFloat . randomM
+instance UniformRange CFloat where
+  uniformR (CFloat l, CFloat h) = fmap CFloat . uniformR (l, h)
+
+instance Random CDouble where
+  randomR (CDouble l, CDouble h) = first CDouble . randomR (l, h)
+  random = first CDouble . random
+  randomM = fmap CDouble . randomM
+instance UniformRange CDouble where
+  uniformR (CDouble l, CDouble h) = fmap CDouble . uniformR (l, h)
+
+
 instance Random Char where
   randomM = uniform
 instance Uniform Char where
@@ -950,16 +965,9 @@ instance UniformRange Bool where
       int2Bool 0 = False
       int2Bool _ = True
 
-{-# INLINE randomRFloating #-}
-randomRFloating :: (Fractional a, Num a, Ord a, Random a, RandomGen g) => (a, a) -> g -> (a, g)
-randomRFloating (l,h) g
-    | l>h       = randomRFloating (h,l) g
-    | otherwise = let (coef,g') = random g in
-                    (2.0 * (0.5*l + coef * (0.5*h - 0.5*l)), g')  -- avoid overflow
-
 instance Random Double where
-  randomR = randomRFloating
-  random = randomDouble
+  randomR r g = runGenState g (uniformR r)
+  random g = runGenState g randomM
   randomM = uniformR (0, 1)
 
 instance UniformRange Double where
@@ -997,23 +1005,11 @@ foreign import prim "stg_word64ToDoubleyg"
     stgWord64ToDouble :: Word64# -> Double#
 #endif
 
-randomDouble :: RandomGen b => b -> (Double, b)
-randomDouble rng =
-    case random rng of
-      (x,rng') ->
-          -- We use 53 bits of randomness corresponding to the 53 bit significand:
-          ((fromIntegral (mask53 .&. (x::Int64)) :: Double)
-           /  fromIntegral twoto53, rng')
-   where
-    twoto53 = (2::Int64) ^ (53::Int64)
-    mask53 = twoto53 - 1
-
 
 instance Random Float where
-  randomR = randomRFloating
-  random = randomFloat
+  randomR r g = runGenState g (uniformR r)
+  random g = runGenState g randomM
   randomM = uniformR (0, 1)
-
 instance UniformRange Float where
   uniformR (l, h) g = do
     w32 <- uniformWord32 g
@@ -1027,21 +1023,6 @@ word32ToFloatInUnitInterval w32 = between1and2 - 1.0
   where
     between1and2 = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
 {-# INLINE word32ToFloatInUnitInterval #-}
-
-randomFloat :: RandomGen b => b -> (Float, b)
-randomFloat rng =
-    -- TODO: Faster to just use 'next' IF it generates enough bits of randomness.
-    case random rng of
-      (x,rng') ->
-          -- We use 24 bits of randomness corresponding to the 24 bit significand:
-          ((fromIntegral (mask24 .&. (x::Int32)) :: Float)
-           /  fromIntegral twoto24, rng')
-          -- Note, encodeFloat is another option, but I'm not seeing slightly
-          --  worse performance with the following [2011.06.25]:
---         (encodeFloat rand (-24), rng')
-   where
-     mask24 = twoto24 - 1
-     twoto24 = (2::Int32) ^ (24::Int32)
 
 -- The two integer functions below take an [inclusive,inclusive] range.
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
