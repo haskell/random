@@ -66,13 +66,19 @@
 -- >>> fst $ stepGen $ snd $ stepGen (PCGen 17 29)
 -- 3288430965
 --
--- Once implemented it can made an instance of `RandomGen`:
+-- Once implemented an instance of `RandomGen` can be created:
 --
 -- >>> :{
 -- instance RandomGen PCGen where
 --   genWord32 = stepGen
 --   split _ = error "This PRNG is not splittable"
 -- :}
+--
+-- Note, that depending on thow many bits of randomness your RNG produces in one iteration
+-- you might need to implement a different function in the `RandomGen` class.
+--
+-- Once implemented, every pure generator can be used with `MonadRandom` by the means of
+-- `PureGen` and state transformers. See an example below of such use case.
 --
 -- [/Example for RNG Users:/]
 --
@@ -206,7 +212,6 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 -- >>> import Control.Monad (replicateM)
 -- >>> import Data.Bits
 -- >>> import Data.Word
--- >>> import System.IO (IOMode(WriteMode), hPutStr, withBinaryFile)
 -- >>> :set -XFlexibleContexts
 -- >>> :set -fno-warn-missing-methods
 
@@ -483,12 +488,16 @@ runMutGenST g action = runST $ do
 runMutGenST_ :: RandomGen g => g -> (forall s . MutGen s g -> ST s a) -> a
 runMutGenST_ g action = fst $ runMutGenST g action
 
--- | Functions like 'runMutGenIO' are necessary for example if you
--- wish to write a function like
+-- | Both `PrimGen` and `MutGen` and their corresponding functions like 'runPrimGenIO' are
+-- necessary when generation of random values happens in `IO` and especially when dealing
+-- with exception handling and resource allocation, which is where `StateT` should never be
+-- used. For example writing a random number of bytes into a temporary file:
 --
--- >>> let ioGen gen = withBinaryFile "foo.txt" WriteMode $ \h -> ((uniform gen) :: IO Word32) >>= (hPutStr h . show)
+-- >>> import UnliftIO.Temporary (withSystemTempFile)
+-- >>> import Data.ByteString (hPutStr)
+-- >>> let ioGen g = withSystemTempFile "foo.bin" $ \_ h -> uniformR (0, 100) g >>= flip uniformByteStringPrim g >>= hPutStr h
 --
--- and then run it
+-- and then run it:
 --
 -- >>> runMutGenIO_ (mkStdGen 1729) ioGen
 --
@@ -598,7 +607,7 @@ mkStdGen s = SM.mkSMGen $ fromIntegral s
 -- @UniformRange@. We could try to generate values that @a <= x <= b@
 -- But to do that we need to know number of elements of tuple's second
 -- type parameter @b@ which we don't have.
--- 
+--
 -- Or type could have no order at all. Take for example
 -- angle. Defining @Uniform@ instance is again straghtforward: just
 -- generate value in @[0,2π)@ range. But for any two pair of angles

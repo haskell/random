@@ -65,7 +65,8 @@ test-suite doctests
     build-depends:
         base -any,
         doctest >=0.15,
-        random -any
+        random -any,
+        unliftio -any
 
 test-suite spec
     type:           exitcode-stdio-1.0
