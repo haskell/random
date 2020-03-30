@@ -20,38 +20,187 @@
 -- Module      :  System.Random
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file LICENSE in the 'random' repository)
---
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  stable
--- Portability :  portable
 --
--- This library deals with the common task of pseudo-random number
--- generation. The library makes it possible to generate repeatable
--- results, by starting with a specified initial random number generator,
--- or to get different results on each run by using the system-initialised
--- generator or by supplying a seed from some other source.
+-- This library deals with the common task of pseudo-random number generation.
 --
--- The library is split into two layers:
+-- = Overview
+-- This library provides type classes and instances for the following concepts:
 --
--- * A core /random number generator/ provides a supply of bits.
---   The class 'RandomGen' provides a common interface to such generators.
---   The library provides one instance of 'RandomGen', the abstract
---   data type 'StdGen'.  Programmers may, of course, supply their own
---   instances of 'RandomGen'.
+-- [Pure pseudo-random number generators] 'RandomGen' is an interface to pure
+--     pseudo-random number generators.
 --
--- * The class 'Random' provides a way to extract values of a particular
---   type from a random number generator.  For example, the 'Float'
---   instance of 'Random' allows one to generate random values of type
---   'Float'.
+--     'StdGen', the standard pseudo-random number generator provided in this
+--     library, is an instance of 'RandomGen'. It uses the SplitMix
+--     implementation provided by the
+--     <https://hackage.haskell.org/package/splitmix splitmix> package.
+--     Programmers may, of course, supply their own instances of 'RandomGen'.
 --
--- This implementation uses the SplitMix algorithm [1].
+-- [Monadic pseudo-random number generators] 'MonadRandom' is an interface to
+--     monadic pseudo-random number generators.
 --
--- [/Example for RNG Implementors:/]
+-- [Monadic adapters] 'PureGen', 'PrimGen' and 'MutGen' turn a 'RandomGen'
+--     instance into a 'MonadRandom' instance.
+--
+-- [Drawing from a range] 'UniformRange' is used to generate a value of a
+--     datatype uniformly within a range.
+--
+--     This library provides instances of 'UniformRange' for many common
+--     numeric datatypes.
+--
+-- [Drawing from the entire domain of a type] 'Uniform' is used to generate a
+--     value of a datatype uniformly over all possible values of that datatype.
+--
+--     This library provides instances of 'Uniform' for many common bounded
+--     numeric datatypes.
+--
+-- = Backwards compatibility and deprecations
+--
+-- Version 1.2 mostly maintains backwards compatibility with version 1.1. This
+-- has a few consequences users should be aware of:
+--
+-- *   The type class 'Random' is deprecated and only provided for backwards
+--     compatibility. New code should use 'Uniform' and 'UniformRange' instead.
+--
+-- *   The methods 'next' and 'genRange' in 'RandomGen' are deprecated and only
+--     provided for backwards compatibility. New instances of 'RandomGen' should
+--     implement word-based methods instead. See below for more information about
+--     how to write a 'RandomGen' instance.
+--
+-- *   This library provides instances for 'Random' for some unbounded datatypes
+--     for backwards compatibility. For an unbounded datatype, there is no way to
+--     generate a value with uniform probability out of its entire domain, so the
+--     'random' implementation for unbounded datatypes actually generates a value
+--     based on some fixed range.
+--
+--     For 'Integer', 'random' generates a value in the 'Int' range. For 'Float' and 'Double', 'random' generates a floating point value in the range @[0, 1)@.
+--
+--     This library does not provide 'Uniform' instances for any unbounded datatypes.
+--
+-- = Reproducibility
+--
+-- If you have two builds of a particular piece of code against this library,
+-- any deterministic function call should give the same result in the two
+-- builds if the builds are
+--
+-- *   compiled against the same major version of this library
+-- *   on the same architecture (32-bit or 64-bit)
+--
+-- = Pure and monadic pseudo-random number generators
+--
+-- Pseudo-random number generators come in two flavours: /pure/ and /monadic/.
+--
+-- [Pure pseudo-random number generators] These generators produce a new random
+--     value together with a new instance of the pseudo-random number
+--     generator. 'RandomGen' defines the interface for pure pseudo-random
+--     number generators.
+--
+--     Pure pseudo-random number generators should implement 'split' if they
+--     are /splittable/, that is, if there is an efficient method to turn one
+--     instance of the generator into two such that the pseudo-random numbers
+--     produced by the two resulting generators are not correlated. See [1] for
+--     some background on splittable pseudo-random generators.
+--
+-- [Monadic pseudo-random number generators] These generators mutate their own
+--     state as they produce random values. They generally live in 'ST' or 'IO'
+--     or some transformer that implements 'PrimMonad'. 'MonadRandom' defines
+--     the interface for monadic pseudo-random number generators.
+--
+-- Pure pseudo-random number generators can be used in monadic code via the
+-- adapters 'PureGen', 'PrimGen' and 'MutGen'.
+--
+-- *   'PureGen' can be used in any state monad. With strict 'StateT' there is
+--     even no performance overhead when compared to the 'RandomGen' directly.
+--     But it is not safe to use it in presence of exceptions and resource
+--     allocation that requires cleanup.
+--
+-- *   'PrimGen' can be used in any 'PrimMonad' if the pseudo-random number
+--     generator is also an instance of 'Prim'. It will perform much faster
+--     than 'MutGen', but it can't be used in a concurrent setting.
+--
+-- *   'MutGen' can be used in any 'PrimMonad' (this includes 'ST' and 'IO') and
+--     can safely be shared between threads.
+--
+-- When to use which?
+--
+-- *   Use 'PureGen' if your computation does not have side effects and results
+--     in a pure function.
+--
+-- *   Use 'PrimGen' if the pseudo-random number generator implements 'Prim'
+--     class and random value generation is intermixed with 'IO' or 'ST'.
+--
+-- *   Otherwise use 'MutGen'. Whenever a 'MutGen' is shared between threads,
+--     make sure there is not much contention for it, otherwise performance
+--     will suffer. For parallel random value generation it is best to split
+--     the generator and use a single 'PureGen' or 'PrimGen' per thread.
+--
+-- = How to generate random values in monadic code
+--
+-- In monadic code, use the relevant 'Uniform' and 'UniformRange' instances to
+-- generate random values via 'uniform' and 'uniformR', respectively.
+--
+-- As an example, @rolls@ generates @n@ random values of @Word8@ in the range
+-- @[1, 6]@.
+--
+-- >>> :{
+-- let rolls :: MonadRandom g m => Int -> g -> m [Word8]
+--     rolls n = replicateM n . uniformR (1, 6)
+-- :}
+--
+-- Given a /monadic/ pseudo-random number generator, you can run this
+-- probabilistic computation as follows:
+--
+-- >>> monadicGen <- MWC.create
+-- >>> rolls 10 monadicGen :: IO [Word8]
+-- [2,3,6,6,4,4,3,1,5,4]
+--
+-- Given a /pure/ pseudo-random number generator, you can run it in an 'IO' or
+-- 'ST' context using 'runPrimGenIO' or 'runPrimGenST' and their variants,
+-- respectively. If the pseudo-random number generator does not implement
+-- 'Prim', you can also use 'runMutGenIO' or 'runMutGenST' and their variants.
+--
+-- >>> let pureGen = mkStdGen 42
+-- >>> runPrimGenIO_ pureGen (rolls 10) :: IO [Word8]
+-- [1,1,3,2,4,5,3,4,6,2]
+--
+-- = How to generate random values in pure code
+--
+--  In pure code, use 'runGenState' and its variants to extract the pure random
+--  value from a monadic computation based on a pure pseudo-random number
+--  generator.
+--
+-- >>> let pureGen = mkStdGen 42
+-- >>> runGenState_ pureGen (rolls 10) :: [Word8]
+-- [1,1,3,2,4,5,3,4,6,2]
+--
+-- = How to implement 'RandomGen'
+--
+-- Consider these points when writing a 'RandomGen' instance for a given pure
+-- pseudo-random number generator:
+--
+-- *   If the pseudo-random number generator has a power-of-2 modulus, that is,
+--     it natively outputs @2^n@ bits of randomness for some @n@, implement
+--     'genWord8', 'genWord16', 'genWord32' and 'genWord64'. See below for more
+--     details.
+--
+-- *   If the pseudo-random number generator does not have a power-of-2
+--     modulus, implement 'next' and 'genRange'. See below for more details.
+--
+-- *   If the pseudo-random number generator is splittable, implement 'split'.
+--
+-- Additionally, implement 'Prim' for the pseudo-random number generator if
+-- possible. This allows users to use the fast 'MutGen' adapter with the
+-- pseudo-random number generator.
+--
+-- == How to implement 'RandomGen' for a pseudo-random number generator with power-of-2 modulus
 --
 -- Suppose you want to implement a [permuted congruential
 -- generator](https://en.wikipedia.org/wiki/Permuted_congruential_generator).
 --
 -- >>> data PCGen = PCGen !Word64 !Word64
+--
+-- It produces a full 'Word32' of randomness per iteration.
 --
 -- >>> :{
 -- let stepGen :: PCGen -> (Word32, PCGen)
@@ -66,38 +215,91 @@
 -- >>> fst $ stepGen $ snd $ stepGen (PCGen 17 29)
 -- 3288430965
 --
--- Once implemented an instance of `RandomGen` can be created:
+-- You can make it an instance of 'RandomGen' as follows:
 --
 -- >>> :{
 -- instance RandomGen PCGen where
 --   genWord32 = stepGen
---   split _ = error "This PRNG is not splittable"
+--   genWord64 g = (buildWord64 x y, g'')
+--     where
+--       (x, g') = stepGen g
+--       (y, g'') = stepGen g'
 -- :}
 --
--- Note, that depending on thow many bits of randomness your RNG produces in one iteration
--- you might need to implement a different function in the `RandomGen` class.
+-- This definition satisfies the compiler. However, the default implementations
+-- of 'genWord8' and 'genWord16' are geared towards backwards compatibility
+-- with 'RandomGen' instances based on 'next' and 'genRange'. This means that
+-- they are not optimal for pseudo-random number generators with a power-of-2
+-- modulo.
 --
--- Once implemented, every pure generator can be used with `MonadRandom` by the means of
--- `PureGen` and state transformers. See an example below of such use case.
+-- So let's implement a faster 'RandomGen' instance for our pseudo-random
+-- number generator as follows:
 --
--- [/Example for RNG Users:/]
+-- >>> newtype PCGen' = PCGen' { unPCGen :: PCGen }
+-- >>> let stepGen' = second PCGen' . stepGen . unPCGen
+-- >>> :{
+-- instance RandomGen PCGen' where
+--   genWord8 = first fromIntegral . stepGen'
+--   genWord16 = first fromIntegral . stepGen'
+--   genWord32 = stepGen'
+--   genWord64 g = (buildWord64 x y, g'')
+--     where
+--       (x, g') = stepGen' g
+--       (y, g'') = stepGen' g'
+-- :}
 --
--- Suppose you want to simulate a number of rolls from a dice (yes I know it's a
--- plural form but it's now common to use it as a singular form):
+-- == How to implement 'RandomGen' for a pseudo-random number generator without a power-of-2 modulus
+--
+-- Suppose you want to implement the pseudo-random number generator from
+-- <https://dl.acm.org/doi/abs/10.1145/62959.62969 L’Ecuyer (1988)>. It
+-- natively generates an integer value in the range @[1, 2147483562]@. This is
+-- the generator used by this library before it was replaced by SplitMix in
+-- version 1.2.
+--
+-- >>> data LegacyGen = LegacyGen !Int32 !Int32
+-- >>> :{
+-- let legacyNext :: LegacyGen -> (Int, LegacyGen)
+--     legacyNext (LegacyGen s1 s2) = (fromIntegral z', LegacyGen s1'' s2'') where
+--       z' = if z < 1 then z + 2147483562 else z
+--       z = s1'' - s2''
+--       k = s1 `quot` 53668
+--       s1'  = 40014 * (s1 - k * 53668) - k * 12211
+--       s1'' = if s1' < 0 then s1' + 2147483563 else s1'
+--       k' = s2 `quot` 52774
+--       s2' = 40692 * (s2 - k' * 52774) - k' * 3791
+--       s2'' = if s2' < 0 then s2' + 2147483399 else s2'
+-- :}
+--
+-- You can make it an instance of 'RandomGen' as follows:
 --
 -- >>> :{
--- let rolls :: Int -> [Word]
---     rolls n = runGenState_
---               (PCGen 17 29)
---               (\g -> replicateM n (uniformR (1, 6) g))
+-- instance RandomGen LegacyGen where
+--   next = legacyNext
+--   genRange _ = (1, 2147483562)
 -- :}
 --
--- >>> rolls 20
--- [1,1,5,3,6,3,3,2,4,3,2,3,3,4,6,6,5,6,1,1]
+-- Note that since the default implementations of all other 'RandomGen' methods
+-- are geared towards pseudo-random number generators with 'next' as the source
+-- of randomness for backwards compatibility, there is no need to implement
+-- additional methods. You should of course verify this with a benchmark.
 --
--- FIXME: What should we say about generating values from types other
--- than Word8 etc?
+-- = How to implement 'MonadRandom'
 --
+-- Typically, a monadic pseudo-random number generator has facilities to save
+-- and restore its internal state in addition to generating random
+-- pseudo-random numbers.
+--
+-- Here is an example instance for the monadic pseudo-random number generator
+-- from the @mwc-random@ package:
+--
+-- > instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
+-- >     newtype Frozen (MWC.Gen s) = FrozenGen MWC.Seed
+-- >     thawGen (FrozenGen s) = MWC.restore s
+-- >     freezeGen = fmap FrozenGen . MWC.save
+-- >     uniformWord8 = MWC.uniform
+-- >     uniformWord16 = MWC.uniform
+-- >     uniformWord32 = MWC.uniform
+-- >     uniformWord64 = MWC.uniform
 -----------------------------------------------------------------------------
 
 module System.Random
@@ -210,10 +412,35 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 -- $setup
 -- >>> import Control.Arrow (first, second)
 -- >>> import Control.Monad (replicateM)
+-- >>> import Control.Monad.Primitive
 -- >>> import Data.Bits
--- >>> import Data.Word
+-- >>> import Data.Int (Int32)
+-- >>> import Data.Word (Word8, Word16, Word32, Word64)
+-- >>> import System.IO (IOMode(WriteMode), withBinaryFile)
+-- >>> import qualified System.Random.MWC as MWC
+--
 -- >>> :set -XFlexibleContexts
+-- >>> :set -XFlexibleInstances
+-- >>> :set -XMultiParamTypeClasses
+-- >>> :set -XTypeFamilies
+--
 -- >>> :set -fno-warn-missing-methods
+--
+-- >>> :{
+-- let buildWord64 :: Word32 -> Word32 -> Word64
+--     buildWord64 x y = (fromIntegral x `shiftL` 32) .|. fromIntegral y
+-- :}
+--
+-- >>> :{
+-- instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
+--     newtype Frozen (MWC.Gen s) = FrozenGen MWC.Seed
+--     thawGen (FrozenGen s) = MWC.restore s
+--     freezeGen = fmap FrozenGen . MWC.save
+--     uniformWord8 = MWC.uniform
+--     uniformWord16 = MWC.uniform
+--     uniformWord32 = MWC.uniform
+--     uniformWord64 = MWC.uniform
+-- :}
 
 -- | The class 'RandomGen' provides a common interface to random number
 -- generators.
@@ -289,10 +516,11 @@ class Monad m => MonadRandom g m where
 
   thawGen :: Frozen g -> m g
   freezeGen :: g -> m (Frozen g)
-  -- | Generate `Word32` up to and including the supplied max value
+  -- | Generate 'Word32' up to and including the supplied max value
   uniformWord32R :: Word32 -> g -> m Word32
   uniformWord32R = unsignedBitmaskWithRejectionM uniformWord32
-  -- | Generate `Word64` up to and including the supplied max value
+
+  -- | Generate 'Word64' up to and including the supplied max value
   uniformWord64R :: Word64 -> g -> m Word64
   uniformWord64R = unsignedBitmaskWithRejectionM uniformWord64
 
