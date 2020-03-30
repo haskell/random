@@ -62,8 +62,6 @@ main =
     , integralSpec @CIntMax
     , integralSpec @CUIntMax
     , integralSpec @Integer
-    , rangeSpec @Char
-    , rangeSpec @Bool
     -- , bitmaskSpec @Word8
     -- , bitmaskSpec @Word16
     -- , bitmaskSpec @Word32

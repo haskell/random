@@ -93,7 +93,7 @@
 -- :}
 --
 -- >>> rolls 20
--- [1,1,5,3,3,3,2,4,3,2,3,3,4,5,1,1,5,1,2,4]
+-- [1,1,5,3,6,3,3,2,4,3,2,3,3,4,6,6,5,6,1,1]
 --
 -- FIXME: What should we say about generating values from types other
 -- than Word8 etc?
@@ -1122,7 +1122,7 @@ bitmaskWithRejectionM genUniform range gen = go
     go = do
       x <- genUniform gen
       let x' = x .&. mask
-      if x' >= range
+      if x' > range
         then go
         else pure x'
 {-# INLINE bitmaskWithRejectionM #-}
