@@ -40,6 +40,8 @@ main =
     , integralSpec @Int32
     , integralSpec @Int64
     , integralSpec @Int
+    , integralSpec @Char
+    , integralSpec @Bool
     , integralSpec @CChar
     , integralSpec @CSChar
     , integralSpec @CUChar
@@ -95,7 +97,7 @@ rangeSpec =
 
 integralSpec ::
      forall a.
-     (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, UniformRange a, Show a)
+     (SC.Serial IO a, Typeable a, Ord a, Random a, UniformRange a, Show a)
   => TestTree
 integralSpec  =
   testGroup ("(" ++ showsType @a ")")
