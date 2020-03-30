@@ -72,7 +72,7 @@ test-suite spec
     main-is:        Spec.hs
     hs-source-dirs: tests
     other-modules:
-        Spec.Bitmask
+        -- Spec.Bitmask
         Spec.Range
         Spec.Run
 

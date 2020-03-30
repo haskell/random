@@ -160,9 +160,6 @@ module System.Random
 
   -- * References
   -- $references
-
-  -- * Internals
-  , bitmaskWithRejection -- FIXME Export this in a better way, e.g. in System.Random.Impl or something like that
   ) where
 
 import Control.Arrow
@@ -185,11 +182,10 @@ import Foreign.C.Types
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (peekByteOff, pokeByteOff)
-import GHC.Exts (Ptr(..))
+import GHC.Exts
 import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
-import GHC.Base
 import GHC.Word
 
 
@@ -633,7 +629,6 @@ programmer to extract random values of a variety of types.
 Minimal complete definition: 'randomR' and 'random'.
 
 -}
-{-# DEPRECATED randomR "In favor of `uniformR`" #-}
 {-# DEPRECATED randomRIO "In favor of `uniformR`" #-}
 {-# DEPRECATED randomIO "In favor of `uniformR`" #-}
 class Random a where
@@ -707,31 +702,35 @@ instance Random Integer where
   randomM g = uniformR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
 
 instance UniformRange Integer where
-  --niformR ival g = randomIvalInteger ival g -- FIXME
+  uniformR = uniformIntegerM
 
 instance Random Int8 where
   randomM = uniform
 instance Uniform Int8 where
   uniform = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
 instance UniformRange Int8 where
+  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int8 -> Word8) fromIntegral
 
 instance Random Int16 where
   randomM = uniform
 instance Uniform Int16 where
   uniform = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
 instance UniformRange Int16 where
+  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int16 -> Word16) fromIntegral
 
 instance Random Int32 where
   randomM = uniform
 instance Uniform Int32 where
   uniform = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
 instance UniformRange Int32 where
+  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int32 -> Word32) fromIntegral
 
 instance Random Int64 where
   randomM = uniform
 instance Uniform Int64 where
   uniform = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
 instance UniformRange Int64 where
+  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int64 -> Word64) fromIntegral
 
 instance Random Int where
   randomM = uniform
@@ -742,6 +741,7 @@ instance Uniform Int where
   uniform = fmap (fromIntegral :: Word64 -> Int) . uniformWord64
 #endif
 instance UniformRange Int where
+  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int -> Word) fromIntegral
 
 instance Random Word where
   randomM = uniform
@@ -753,25 +753,25 @@ instance Uniform Word where
 #endif
 instance UniformRange Word where
   {-# INLINE uniformR #-}
-  uniformR    = bitmaskWithRejectionRM
+  uniformR = unsignedBitmaskWithRejectionRM
 
 instance Random Word8 where
   randomM = uniform
 instance Uniform Word8 where
   {-# INLINE uniform #-}
-  uniform     = uniformWord8
+  uniform = uniformWord8
 instance UniformRange Word8 where
   {-# INLINE uniformR #-}
-  uniformR    = bitmaskWithRejectionRM
+  uniformR = unsignedBitmaskWithRejectionRM
 
 instance Random Word16 where
   randomM = uniform
 instance Uniform Word16 where
   {-# INLINE uniform #-}
-  uniform     = uniformWord16
+  uniform = uniformWord16
 instance UniformRange Word16 where
   {-# INLINE uniformR #-}
-  uniformR    = bitmaskWithRejectionRM
+  uniformR = unsignedBitmaskWithRejectionRM
 
 instance Random Word32 where
   randomM = uniform
@@ -780,7 +780,7 @@ instance Uniform Word32 where
   uniform  = uniformWord32
 instance UniformRange Word32 where
   {-# INLINE uniformR #-}
-  uniformR = bitmaskWithRejectionRM
+  uniformR = unsignedBitmaskWithRejectionRM
 
 instance Random Word64 where
   randomM = uniform
@@ -789,111 +789,111 @@ instance Uniform Word64 where
   uniform  = uniformWord64
 instance UniformRange Word64 where
   {-# INLINE uniformR #-}
-  uniformR = bitmaskWithRejectionRM
+  uniformR = unsignedBitmaskWithRejectionRM
 
 
 instance Random CChar where
   randomM = uniform
 instance Uniform CChar where
-  uniform                     = fmap CChar . uniform
+  uniform = fmap CChar . uniform
 instance UniformRange CChar where
   uniformR (CChar b, CChar t) = fmap CChar . uniformR (b, t)
 
 instance Random CSChar where
   randomM = uniform
 instance Uniform CSChar where
-  uniform                       = fmap CSChar . uniform
+  uniform = fmap CSChar . uniform
 instance UniformRange CSChar where
   uniformR (CSChar b, CSChar t) = fmap CSChar . uniformR (b, t)
 
 instance Random CUChar where
   randomM = uniform
 instance Uniform CUChar where
-  uniform                       = fmap CUChar . uniform
+  uniform = fmap CUChar . uniform
 instance UniformRange CUChar where
   uniformR (CUChar b, CUChar t) = fmap CUChar . uniformR (b, t)
 
 instance Random CShort where
   randomM = uniform
 instance Uniform CShort where
-  uniform                       = fmap CShort . uniform
+  uniform = fmap CShort . uniform
 instance UniformRange CShort where
   uniformR (CShort b, CShort t) = fmap CShort . uniformR (b, t)
 
 instance Random CUShort where
   randomM = uniform
 instance Uniform CUShort where
-  uniform                         = fmap CUShort . uniform
+  uniform = fmap CUShort . uniform
 instance UniformRange CUShort where
   uniformR (CUShort b, CUShort t) = fmap CUShort . uniformR (b, t)
 
 instance Random CInt where
   randomM = uniform
 instance Uniform CInt where
-  uniform                   = fmap CInt . uniform
+  uniform = fmap CInt . uniform
 instance UniformRange CInt where
   uniformR (CInt b, CInt t) = fmap CInt . uniformR (b, t)
 
 instance Random CUInt where
   randomM = uniform
 instance Uniform CUInt where
-  uniform                     = fmap CUInt . uniform
+  uniform = fmap CUInt . uniform
 instance UniformRange CUInt where
   uniformR (CUInt b, CUInt t) = fmap CUInt . uniformR (b, t)
 
 instance Random CLong where
   randomM = uniform
 instance Uniform CLong where
-  uniform                     = fmap CLong . uniform
+  uniform = fmap CLong . uniform
 instance UniformRange CLong where
   uniformR (CLong b, CLong t) = fmap CLong . uniformR (b, t)
 
 instance Random CULong where
   randomM = uniform
 instance Uniform CULong where
-  uniform                       = fmap CULong . uniform
+  uniform = fmap CULong . uniform
 instance UniformRange CULong where
   uniformR (CULong b, CULong t) = fmap CULong . uniformR (b, t)
 
 instance Random CPtrdiff where
   randomM = uniform
 instance Uniform CPtrdiff where
-  uniform                           = fmap CPtrdiff . uniform
+  uniform = fmap CPtrdiff . uniform
 instance UniformRange CPtrdiff where
   uniformR (CPtrdiff b, CPtrdiff t) = fmap CPtrdiff . uniformR (b, t)
 
 instance Random CSize where
   randomM = uniform
 instance Uniform CSize where
-  uniform                     = fmap CSize . uniform
+  uniform = fmap CSize . uniform
 instance UniformRange CSize where
   uniformR (CSize b, CSize t) = fmap CSize . uniformR (b, t)
 
 instance Random CWchar where
   randomM = uniform
 instance Uniform CWchar where
-  uniform                       = fmap CWchar . uniform
+  uniform = fmap CWchar . uniform
 instance UniformRange CWchar where
   uniformR (CWchar b, CWchar t) = fmap CWchar . uniformR (b, t)
 
 instance Random CSigAtomic where
   randomM = uniform
 instance Uniform CSigAtomic where
-  uniform                               = fmap CSigAtomic . uniform
+  uniform = fmap CSigAtomic . uniform
 instance UniformRange CSigAtomic where
   uniformR (CSigAtomic b, CSigAtomic t) = fmap CSigAtomic . uniformR (b, t)
 
 instance Random CLLong where
   randomM = uniform
 instance Uniform CLLong where
-  uniform                       = fmap CLLong . uniform
+  uniform = fmap CLLong . uniform
 instance UniformRange CLLong where
   uniformR (CLLong b, CLLong t) = fmap CLLong . uniformR (b, t)
 
 instance Random CULLong where
   randomM = uniform
 instance Uniform CULLong where
-  uniform                         = fmap CULLong . uniform
+  uniform = fmap CULLong . uniform
 instance UniformRange CULLong where
   uniformR (CULLong b, CULLong t) = fmap CULLong . uniformR (b, t)
 
@@ -907,21 +907,21 @@ instance UniformRange CIntPtr where
 instance Random CUIntPtr where
   randomM = uniform
 instance Uniform CUIntPtr where
-  uniform                           = fmap CUIntPtr . uniform
+  uniform = fmap CUIntPtr . uniform
 instance UniformRange CUIntPtr where
   uniformR (CUIntPtr b, CUIntPtr t) = fmap CUIntPtr . uniformR (b, t)
 
 instance Random CIntMax where
   randomM = uniform
 instance Uniform CIntMax where
-  uniform                         = fmap CIntMax . uniform
+  uniform = fmap CIntMax . uniform
 instance UniformRange CIntMax where
   uniformR (CIntMax b, CIntMax t) = fmap CIntMax . uniformR (b, t)
 
 instance Random CUIntMax where
   randomM = uniform
 instance Uniform CUIntMax where
-  uniform                           = fmap CUIntMax . uniform
+  uniform = fmap CUIntMax . uniform
 instance UniformRange CUIntMax where
   uniformR (CUIntMax b, CUIntMax t) = fmap CUIntMax . uniformR (b, t)
 
@@ -930,7 +930,11 @@ instance Random Char where
 instance Uniform Char where
   uniform = uniformR (minBound, maxBound)
 instance UniformRange Char where
-  -- FIXME
+  uniformR (l, h) g = toChar <$> unsignedBitmaskWithRejectionRM (fromChar l, fromChar h) g
+    where
+      fromChar (C# c#) = W# (int2Word# (ord# c#))
+      toChar (W# w#) = C# (chr# (word2Int# w#))
+
 
 instance Random Bool where
   randomM = uniform
@@ -1039,21 +1043,6 @@ randomFloat rng =
      mask24 = twoto24 - 1
      twoto24 = (2::Int32) ^ (24::Int32)
 
--- CFloat/CDouble are basically the same as a Float/Double:
--- instance Random CFloat where
---   randomR = randomRFloating
-  -- random rng = case random rng of
-  --              (x,rng') -> (realToFrac (x::Float), rng')
-
--- instance Random CDouble where
---   randomR = randomRFloating
---   -- A MYSTERY:
---   -- Presently, this is showing better performance than the Double instance:
---   -- (And yet, if the Double instance uses randomFrac then its performance is much worse!)
---   random  = randomFrac
---   -- random rng = case random rng of
---   --                  (x,rng') -> (realToFrac (x::Double), rng')
-
 -- The two integer functions below take an [inclusive,inclusive] range.
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
 randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
@@ -1085,47 +1074,55 @@ randomIvalInteger (l,h) rng
                         (x,g') = next g
                         v' = (v * b + (fromIntegral x - fromIntegral genlo))
 
-
-bitmaskWithRejection ::
-     (RandomGen g, FiniteBits a, Num a, Ord a, Random a)
-  => (a, a)
-  -> g
-  -> (a, g)
-bitmaskWithRejection (bottom, top)
-  | bottom > top = bitmaskWithRejection (top, bottom)
-  | bottom == top = (,) top
-  | otherwise = first (bottom +) . go
+uniformIntegerM :: (MonadRandom g m) => (Integer, Integer) -> g -> m Integer
+uniformIntegerM (l, h) gen
+  | l > h = uniformIntegerM (h, l) gen
+  | otherwise = do
+    v <- f 1 0
+    pure (l + v `mod` k)
   where
-    range = top - bottom
-    mask = complement zeroBits `shiftR` countLeadingZeros (range .|. 1)
-    go g =
-      let (x, g') = random g
-          x' = x .&. mask
-       in if x' >= range
-            then go g'
-            else (x', g')
-{-# INLINE bitmaskWithRejection #-}
+    b = toInteger (maxBound :: Word64)
+    q = 1000
+    k = h - l + 1
+    magtgt = k * q
+    -- generate random values until we exceed the target magnitude
+    f mag v
+      | mag >= magtgt = pure v
+      | otherwise = do
+        x <- uniformWord64 gen
+        let v' = v * b + fromIntegral x
+        v' `seq` f (mag * b) v'
 
 
--- FIXME This is likely incorrect for signed integrals.
-bitmaskWithRejectionRM ::
-     (MonadRandom g m, FiniteBits a, Num a, Ord a, Random a)
+-- | This only works for unsigned integrals
+unsignedBitmaskWithRejectionRM ::
+     (MonadRandom g m, FiniteBits a, Num a, Ord a, Uniform a)
   => (a, a)
   -> g
   -> m a
-bitmaskWithRejectionRM (bottom, top) gen
-  | bottom > top = bitmaskWithRejectionRM (top, bottom) gen
+unsignedBitmaskWithRejectionRM (bottom, top) gen
+  | bottom > top = unsignedBitmaskWithRejectionRM (top, bottom) gen
   | bottom == top = pure top
-  | otherwise = (bottom +) <$> go
+  | otherwise = (bottom +) <$> bitmaskWithRejectionM uniform range gen
   where
     range = top - bottom
-    mask = complement zeroBits `shiftR` countLeadingZeros (range .|. 1)
-    go = do
-      x <- randomM gen
-      let x' = x .&. mask
-      if x' >= range
-        then go
-        else pure x'
+{-# INLINE unsignedBitmaskWithRejectionRM #-}
+
+-- | This works for signed integrals by explicit conversion to unsigned and abusing overflow
+bitmaskWithRejectionRM ::
+     (Num a, Num b, Ord b, Ord a, FiniteBits a, MonadRandom g f, Uniform a)
+  => (b -> a)
+  -> (a -> b)
+  -> (b, b)
+  -> g
+  -> f b
+bitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
+  | bottom > top = bitmaskWithRejectionRM toUnsigned fromUnsigned (top, bottom) gen
+  | bottom == top = pure top
+  | otherwise = (bottom +) . fromUnsigned <$>
+    bitmaskWithRejectionM uniform range gen
+    where
+      range = toUnsigned top - toUnsigned bottom
 {-# INLINE bitmaskWithRejectionRM #-}
 
 bitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g m) => (g -> m a) -> a -> g -> m a
@@ -1138,6 +1135,7 @@ bitmaskWithRejectionM genUniform range gen = go
       if x' >= range
         then go
         else pure x'
+{-# INLINE bitmaskWithRejectionM #-}
 
 
 bitmaskWithRejection32M :: MonadRandom g m => Word32 -> g -> m Word32
