@@ -1112,6 +1112,7 @@ bitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
   | otherwise = (bottom +) . fromUnsigned <$>
     bitmaskWithRejectionM uniform range gen
     where
+      -- This works in all cases, see Appendix 1 at the end of the file.
       range = toUnsigned top - toUnsigned bottom
 {-# INLINE bitmaskWithRejectionRM #-}
 
@@ -1185,3 +1186,68 @@ Conference on Object Oriented Programming Systems Languages & Applications
 https://doi.org/10.1145/2660193.2660195
 
 -}
+
+-- Appendix 1.
+--
+-- @top@ and @bottom@ are signed integers of bit width @n@. @toUnsigned@
+-- converts a signed integer to an unsigned number of the same bit width @n@.
+--
+--     range = toUnsigned top - toUnsigned bottom
+--
+-- This works out correctly thanks to modular arithmetic. Conceptually,
+--
+--     toUnsigned x | x >= 0 = x
+--     toUnsigned x | x <  0 = 2^n + x
+--
+-- The following combinations are possible:
+--
+-- 1. @bottom >= 0@ and @top >= 0@
+-- 2. @bottom < 0@ and @top >= 0@
+-- 3. @bottom < 0@ and @top < 0@
+--
+-- Note that @bottom >= 0@ and @top < 0@ is impossible because of the
+-- invariant @bottom < top@.
+--
+-- For any signed integer @i@ of width @n@, we have:
+--
+--     -2^(n-1) <= i <= 2^(n-1) - 1
+--
+-- Considering each combination in turn, we have
+--
+-- 1. @bottom >= 0@ and @top >= 0@
+--
+--     range = (toUnsigned top - toUnsigned bottom) `mod` 2^n
+--                 --^ top    >= 0, so toUnsigned top    == top
+--                 --^ bottom >= 0, so toUnsigned bottom == bottom
+--           = (top - bottom) `mod` 2^n
+--                 --^ top <= 2^(n-1) - 1 and bottom >= 0
+--                 --^ top - bottom <= 2^(n-1) - 1
+--                 --^ 0 < top - bottom <= 2^(n-1) - 1
+--           = top - bottom
+--
+-- 2. @bottom < 0@ and @top >= 0@
+--
+--     range = (toUnsigned top - toUnsigned bottom) `mod` 2^n
+--                 --^ top    >= 0, so toUnsigned top    == top
+--                 --^ bottom <  0, so toUnsigned bottom == 2^n + bottom
+--           = (top - (2^n + bottom)) `mod` 2^n
+--                 --^ summand -2^n cancels out in calculation modulo 2^n
+--           = (top - bottom) `mod` 2^n
+--                 --^ top <= 2^(n-1) - 1 and bottom >= -2^(n-1)
+--                 --^ top - bottom <= (2^(n-1) - 1) - (-2^(n-1)) = 2^n - 1
+--                 --^ 0 < top - bottom <= 2^n - 1
+--           = top - bottom
+--
+-- 3. @bottom < 0@ and @top < 0@
+--
+--     range = (toUnsigned top - toUnsigned bottom) `mod` 2^n
+--                 --^ top    < 0, so toUnsigned top    == 2^n + top
+--                 --^ bottom < 0, so toUnsigned bottom == 2^n + bottom
+--           = ((2^n + top) - (2^n + bottom)) `mod` 2^n
+--                 --^ summand 2^n cancels out in calculation modulo 2^n
+--           = (top - bottom) `mod` 2^n
+--                 --^ top <= -1
+--                 --^ bottom >= -2^(n-1)
+--                 --^ top - bottom <= -1 - (-2^(n-1)) = 2^(n-1) - 1
+--                 --^ 0 < top - bottom <= 2^(n-1) - 1
+--           = top - bottom
