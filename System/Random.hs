@@ -250,10 +250,10 @@ class RandomGen g where
             ((fromIntegral h32 `unsafeShiftL` 32) .|. fromIntegral l32, g'')
 
   genWord32R :: Word32 -> g -> (Word32, g)
-  genWord32R m g = runGenState g (bitmaskWithRejectionM uniformWord32 m)
+  genWord32R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord32 m)
 
   genWord64R :: Word64 -> g -> (Word64, g)
-  genWord64R m g = runGenState g (bitmaskWithRejectionM uniformWord64 m)
+  genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
 
   genByteArray :: Int -> g -> (ByteArray, g)
   genByteArray n g = runPureGenST g $ uniformByteArrayPrim n
@@ -291,10 +291,10 @@ class Monad m => MonadRandom g m where
   freezeGen :: g -> m (Frozen g)
   -- | Generate `Word32` up to and including the supplied max value
   uniformWord32R :: Word32 -> g -> m Word32
-  uniformWord32R = bitmaskWithRejection32M
+  uniformWord32R = unsignedBitmaskWithRejectionM uniformWord32
   -- | Generate `Word64` up to and including the supplied max value
   uniformWord64R :: Word64 -> g -> m Word64
-  uniformWord64R = bitmaskWithRejection64M
+  uniformWord64R = unsignedBitmaskWithRejectionM uniformWord64
 
   uniformWord8 :: g -> m Word8
   uniformWord8 = fmap fromIntegral . uniformWord32
@@ -718,28 +718,28 @@ instance Random Int8 where
 instance Uniform Int8 where
   uniform = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
 instance UniformRange Int8 where
-  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int8 -> Word8) fromIntegral
+  uniformR = signedBitmaskWithRejectionRM (fromIntegral :: Int8 -> Word8) fromIntegral
 
 instance Random Int16 where
   randomM = uniform
 instance Uniform Int16 where
   uniform = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
 instance UniformRange Int16 where
-  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int16 -> Word16) fromIntegral
+  uniformR = signedBitmaskWithRejectionRM (fromIntegral :: Int16 -> Word16) fromIntegral
 
 instance Random Int32 where
   randomM = uniform
 instance Uniform Int32 where
   uniform = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
 instance UniformRange Int32 where
-  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int32 -> Word32) fromIntegral
+  uniformR = signedBitmaskWithRejectionRM (fromIntegral :: Int32 -> Word32) fromIntegral
 
 instance Random Int64 where
   randomM = uniform
 instance Uniform Int64 where
   uniform = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
 instance UniformRange Int64 where
-  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int64 -> Word64) fromIntegral
+  uniformR = signedBitmaskWithRejectionRM (fromIntegral :: Int64 -> Word64) fromIntegral
 
 instance Random Int where
   randomM = uniform
@@ -750,7 +750,7 @@ instance Uniform Int where
   uniform = fmap (fromIntegral :: Word64 -> Int) . uniformWord64
 #endif
 instance UniformRange Int where
-  uniformR = bitmaskWithRejectionRM (fromIntegral :: Int -> Word) fromIntegral
+  uniformR = signedBitmaskWithRejectionRM (fromIntegral :: Int -> Word) fromIntegral
 
 instance Random Word where
   randomM = uniform
@@ -1093,30 +1093,30 @@ unsignedBitmaskWithRejectionRM ::
 unsignedBitmaskWithRejectionRM (bottom, top) gen
   | bottom > top = unsignedBitmaskWithRejectionRM (top, bottom) gen
   | bottom == top = pure top
-  | otherwise = (bottom +) <$> bitmaskWithRejectionM uniform range gen
+  | otherwise = (bottom +) <$> unsignedBitmaskWithRejectionM uniform range gen
   where
     range = top - bottom
 {-# INLINE unsignedBitmaskWithRejectionRM #-}
 
 -- | This works for signed integrals by explicit conversion to unsigned and abusing overflow
-bitmaskWithRejectionRM ::
+signedBitmaskWithRejectionRM ::
      (Num a, Num b, Ord b, Ord a, FiniteBits a, MonadRandom g f, Uniform a)
   => (b -> a)
   -> (a -> b)
   -> (b, b)
   -> g
   -> f b
-bitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
-  | bottom > top = bitmaskWithRejectionRM toUnsigned fromUnsigned (top, bottom) gen
+signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
+  | bottom > top = signedBitmaskWithRejectionRM toUnsigned fromUnsigned (top, bottom) gen
   | bottom == top = pure top
   | otherwise = (bottom +) . fromUnsigned <$>
-    bitmaskWithRejectionM uniform range gen
+    unsignedBitmaskWithRejectionM uniform range gen
     where
       range = toUnsigned top - toUnsigned bottom
-{-# INLINE bitmaskWithRejectionRM #-}
+{-# INLINE signedBitmaskWithRejectionRM #-}
 
-bitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g m) => (g -> m a) -> a -> g -> m a
-bitmaskWithRejectionM genUniform range gen = go
+unsignedBitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g m) => (g -> m a) -> a -> g -> m a
+unsignedBitmaskWithRejectionM genUniform range gen = go
   where
     mask = complement zeroBits `shiftR` countLeadingZeros (range .|. 1)
     go = do
@@ -1125,14 +1125,7 @@ bitmaskWithRejectionM genUniform range gen = go
       if x' > range
         then go
         else pure x'
-{-# INLINE bitmaskWithRejectionM #-}
-
-
-bitmaskWithRejection32M :: MonadRandom g m => Word32 -> g -> m Word32
-bitmaskWithRejection32M = bitmaskWithRejectionM uniformWord32
-
-bitmaskWithRejection64M :: MonadRandom g m => Word64 -> g -> m Word64
-bitmaskWithRejection64M = bitmaskWithRejectionM uniformWord64
+{-# INLINE unsignedBitmaskWithRejectionM #-}
 
 -- The global random number generator
 
