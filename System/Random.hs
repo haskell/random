@@ -250,7 +250,7 @@ class RandomGen g where
             ((fromIntegral h32 `unsafeShiftL` 32) .|. fromIntegral l32, g'')
 
   genWord32R :: Word32 -> g -> (Word32, g)
-  genWord32R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord32 m)
+  genWord32R m g = runGenState g (unbiasedIntMult32 m)
 
   genWord64R :: Word64 -> g -> (Word64, g)
   genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
@@ -1089,6 +1089,18 @@ uniformIntegerM (l, h) gen
         let v' = v * b + fromIntegral x
         v' `seq` f (mag * b) v'
 
+unbiasedIntMult32 :: MonadRandom g m => Word32 -> g -> m Word32
+unbiasedIntMult32 r g = go
+  where
+    t :: Word32
+    t = (-r) `mod` r -- Calculates 2^32 `mod` r!!!
+    go = do
+      x <- uniformWord32 g
+      let m :: Word64
+          m = (fromIntegral x) * (fromIntegral r)
+          l :: Word32
+          l = fromIntegral m
+      if (l >= t) then return (fromIntegral $ m `shiftR` 32) else go
 
 -- | This only works for unsigned integrals
 unsignedBitmaskWithRejectionRM ::
