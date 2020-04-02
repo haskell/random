@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -1083,24 +1084,75 @@ randomIvalInteger (l,h) rng
                         (x,g') = next g
                         v' = (v * b + (fromIntegral x - fromIntegral genlo))
 
+-- | Generate an 'Integer' in the range @[l, h]@ if @l <= h@ and @[h, l]@
+-- otherwise.
 uniformIntegerM :: (MonadRandom g m) => (Integer, Integer) -> g -> m Integer
-uniformIntegerM (l, h) gen
-  | l > h = uniformIntegerM (h, l) gen
-  | otherwise = do
-    v <- f 1 0
-    pure (l + v `mod` k)
+uniformIntegerM (l, h) gen = case l `compare` h of
+  LT -> do
+    let limit = h - l
+    let limitAsWord64 :: Word64 = fromIntegral limit
+    bounded <-
+      if (toInteger limitAsWord64) == limit
+        -- Optimisation: if 'limit' fits into 'Word64', generate a bounded
+        -- 'Word64' and then convert to 'Integer'
+        then toInteger <$> unsignedBitmaskWithRejectionM uniformWord64 limitAsWord64 gen
+        else boundedExclusiveIntegerM (limit + 1) gen
+    return $ l + bounded
+  GT -> uniformIntegerM (h, l) gen
+  EQ -> pure l
+{-# INLINE uniformIntegerM #-}
+
+-- | Generate an 'Integer' in the range @[0, s)@ using a variant of Lemire's
+-- multiplication method.
+--
+-- Daniel Lemire. 2019. Fast Random Integer Generation in an Interval. In ACM
+-- Transactions on Modeling and Computer Simulation
+-- https://doi.org/10.1145/3230636
+--
+-- PRECONDITION (unchecked): s > 0
+boundedExclusiveIntegerM :: (MonadRandom g m) => Integer -> g -> m Integer
+boundedExclusiveIntegerM s gen = go
   where
-    b = toInteger (maxBound :: Word64)
-    q = 1000
-    k = h - l + 1
-    magtgt = k * q
-    -- generate random values until we exceed the target magnitude
-    f mag v
-      | mag >= magtgt = pure v
+    n = integerWordSize s
+    -- We renamed 'L' from the paper to 'k' here because 'L' is not a valid
+    -- variable name in Haskell and 'l' is already used in the algorithm.
+    k = WORD_SIZE_IN_BITS * n
+    twoToK = (1::Integer) `shiftL` k
+    modTwoToKMask = twoToK - 1
+
+    t = (twoToK - s) `mod` s
+    go = do
+      x <- uniformIntegerWords n gen
+      let m = x * s
+      -- m .&. modTwoToKMask == m `mod` twoToK
+      let l = m .&. modTwoToKMask
+      if l < t
+        then go
+        -- m `shiftR` k == m `quot` twoToK
+        else return $ m `shiftR` k
+{-# INLINE boundedExclusiveIntegerM #-}
+
+-- | @integerWordSize i@ returns that least @w@ such that
+-- @i <= WORD_SIZE_IN_BITS^w@.
+integerWordSize :: Integer -> Int
+integerWordSize = go 0
+  where
+    go !acc i
+      | i == 0 = acc
+      | otherwise = go (acc + 1) (i `shiftR` WORD_SIZE_IN_BITS)
+{-# INLINE integerWordSize #-}
+
+-- | @uniformIntegerWords n@ is a uniformly random 'Integer' in the range
+-- @[0, WORD_SIZE_IN_BITS^n)@.
+uniformIntegerWords :: (MonadRandom g m) => Int -> g -> m Integer
+uniformIntegerWords n gen = go 0 n
+  where
+    go !acc i
+      | i == 0 = return acc
       | otherwise = do
-        x <- uniformWord64 gen
-        let v' = v * b + fromIntegral x
-        v' `seq` f (mag * b) v'
+        (w :: Word) <- uniform gen
+        go ((acc `shiftL` WORD_SIZE_IN_BITS) .|. (fromIntegral w)) (i - 1)
+{-# INLINE uniformIntegerWords #-}
 
 -- | Uniformly generate Word32 in @[0, s]@.
 unbiasedWordMult32 :: MonadRandom g m => Word32 -> g -> m Word32
