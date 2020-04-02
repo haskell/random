@@ -789,7 +789,9 @@ instance Uniform Word32 where
   uniform  = uniformWord32
 instance UniformRange Word32 where
   {-# INLINE uniformR #-}
-  uniformR = unsignedBitmaskWithRejectionRM
+  uniformR (b, t) g | b == t    = pure b
+                    | b > t     = unbiasedIntMult32 (b - t) g >>= return . (+t)
+                    | otherwise = unbiasedIntMult32 (t - b) g >>= return . (+b)
 
 instance Random Word64 where
   randomM = uniform
@@ -1090,8 +1092,12 @@ uniformIntegerM (l, h) gen
         v' `seq` f (mag * b) v'
 
 unbiasedIntMult32 :: MonadRandom g m => Word32 -> g -> m Word32
-unbiasedIntMult32 r g = go
+unbiasedIntMult32 s g
+  | s == 0    = pure 0
+  | otherwise = go
   where
+    r :: Word32
+    r = s + 1
     t :: Word32
     t = (-r) `mod` r -- Calculates 2^32 `mod` r!!!
     go = do
