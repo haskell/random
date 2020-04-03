@@ -800,6 +800,12 @@ instance UniformRange Word64 where
   {-# INLINE uniformR #-}
   uniformR = unsignedBitmaskWithRejectionRM
 
+instance Random CBool where
+  randomM = uniform
+instance Uniform CBool where
+  uniform = fmap CBool . uniform
+instance UniformRange CBool where
+  uniformR (CBool b, CBool t) = fmap CBool . uniformR (b, t)
 
 instance Random CChar where
   randomM = uniform

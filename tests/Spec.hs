@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -16,6 +17,8 @@ import Test.Tasty.SmallCheck as SC
 import Test.SmallCheck.Series as SC
 import Data.Typeable
 import Foreign.C.Types
+
+#include "HsBaseConfig.h"
 
 --import qualified Spec.Bitmask as Bitmask
 import qualified Spec.Range as Range
@@ -42,6 +45,7 @@ main =
     , integralSpec @Int
     , integralSpec @Char
     , integralSpec @Bool
+    , integralSpec @CBool
     , integralSpec @CChar
     , integralSpec @CSChar
     , integralSpec @CUChar
@@ -129,41 +133,43 @@ instance Monad m => Serial m CFloat where
   series = coerce <$> (series :: Series m Float)
 instance Monad m => Serial m CDouble where
   series = coerce <$> (series :: Series m Double)
+instance Monad m => Serial m CBool where
+  series = coerce <$> (series :: Series m HTYPE_BOOL)
 instance Monad m => Serial m CChar where
-  series = coerce <$> (series :: Series m Int8)
+  series = coerce <$> (series :: Series m HTYPE_CHAR)
 instance Monad m => Serial m CSChar where
-  series = coerce <$> (series :: Series m Int8)
+  series = coerce <$> (series :: Series m HTYPE_SIGNED_CHAR)
 instance Monad m => Serial m CUChar where
-  series = coerce <$> (series :: Series m Word8)
+  series = coerce <$> (series :: Series m HTYPE_UNSIGNED_CHAR)
 instance Monad m => Serial m CShort where
-  series = coerce <$> (series :: Series m Int16)
+  series = coerce <$> (series :: Series m HTYPE_SHORT)
 instance Monad m => Serial m CUShort where
-  series = coerce <$> (series :: Series m Word16)
+  series = coerce <$> (series :: Series m HTYPE_UNSIGNED_SHORT)
 instance Monad m => Serial m CInt where
-  series = coerce <$> (series :: Series m Int32)
+  series = coerce <$> (series :: Series m HTYPE_INT)
 instance Monad m => Serial m CUInt where
-  series = coerce <$> (series :: Series m Word32)
+  series = coerce <$> (series :: Series m HTYPE_UNSIGNED_INT)
 instance Monad m => Serial m CLong where
-  series = coerce <$> (series :: Series m Int64)
+  series = coerce <$> (series :: Series m HTYPE_LONG)
 instance Monad m => Serial m CULong where
-  series = coerce <$> (series :: Series m Word64)
+  series = coerce <$> (series :: Series m HTYPE_UNSIGNED_LONG)
 instance Monad m => Serial m CPtrdiff where
-  series = coerce <$> (series :: Series m Int64)
+  series = coerce <$> (series :: Series m HTYPE_PTRDIFF_T)
 instance Monad m => Serial m CSize where
-  series = coerce <$> (series :: Series m Word64)
+  series = coerce <$> (series :: Series m HTYPE_SIZE_T)
 instance Monad m => Serial m CWchar where
-  series = coerce <$> (series :: Series m Int32)
+  series = coerce <$> (series :: Series m HTYPE_WCHAR_T)
 instance Monad m => Serial m CSigAtomic where
-  series = coerce <$> (series :: Series m Int32)
+  series = coerce <$> (series :: Series m HTYPE_SIG_ATOMIC_T)
 instance Monad m => Serial m CLLong where
-  series = coerce <$> (series :: Series m Int64)
+  series = coerce <$> (series :: Series m HTYPE_LONG_LONG)
 instance Monad m => Serial m CULLong where
-  series = coerce <$> (series :: Series m Word64)
+  series = coerce <$> (series :: Series m HTYPE_UNSIGNED_LONG_LONG)
 instance Monad m => Serial m CIntPtr where
-  series = coerce <$> (series :: Series m Int64)
+  series = coerce <$> (series :: Series m HTYPE_INTPTR_T)
 instance Monad m => Serial m CUIntPtr where
-  series = coerce <$> (series :: Series m Word64)
+  series = coerce <$> (series :: Series m HTYPE_UINTPTR_T)
 instance Monad m => Serial m CIntMax where
-  series = coerce <$> (series :: Series m Int64)
+  series = coerce <$> (series :: Series m HTYPE_INTMAX_T)
 instance Monad m => Serial m CUIntMax where
-  series = coerce <$> (series :: Series m Word64)
+  series = coerce <$> (series :: Series m HTYPE_UINTMAX_T)
