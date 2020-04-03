@@ -789,8 +789,7 @@ instance Uniform Word32 where
   uniform  = uniformWord32
 instance UniformRange Word32 where
   {-# INLINE uniformR #-}
-  uniformR (b, t) g | b == t    = pure b
-                    | b > t     = unbiasedIntMult32 (b - t) g >>= return . (+t)
+  uniformR (b, t) g | b > t     = unbiasedIntMult32 (b - t) g >>= return . (+t)
                     | otherwise = unbiasedIntMult32 (t - b) g >>= return . (+b)
 
 instance Random Word64 where
@@ -1093,7 +1092,7 @@ uniformIntegerM (l, h) gen
 
 unbiasedIntMult32 :: MonadRandom g m => Word32 -> g -> m Word32
 unbiasedIntMult32 s g
-  | s == 0    = pure 0
+  | s == maxBound = uniformWord32 g
   | otherwise = go
   where
     r :: Word32
