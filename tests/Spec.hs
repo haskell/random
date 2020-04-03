@@ -20,7 +20,6 @@ import Foreign.C.Types
 
 #include "HsBaseConfig.h"
 
---import qualified Spec.Bitmask as Bitmask
 import qualified Spec.Range as Range
 import qualified Spec.Run as Run
 
