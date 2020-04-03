@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns, CPP, ScopedTypeVariables, ForeignFunctionInterface #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 -- | A simple script to do some very basic timing of the RNGs.
@@ -44,7 +44,7 @@ import GHC.IO
 -- Miscellaneous helpers:
 
 -- Readable large integer printing:
-commaint :: Integral a => a -> String
+commaint :: Show a => a -> String
 commaint n = 
    reverse $ concat $
    intersperse "," $ 
