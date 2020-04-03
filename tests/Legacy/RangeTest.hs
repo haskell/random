@@ -95,7 +95,9 @@ main =
 
   -- Then check all the range-restricted versions:
     checkBounds "Int R"     (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int))
-    checkBounds "Integer R" (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Integer))
+    checkBounds "Integer R" (False,-100000000000000000000,100000000000000000000)
+                                              (approxBounds (randomR (-100000000000000000000,100000000000000000000))
+					                                         trials (undefined::Integer))
     checkBounds "Int8 R"    (False,-100,100)  (approxBounds (randomR (-100,100)) trials (undefined::Int8))
     checkBounds "Int8 Rsmall" (False,-50,50)  (approxBounds (randomR (-50,50))   trials (undefined::Int8))
     checkBounds "Int8 Rmini"    (False,3,4)   (approxBounds (randomR (3,4))      trials (undefined::Int8))
