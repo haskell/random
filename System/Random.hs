@@ -1410,7 +1410,7 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 pseudorandom number generators. In Proceedings of the 2014 ACM International
 Conference on Object Oriented Programming Systems Languages & Applications
 (OOPSLA '14). ACM, New York, NY, USA, 453-472. DOI:
-https://doi.org/10.1145/2660193.2660195
+<https://doi.org/10.1145/2660193.2660195>
 
 -}
 
