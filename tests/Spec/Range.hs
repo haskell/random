@@ -1,6 +1,11 @@
-module Spec.Range (symmetric, bounded, singleton) where
+module Spec.Range
+  ( symmetric
+  , bounded
+  , singleton
+  , uniformRangeWithin
+  , uniformRangeWithinExcluded
+  ) where
 
-import Data.Bits
 import System.Random
 
 symmetric :: (RandomGen g, Random a, Eq a) => g -> (a, a) -> Bool
@@ -17,3 +22,13 @@ singleton :: (RandomGen g, Random a, Eq a) => g -> a -> Bool
 singleton g x = result == x
   where
     result = fst (randomR (x, x) g)
+
+uniformRangeWithin :: (RandomGen g, UniformRange a, Ord a) => g -> (a, a) -> Bool
+uniformRangeWithin gen (l, r) =
+  runGenState_ gen $ \g ->
+    (\result -> min l r <= result && result <= max l r) <$> uniformR (l, r) g
+
+uniformRangeWithinExcluded :: (RandomGen g, UniformRange a, Ord a) => g -> (a, a) -> Bool
+uniformRangeWithinExcluded gen (l, r) =
+  runGenState_ gen $ \g ->
+    (\result -> min l r <= result && (l == r || result < max l r)) <$> uniformR (l, r) g
