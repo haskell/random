@@ -250,7 +250,7 @@ class RandomGen g where
             ((fromIntegral h32 `unsafeShiftL` 32) .|. fromIntegral l32, g'')
 
   genWord32R :: Word32 -> g -> (Word32, g)
-  genWord32R m g = runGenState g (unbiasedIntMult32 m)
+  genWord32R m g = runGenState g (unbiasedWordMult32 m)
 
   genWord64R :: Word64 -> g -> (Word64, g)
   genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
@@ -789,8 +789,8 @@ instance Uniform Word32 where
   uniform  = uniformWord32
 instance UniformRange Word32 where
   {-# INLINE uniformR #-}
-  uniformR (b, t) g | b > t     = unbiasedIntMult32 (b - t) g >>= return . (+t)
-                    | otherwise = unbiasedIntMult32 (t - b) g >>= return . (+b)
+  uniformR (b, t) g | b > t     = (+t) <$> unbiasedWordMult32 (b - t) g
+                    | otherwise = (+b) <$> unbiasedWordMult32 (t - b) g
 
 instance Random Word64 where
   randomM = uniform
@@ -1090,8 +1090,15 @@ uniformIntegerM (l, h) gen
         let v' = v * b + fromIntegral x
         v' `seq` f (mag * b) v'
 
-unbiasedIntMult32 :: MonadRandom g m => Word32 -> g -> m Word32
-unbiasedIntMult32 s g
+-- | A slightly modified version of what can be found in [Lemire's
+-- paper](https://arxiv.org/pdf/1805.10941.pdf), [O'Neill's
+-- blogpost](https://www.pcg-random.org/posts/bounded-rands.html) and
+-- more directly from [O'Neill's github
+-- repo](https://github.com/imneme/bounded-rands/blob/3d71f53c975b1e5b29f2f3b05a74e26dab9c3d84/bounded32.cpp#L234).
+-- The modification is we want the range to be [0,t] not [0,t) to be
+-- compatible with unsignedBitmaskWithRejectionRM.
+unbiasedWordMult32 :: MonadRandom g m => Word32 -> g -> m Word32
+unbiasedWordMult32 s g
   | s == maxBound = uniformWord32 g
   | otherwise = go
   where
