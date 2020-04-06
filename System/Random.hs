@@ -706,10 +706,10 @@ buildRandoms cons rand = go
     -- The seq fixes part of #4218 and also makes fused Core simpler.
     go g = x `seq` (x `cons` go g') where (x,g') = rand g
 
-
+-- Generate values in the Int range
 instance Random Integer where
-  random g = randomR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
-  randomM g = uniformR (toInteger (minBound::Int), toInteger (maxBound::Int)) g
+  random = first (toInteger :: Int -> Integer) . random
+  randomM = fmap (toInteger :: Int -> Integer) . randomM
 
 instance UniformRange Integer where
   uniformR = uniformIntegerM
