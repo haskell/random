@@ -970,16 +970,12 @@ instance UniformRange Char where
 instance Random Bool where
   randomM = uniform
 instance Uniform Bool where
-  uniform = uniformR (minBound, maxBound)
+  uniform = fmap wordToBool . uniformWord8
+    where wordToBool w = (w .&. 1) /= 0
 instance UniformRange Bool where
-  uniformR (a, b) g = int2Bool <$> uniformR (bool2Int a, bool2Int b) g
-    where
-      bool2Int :: Bool -> Int
-      bool2Int False = 0
-      bool2Int True  = 1
-      int2Bool :: Int -> Bool
-      int2Bool 0 = False
-      int2Bool _ = True
+  uniformR (False, False) _g = return False
+  uniformR (True, True)   _g = return True
+  uniformR _               g = uniform g
 
 instance Random Double where
   randomR r g = runGenState g (uniformR r)
