@@ -250,7 +250,7 @@ class RandomGen g where
             ((fromIntegral h32 `unsafeShiftL` 32) .|. fromIntegral l32, g'')
 
   genWord32R :: Word32 -> g -> (Word32, g)
-  genWord32R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord32 m)
+  genWord32R m g = runGenState g (unbiasedWordMult32 m)
 
   genWord64R :: Word64 -> g -> (Word64, g)
   genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
@@ -789,7 +789,8 @@ instance Uniform Word32 where
   uniform  = uniformWord32
 instance UniformRange Word32 where
   {-# INLINE uniformR #-}
-  uniformR = unsignedBitmaskWithRejectionRM
+  uniformR (b, t) g | b > t     = (+t) <$> unbiasedWordMult32 (b - t) g
+                    | otherwise = (+b) <$> unbiasedWordMult32 (t - b) g
 
 instance Random Word64 where
   randomM = uniform
@@ -1089,6 +1090,31 @@ uniformIntegerM (l, h) gen
         let v' = v * b + fromIntegral x
         v' `seq` f (mag * b) v'
 
+-- | Uniformly generate Word32 in @[0, s]@.
+unbiasedWordMult32 :: MonadRandom g m => Word32 -> g -> m Word32
+unbiasedWordMult32 s g
+  | s == maxBound = uniformWord32 g
+  | otherwise = unbiasedWordMult32Exclusive (s+1) g
+{-# INLINE unbiasedWordMult32 #-}
+
+-- | See [Lemire's paper](https://arxiv.org/pdf/1805.10941.pdf),
+-- [O'Neill's
+-- blogpost](https://www.pcg-random.org/posts/bounded-rands.html) and
+-- more directly [O'Neill's github
+-- repo](https://github.com/imneme/bounded-rands/blob/3d71f53c975b1e5b29f2f3b05a74e26dab9c3d84/bounded32.cpp#L234).
+-- N.B. The range is [0,t) **not** [0,t].
+unbiasedWordMult32Exclusive  :: MonadRandom g m => Word32 -> g -> m Word32
+unbiasedWordMult32Exclusive r g = go
+  where
+    t :: Word32
+    t = (-r) `mod` r -- Calculates 2^32 `mod` r!!!
+    go = do
+      x <- uniformWord32 g
+      let m :: Word64
+          m = (fromIntegral x) * (fromIntegral r)
+          l :: Word32
+          l = fromIntegral m
+      if (l >= t) then return (fromIntegral $ m `shiftR` 32) else go
 
 -- | This only works for unsigned integrals
 unsignedBitmaskWithRejectionRM ::
