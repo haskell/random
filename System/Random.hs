@@ -250,11 +250,20 @@
 --
 -- == How to implement 'RandomGen' for a pseudo-random number generator without a power-of-2 modulus
 --
--- Suppose you want to implement the pseudo-random number generator from
--- <https://dl.acm.org/doi/abs/10.1145/62959.62969 L’Ecuyer (1988)>. It
--- natively generates an integer value in the range @[1, 2147483562]@. This is
--- the generator used by this library before it was replaced by SplitMix in
--- version 1.2.
+-- __We do not recommend you implement any new pseudo-random number generators without a power-of-2 modulus.__
+--
+-- Pseudo-random number generators without a power-of-2 modulus perform
+-- /significantly worse/ than pseudo-random number generators with a power-of-2
+-- modulus with this library. This is because most functionality in this
+-- library is based on generating and transforming uniformly random machine
+-- words, and generating uniformly random machine words using a pseudo-random
+-- number generator without a power-of-2 modulus is expensive.
+--
+-- The pseudo-random number generator from
+-- <https://dl.acm.org/doi/abs/10.1145/62959.62969 L’Ecuyer (1988)> natively
+-- generates an integer value in the range @[1, 2147483562]@. This is the
+-- generator used by this library before it was replaced by SplitMix in version
+-- 1.2.
 --
 -- >>> data LegacyGen = LegacyGen !Int32 !Int32
 -- >>> :{
@@ -277,11 +286,6 @@
 --   next = legacyNext
 --   genRange _ = (1, 2147483562)
 -- :}
---
--- Note that since the default implementations of all other 'RandomGen' methods
--- are geared towards pseudo-random number generators with 'next' as the source
--- of randomness for backwards compatibility, there is no need to implement
--- additional methods. You should of course verify this with a benchmark.
 --
 -- = How to implement 'MonadRandom'
 --
