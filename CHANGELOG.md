@@ -24,17 +24,3 @@ bump for bug fixes,
 # 1.0.0.4
 bumped version for float/double range bugfix
 
-# 1.2
-
- * Breaking change which mostly maintains backwards compatibility.
- * Default generator of [splitmix](https://hackage.haskell.org/package/splitmix).
- * Faster by more x10 (depending on the type).
- * Passes a large number of random number test suites: dieharder,
-   TestU01 (SmallCrush, Crush, BigCrush), PractRand, gjrand. See
-   [random-quality](https://github.com/tweag/random-quality) for
-   details on how to do this yourself.
- * Better quality split as judged by these [tests](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/evaluation-of-splittable-pseudorandom-generators/3EBAA9F14939C5BB5560E32D1A132637)
-
-
-
-
