@@ -749,8 +749,10 @@ instance Uniform Int where
 #else
   uniform = fmap (fromIntegral :: Word64 -> Int) . uniformWord64
 #endif
+  {-# INLINE uniform #-}
 instance UniformRange Int where
   uniformR = signedBitmaskWithRejectionRM (fromIntegral :: Int -> Word) fromIntegral
+  {-# INLINE uniformR #-}
 
 instance Random Word where
   randomM = uniform
@@ -956,16 +958,30 @@ instance UniformRange CDouble where
   uniformR (CDouble l, CDouble h) = fmap CDouble . uniformR (l, h)
 
 
+-- The `chr#` and `ord#` are the prim functions that will be called, regardless of which
+-- way you gonna do the `Char` conversion, so it is better to call them directly and
+-- bypass all the hoops. Also because `intToChar` and `charToInt` are internal functions
+-- and are called on valid character ranges it is impossible to generate an invalid
+-- `Char`, therefore it is totally fine to omit all the unnecessary checks involved in
+-- other paths of conversion.
+word32ToChar :: Word32 -> Char
+word32ToChar (W32# w#) = C# (chr# (word2Int# w#))
+{-# INLINE word32ToChar #-}
+
+charToWord32 :: Char -> Word32
+charToWord32 (C# c#) = W32# (int2Word# (ord# c#))
+{-# INLINE charToWord32 #-}
+
 instance Random Char where
   randomM = uniform
+  {-# INLINE randomM #-}
 instance Uniform Char where
-  uniform = uniformR (minBound, maxBound)
+  uniform g = word32ToChar <$> unsignedBitmaskWithRejectionM uniform (charToWord32 maxBound) g
+  {-# INLINE uniform #-}
 instance UniformRange Char where
-  uniformR (l, h) g = toChar <$> unsignedBitmaskWithRejectionRM (fromChar l, fromChar h) g
-    where
-      fromChar (C# c#) = W# (int2Word# (ord# c#))
-      toChar (W# w#) = C# (chr# (word2Int# w#))
-
+  uniformR (l, h) g =
+    word32ToChar <$> unsignedBitmaskWithRejectionRM (charToWord32 l, charToWord32 h) g
+  {-# INLINE uniformR #-}
 
 instance Random Bool where
   randomM = uniform
