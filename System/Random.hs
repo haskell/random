@@ -774,7 +774,7 @@ instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) RealWorld m where
   {-# INLINE uniformWord64 #-}
   uniformShortByteString n = applyIOGen (genShortByteString n)
 
--- | Apply a pure operation to generator atomically.
+-- | Apply a pure operation to the generator.
 applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGen g RealWorld -> m a
 applyIOGen f (IOGenI ref) = liftIO $ do
   g <- readIORef ref
