@@ -34,7 +34,6 @@ library
     build-depends:
         base >=4.10 && <5,
         bytestring -any,
-        primitive >= 0.6.4.0 && <8,
         mtl -any,
         splitmix -any
     c-sources: cbits/CastFloatWord.cmm
