@@ -533,7 +533,7 @@ class Monad m => MonadRandom (g :: * -> *) s m | m -> s where
 class (RandomGen r, MonadRandom (g r) s m) => RandomGenM (g :: * -> * -> *) r s m where
   applyRandomGenM :: (r -> (a, r)) -> g r s -> m a
 
--- | Split a pure random number generator, update the mutable and get the splitted version
+-- | Split a pure random number generator, update the mutable and get the split version
 -- back
 splitRandomGenM :: RandomGenM g r s m => g r s -> m r
 splitRandomGenM = applyRandomGenM split
