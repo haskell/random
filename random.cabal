@@ -65,6 +65,7 @@ test-suite doctests
     build-depends:
         base -any,
         doctest >=0.15,
+        mwc-random -any,
         random -any,
         unliftio -any
 
