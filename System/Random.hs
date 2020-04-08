@@ -163,7 +163,7 @@
 -- 'Prim', you can also use 'runMutGenIO' or 'runMutGenST' and their variants.
 --
 -- >>> let pureGen = mkStdGen 42
--- >>> runPrimGenIO_ pureGen (rolls 10) :: IO [Word8]
+-- >>> runGenM_ (IOGen pureGen) (rolls 10) :: IO [Word8]
 -- [1,1,3,2,4,5,3,4,6,2]
 --
 -- = How to generate random values in pure code
@@ -299,13 +299,14 @@
 -- from the @mwc-random@ package:
 --
 -- > instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
--- >     newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
--- >     thawGen = fmap MWC.restore unFrozen
--- >     freezeGen = fmap Frozen . MWC.save
--- >     uniformWord8 = MWC.uniform
--- >     uniformWord16 = MWC.uniform
--- >     uniformWord32 = MWC.uniform
--- >     uniformWord64 = MWC.uniform
+-- >   newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
+-- >   thawGen = fmap MWC.restore unFrozen
+-- >   freezeGen = fmap Frozen . MWC.save
+-- >   uniformWord8 = MWC.uniform
+-- >   uniformWord16 = MWC.uniform
+-- >   uniformWord32 = MWC.uniform
+-- >   uniformWord64 = MWC.uniform
+-- >   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
 -----------------------------------------------------------------------------
 
 module System.Random
@@ -367,6 +368,7 @@ module System.Random
 
   -- * Generators for sequences of bytes
   , genShortByteStringWith
+  , genShortByteStringST
   , uniformByteString
   , genByteString
 
@@ -377,6 +379,7 @@ module System.Random
 import Control.Arrow
 import Control.Monad.IO.Class
 import Control.Monad.ST
+import Control.Monad.ST.Unsafe
 import Control.Monad.State.Strict
 import Data.Bits
 import Data.ByteString.Builder.Prim (word64LE)
@@ -423,13 +426,14 @@ import GHC.IO (IO(..))
 --
 -- >>> :{
 -- instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
---     newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
---     thawGen = fmap MWC.restore unFrozen
---     freezeGen = fmap Frozen . MWC.save
---     uniformWord8 = MWC.uniform
---     uniformWord16 = MWC.uniform
---     uniformWord32 = MWC.uniform
---     uniformWord64 = MWC.uniform
+--   newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
+--   thawGen = fmap MWC.restore unFrozen
+--   freezeGen = fmap Frozen . MWC.save
+--   uniformWord8 = MWC.uniform
+--   uniformWord16 = MWC.uniform
+--   uniformWord32 = MWC.uniform
+--   uniformWord64 = MWC.uniform
+--   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
 -- :}
 
 -- | The class 'RandomGen' provides a common interface to random number
@@ -620,6 +624,9 @@ genShortByteStringWith n0 gen64 = do
         (# s'#, ba# #) -> (# s'#, SBS ba# #)
 {-# INLINE genShortByteStringWith #-}
 
+genShortByteStringST :: Int -> ST s Word64 -> ST s ShortByteString
+genShortByteStringST n action =
+  unsafeIOToST (genShortByteStringWith n (unsafeSTToIO action))
 
 pinnedByteArrayToByteString :: ByteArray# -> ByteString
 pinnedByteArrayToByteString ba# =

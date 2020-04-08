@@ -65,6 +65,7 @@ test-suite doctests
         base -any,
         doctest >=0.15,
         mwc-random -any,
+        primitive -any,
         random -any,
         unliftio -any
 
