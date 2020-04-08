@@ -735,7 +735,7 @@ applyAtomicGen op (AtomicGenI gVar) =
 {-# INLINE applyAtomicGen #-}
 
 -- | This is a wrapper wround an @IORef@ that holds a pure generator. Because of extra pointer
--- indirection it will be slightly slower than if `PureGen` is being used, but faster then
+-- indirection it will be slightly slower than if `PureGen` is being used, but faster than
 -- `AtomicGen` wrapper, since atomic modification is not being used with `IOGen`. Which also
 -- means that it is not safe in a concurrent setting.
 --
