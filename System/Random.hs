@@ -518,7 +518,7 @@ class RandomGen g where
   -- generators.
   split :: g -> (g, g)
 
-class Monad m => MonadRandom (g :: * -> *) s m | m -> s where
+class Monad m => MonadRandom g s m | m -> s where
   data Frozen g :: *
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
