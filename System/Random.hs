@@ -3,12 +3,14 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE GHCForeignImportPrim #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -145,7 +147,7 @@
 -- @[1, 6]@.
 --
 -- >>> :{
--- let rolls :: MonadRandom g m => Int -> g -> m [Word8]
+-- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
 --     rolls n = replicateM n . uniformR (1, 6)
 -- :}
 --
@@ -297,10 +299,10 @@
 -- Here is an example instance for the monadic pseudo-random number generator
 -- from the @mwc-random@ package:
 --
--- > instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
--- >     newtype Frozen (MWC.Gen s) = FrozenGen MWC.Seed
--- >     thawGen (FrozenGen s) = MWC.restore s
--- >     freezeGen = fmap FrozenGen . MWC.save
+-- > instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
+-- >     newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
+-- >     thawGen = fmap MWC.restore unFrozen
+-- >     freezeGen = fmap Frozen . MWC.save
 -- >     uniformWord8 = MWC.uniform
 -- >     uniformWord16 = MWC.uniform
 -- >     uniformWord32 = MWC.uniform
@@ -428,6 +430,7 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 -- >>> :set -XFlexibleInstances
 -- >>> :set -XMultiParamTypeClasses
 -- >>> :set -XTypeFamilies
+-- >>> :set -XUndecidableInstances
 --
 -- >>> :set -fno-warn-missing-methods
 --
@@ -437,10 +440,10 @@ mutableByteArrayContentsCompat :: MutableByteArray s -> Ptr Word8
 -- :}
 --
 -- >>> :{
--- instance (s ~ PrimState m, PrimMonad m) => MonadRandom (MWC.Gen s) m where
---     newtype Frozen (MWC.Gen s) = FrozenGen MWC.Seed
---     thawGen (FrozenGen s) = MWC.restore s
---     freezeGen = fmap FrozenGen . MWC.save
+-- instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
+--     newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
+--     thawGen = fmap MWC.restore unFrozen
+--     freezeGen = fmap Frozen . MWC.save
 --     uniformWord8 = MWC.uniform
 --     uniformWord16 = MWC.uniform
 --     uniformWord32 = MWC.uniform
@@ -515,51 +518,51 @@ class RandomGen g where
   -- generators.
   split :: g -> (g, g)
 
-class Monad m => MonadRandom g m where
+class Monad m => MonadRandom (g :: * -> *) s m | m -> s where
   data Frozen g :: *
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
-  thawGen :: Frozen g -> m g
-  freezeGen :: g -> m (Frozen g)
+  thawGen :: Frozen g -> m (g s)
+  freezeGen :: g s -> m (Frozen g)
   -- | Generate 'Word32' up to and including the supplied max value
-  uniformWord32R :: Word32 -> g -> m Word32
+  uniformWord32R :: Word32 -> g s -> m Word32
   uniformWord32R = unsignedBitmaskWithRejectionM uniformWord32
 
   -- | Generate 'Word64' up to and including the supplied max value
-  uniformWord64R :: Word64 -> g -> m Word64
+  uniformWord64R :: Word64 -> g s -> m Word64
   uniformWord64R = unsignedBitmaskWithRejectionM uniformWord64
 
-  uniformWord8 :: g -> m Word8
+  uniformWord8 :: g s -> m Word8
   uniformWord8 = fmap fromIntegral . uniformWord32
-  uniformWord16 :: g -> m Word16
+  uniformWord16 :: g s -> m Word16
   uniformWord16 = fmap fromIntegral . uniformWord32
-  uniformWord32 :: g -> m Word32
+  uniformWord32 :: g s -> m Word32
   uniformWord32 = fmap fromIntegral . uniformWord64
-  uniformWord64 :: g -> m Word64
+  uniformWord64 :: g s -> m Word64
   uniformWord64 g = do
     l32 <- uniformWord32 g
     h32 <- uniformWord32 g
     pure (unsafeShiftL (fromIntegral h32) 32 .|. fromIntegral l32)
-  uniformByteArray :: Int -> g -> m ByteArray
-  default uniformByteArray :: PrimMonad m => Int -> g -> m ByteArray
+  uniformByteArray :: Int -> g s -> m ByteArray
+  default uniformByteArray :: PrimMonad m => Int -> g s -> m ByteArray
   uniformByteArray = uniformByteArrayPrim
   {-# INLINE uniformByteArray #-}
 
 
-withGenM :: MonadRandom g m => Frozen g -> (g -> m a) -> m (a, Frozen g)
+withGenM :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m (a, Frozen g)
 withGenM fg action = do
   g <- thawGen fg
   res <- action g
   fg' <- freezeGen g
   pure (res, fg')
 
-uniformListM :: (MonadRandom g m, Uniform a) => g -> Int -> m [a]
+uniformListM :: (MonadRandom g s m, Uniform a) => g s -> Int -> m [a]
 uniformListM gen n = replicateM n (uniform gen)
 
 -- | This function will efficiently generate a sequence of random bytes in a platform
 -- independent manner. Memory allocated will be pinned, so it is safe to use for FFI
 -- calls.
-uniformByteArrayPrim :: (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteArray
+uniformByteArrayPrim :: (MonadRandom g s m, PrimMonad m) => Int -> g s -> m ByteArray
 uniformByteArrayPrim n0 gen = do
   let n = max 0 n0
       (n64, nrem64) = n `quotRem` 8
@@ -606,7 +609,7 @@ pinnedMutableByteArrayToForeignPtr mba@(MutableByteArray mba#) =
 --
 -- @since 1.2
 uniformByteStringPrim ::
-     (MonadRandom g m, PrimMonad m) => Int -> g -> m ByteString
+     (MonadRandom g s m, PrimMonad m) => Int -> g s -> m ByteString
 uniformByteStringPrim n g = do
   ba@(ByteArray ba#) <- uniformByteArray n g
   if isByteArrayPinned ba
@@ -626,15 +629,15 @@ genByteString n g = runPureGenST g (uniformByteStringPrim n)
 -- | Run an effectful generating action in `ST` monad using a pure generator.
 --
 -- @since 1.2
-runPureGenST :: RandomGen g => g -> (forall s . PureGen g -> StateT g (ST s) a) -> (a, g)
+runPureGenST :: RandomGen g => g -> (forall s . PureGen g g -> StateT g (ST s) a) -> (a, g)
 runPureGenST g action = runST $ runGenStateT g $ action
 {-# INLINE runPureGenST #-}
 
 
 -- | An opaque data type that carries the type of a pure generator
-data PureGen g = PureGenI
+data PureGen g s = PureGenI
 
-instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
+instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) g m where
   newtype Frozen (PureGen g) = PureGen g
   thawGen (PureGen g) = PureGenI <$ put g
   freezeGen _ =fmap PureGen get
@@ -649,7 +652,7 @@ instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) m where
 -- | Generate a random value in a state monad
 --
 -- @since 1.2
-genRandom :: (RandomGen g, Random a, MonadState g m) => PureGen g -> m a
+genRandom :: (RandomGen g, Random a, MonadState g m) => PureGen g g -> m a
 genRandom = randomM
 
 -- | Split current generator and update the state with one part, while returning the other.
@@ -658,16 +661,16 @@ genRandom = randomM
 splitGen :: (MonadState g m, RandomGen g) => m g
 splitGen = state split
 
-runGenState :: RandomGen g => g -> (PureGen g -> State g a) -> (a, g)
+runGenState :: RandomGen g => g -> (PureGen g g -> State g a) -> (a, g)
 runGenState g f = runState (f PureGenI) g
 
-runGenState_ :: RandomGen g => g -> (PureGen g -> State g a) -> a
+runGenState_ :: RandomGen g => g -> (PureGen g g -> State g a) -> a
 runGenState_ g = fst . runGenState g
 
-runGenStateT :: RandomGen g => g -> (PureGen g -> StateT g m a) -> m (a, g)
+runGenStateT :: RandomGen g => g -> (PureGen g g -> StateT g m a) -> m (a, g)
 runGenStateT g f = runStateT (f PureGenI) g
 
-runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g -> StateT g f a) -> f a
+runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g g -> StateT g f a) -> f a
 runGenStateT_ g = fmap fst . runGenStateT g
 
 -- | This is a wrapper wround pure generator that can be used in an effectful environment.
@@ -675,11 +678,11 @@ runGenStateT_ g = fmap fst . runGenStateT g
 -- atomically.
 --
 -- @since 1.2
-newtype MutGen s g = MutGenI (MutVar s g)
+newtype MutGen g s = MutGenI (MutVar s g)
 
 instance (s ~ PrimState m, PrimMonad m, RandomGen g) =>
-         MonadRandom (MutGen s g) m where
-  newtype Frozen (MutGen s g) = MutGen g
+         MonadRandom (MutGen g) s m where
+  newtype Frozen (MutGen g) = MutGen g
   thawGen (MutGen g) = fmap MutGenI (newMutVar g)
   freezeGen (MutGenI gVar) = fmap MutGen (readMutVar gVar)
   uniformWord32R r = atomicMutGen (genWord32R r)
@@ -692,7 +695,7 @@ instance (s ~ PrimState m, PrimMonad m, RandomGen g) =>
   uniformByteArray n = atomicMutGen (genByteArray n)
 
 -- | Apply a pure operation to generator atomically.
-atomicMutGen :: PrimMonad m => (g -> (a, g)) -> MutGen (PrimState m) g -> m a
+atomicMutGen :: PrimMonad m => (g -> (a, g)) -> MutGen g (PrimState m) -> m a
 atomicMutGen op (MutGenI gVar) =
   atomicModifyMutVar' gVar $ \g ->
     case op g of
@@ -705,12 +708,10 @@ atomicMutGen op (MutGenI gVar) =
 --
 -- @since 1.2
 splitMutGen ::
-     (RandomGen g, PrimMonad m)
-  => MutGen (PrimState m) g
-  -> m (MutGen (PrimState m) g)
+     (RandomGen g, PrimMonad m, s ~ PrimState m) => MutGen g s -> m (MutGen g s)
 splitMutGen = atomicMutGen split >=> thawGen . MutGen
 
-runMutGenST :: RandomGen g => g -> (forall s . MutGen s g -> ST s a) -> (a, g)
+runMutGenST :: RandomGen g => g -> (forall s . MutGen g s -> ST s a) -> (a, g)
 runMutGenST g action = runST $ do
   mutGen <- thawGen $ MutGen g
   res <- action mutGen
@@ -718,7 +719,7 @@ runMutGenST g action = runST $ do
   pure (res, g')
 
 -- | Same as `runMutGenST`, but discard the resulting generator.
-runMutGenST_ :: RandomGen g => g -> (forall s . MutGen s g -> ST s a) -> a
+runMutGenST_ :: RandomGen g => g -> (forall s . MutGen g s -> ST s a) -> a
 runMutGenST_ g action = fst $ runMutGenST g action
 
 -- | Both `PrimGen` and `MutGen` and their corresponding functions like 'runPrimGenIO' are
@@ -734,7 +735,7 @@ runMutGenST_ g action = fst $ runMutGenST g action
 --
 -- >>> runMutGenIO_ (mkStdGen 1729) ioGen
 --
-runMutGenIO :: (RandomGen g, MonadIO m) => g -> (MutGen RealWorld g -> m a) -> m (a, g)
+runMutGenIO :: (RandomGen g, MonadIO m) => g -> (MutGen g RealWorld -> m a) -> m (a, g)
 runMutGenIO g action = do
   mutGen <- liftIO $ thawGen $ MutGen g
   res <- action mutGen
@@ -743,16 +744,16 @@ runMutGenIO g action = do
 {-# INLINE runMutGenIO #-}
 
 -- | Same as `runMutGenIO`, but discard the resulting generator.
-runMutGenIO_ :: (RandomGen g, MonadIO m) => g -> (MutGen RealWorld g -> m a) -> m a
+runMutGenIO_ :: (RandomGen g, MonadIO m) => g -> (MutGen g RealWorld -> m a) -> m a
 runMutGenIO_ g action = fst <$> runMutGenIO g action
 {-# INLINE runMutGenIO_ #-}
 
 
-newtype PrimGen s g = PrimGenI (MutableByteArray s)
+newtype PrimGen g s = PrimGenI (MutableByteArray s)
 
 instance (s ~ PrimState m, PrimMonad m, RandomGen g, Prim g) =>
-         MonadRandom (PrimGen s g) m where
-  newtype Frozen (PrimGen s g) = PrimGen g
+         MonadRandom (PrimGen g) s m where
+  newtype Frozen (PrimGen g) = PrimGen g
   thawGen (PrimGen g) = do
     ma <- newByteArray (Primitive.sizeOf g)
     writeByteArray ma 0 g
@@ -766,7 +767,7 @@ instance (s ~ PrimState m, PrimMonad m, RandomGen g, Prim g) =>
   uniformWord64 = applyPrimGen genWord64
   uniformByteArray n = applyPrimGen (genByteArray n)
 
-applyPrimGen :: (Prim g, PrimMonad m) => (g -> (a, g)) -> PrimGen (PrimState m) g -> m a
+applyPrimGen :: (Prim g, PrimMonad m, s ~ PrimState m) => (g -> (a, g)) -> PrimGen g s -> m a
 applyPrimGen f (PrimGenI ma) = do
   g <- readByteArray ma 0
   case f g of
@@ -777,12 +778,12 @@ applyPrimGen f (PrimGenI ma) = do
 --
 -- @since 1.2
 splitPrimGen ::
-     (Prim g, RandomGen g, PrimMonad m)
-  => PrimGen (PrimState m) g
-  -> m (PrimGen (PrimState m) g)
+     (Prim g, RandomGen g, PrimMonad m, s ~ PrimState m)
+  => PrimGen g s
+  -> m (PrimGen g s)
 splitPrimGen = applyPrimGen split >=> thawGen . PrimGen
 
-runPrimGenST :: (Prim g, RandomGen g) => g -> (forall s . PrimGen s g -> ST s a) -> (a, g)
+runPrimGenST :: (Prim g, RandomGen g) => g -> (forall s . PrimGen g s -> ST s a) -> (a, g)
 runPrimGenST g action = runST $ do
   primGen <- thawGen $ PrimGen g
   res <- action primGen
@@ -790,10 +791,10 @@ runPrimGenST g action = runST $ do
   pure (res, g')
 
 -- | Same as `runPrimGenST`, but discard the resulting generator.
-runPrimGenST_ :: (Prim g, RandomGen g) => g -> (forall s . PrimGen s g -> ST s a) -> a
+runPrimGenST_ :: (Prim g, RandomGen g) => g -> (forall s . PrimGen g s -> ST s a) -> a
 runPrimGenST_ g action = fst $ runPrimGenST g action
 
-runPrimGenIO :: (Prim g, RandomGen g, MonadIO m) => g -> (PrimGen RealWorld g -> m a) -> m (a, g)
+runPrimGenIO :: (Prim g, RandomGen g, MonadIO m) => g -> (PrimGen g RealWorld -> m a) -> m (a, g)
 runPrimGenIO g action = do
   primGen <- liftIO $ thawGen $ PrimGen g
   res <- action primGen
@@ -801,7 +802,7 @@ runPrimGenIO g action = do
   pure (res, g')
 
 -- | Same as `runPrimGenIO`, but discard the resulting generator.
-runPrimGenIO_ :: (Prim g, RandomGen g, MonadIO m) => g -> (PrimGen RealWorld g -> m a) -> m a
+runPrimGenIO_ :: (Prim g, RandomGen g, MonadIO m) => g -> (PrimGen g RealWorld -> m a) -> m a
 runPrimGenIO_ g action = fst <$> runPrimGenIO g action
 
 type StdGen = SM.SMGen
@@ -849,7 +850,7 @@ mkStdGen s = SM.mkSMGen $ fromIntegral s
 
 -- | Generate every possible value for data type with equal probability.
 class Uniform a where
-  uniform :: MonadRandom g m => g -> m a
+  uniform :: MonadRandom g s m => g s -> m a
 
 -- | Generate every value in provided inclusive range with equal
 --   probability. So @uniformR (1,4)@ should generate values from set
@@ -861,7 +862,7 @@ class Uniform a where
 --
 -- > uniformR (a,b) = uniform (b,a)
 class UniformRange a where
-  uniformR :: MonadRandom g m => (a, a) -> g -> m a
+  uniformR :: MonadRandom g s m => (a, a) -> g s -> m a
 
 
 {- |
@@ -900,7 +901,7 @@ class Random a where
   random g = runGenState g genRandom
 
   --{-# INLINE randomM #-}
-  randomM :: MonadRandom g m => g -> m a
+  randomM :: MonadRandom g s m => g s -> m a
   -- default randomM :: (MonadRandom g m, Uniform a) => g -> m a
   -- randomM = uniform
 
@@ -1318,7 +1319,7 @@ randomIvalInteger (l,h) rng
 
 -- | Generate an 'Integer' in the range @[l, h]@ if @l <= h@ and @[h, l]@
 -- otherwise.
-uniformIntegerM :: (MonadRandom g m) => (Integer, Integer) -> g -> m Integer
+uniformIntegerM :: (MonadRandom g s m) => (Integer, Integer) -> g s -> m Integer
 uniformIntegerM (l, h) gen = case l `compare` h of
   LT -> do
     let limit = h - l
@@ -1342,7 +1343,7 @@ uniformIntegerM (l, h) gen = case l `compare` h of
 -- https://doi.org/10.1145/3230636
 --
 -- PRECONDITION (unchecked): s > 0
-boundedExclusiveIntegerM :: (MonadRandom g m) => Integer -> g -> m Integer
+boundedExclusiveIntegerM :: (MonadRandom g s m) => Integer -> g s -> m Integer
 boundedExclusiveIntegerM s gen = go
   where
     n = integerWordSize s
@@ -1376,7 +1377,7 @@ integerWordSize = go 0
 
 -- | @uniformIntegerWords n@ is a uniformly random 'Integer' in the range
 -- @[0, WORD_SIZE_IN_BITS^n)@.
-uniformIntegerWords :: (MonadRandom g m) => Int -> g -> m Integer
+uniformIntegerWords :: (MonadRandom g s m) => Int -> g s -> m Integer
 uniformIntegerWords n gen = go 0 n
   where
     go !acc i
@@ -1387,7 +1388,7 @@ uniformIntegerWords n gen = go 0 n
 {-# INLINE uniformIntegerWords #-}
 
 -- | Uniformly generate Word32 in @[0, s]@.
-unbiasedWordMult32 :: MonadRandom g m => Word32 -> g -> m Word32
+unbiasedWordMult32 :: MonadRandom g s m => Word32 -> g s -> m Word32
 unbiasedWordMult32 s g
   | s == maxBound = uniformWord32 g
   | otherwise = unbiasedWordMult32Exclusive (s+1) g
@@ -1399,7 +1400,7 @@ unbiasedWordMult32 s g
 -- more directly [O'Neill's github
 -- repo](https://github.com/imneme/bounded-rands/blob/3d71f53c975b1e5b29f2f3b05a74e26dab9c3d84/bounded32.cpp#L234).
 -- N.B. The range is [0,t) **not** [0,t].
-unbiasedWordMult32Exclusive  :: MonadRandom g m => Word32 -> g -> m Word32
+unbiasedWordMult32Exclusive  :: MonadRandom g s m => Word32 -> g s -> m Word32
 unbiasedWordMult32Exclusive r g = go
   where
     t :: Word32
@@ -1414,9 +1415,9 @@ unbiasedWordMult32Exclusive r g = go
 
 -- | This only works for unsigned integrals
 unsignedBitmaskWithRejectionRM ::
-     (MonadRandom g m, FiniteBits a, Num a, Ord a, Uniform a)
+     (MonadRandom g s m, FiniteBits a, Num a, Ord a, Uniform a)
   => (a, a)
-  -> g
+  -> g s
   -> m a
 unsignedBitmaskWithRejectionRM (bottom, top) gen
   | bottom > top = unsignedBitmaskWithRejectionRM (top, bottom) gen
@@ -1428,11 +1429,11 @@ unsignedBitmaskWithRejectionRM (bottom, top) gen
 
 -- | This works for signed integrals by explicit conversion to unsigned and abusing overflow
 signedBitmaskWithRejectionRM ::
-     (Num a, Num b, Ord b, Ord a, FiniteBits a, MonadRandom g f, Uniform a)
+     (Num a, Num b, Ord b, Ord a, FiniteBits a, MonadRandom g s f, Uniform a)
   => (b -> a)
   -> (a -> b)
   -> (b, b)
-  -> g
+  -> g s
   -> f b
 signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
   | bottom > top = signedBitmaskWithRejectionRM toUnsigned fromUnsigned (top, bottom) gen
@@ -1444,7 +1445,7 @@ signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
       range = toUnsigned top - toUnsigned bottom
 {-# INLINE signedBitmaskWithRejectionRM #-}
 
-unsignedBitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g m) => (g -> m a) -> a -> g -> m a
+unsignedBitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g s m) => (g s -> m a) -> a -> g s -> m a
 unsignedBitmaskWithRejectionM genUniform range gen = go
   where
     mask = complement zeroBits `shiftR` countLeadingZeros (range .|. 1)
