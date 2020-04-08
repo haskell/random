@@ -504,7 +504,7 @@ class RandomGen g where
   -- generators.
   split :: g -> (g, g)
 
-class Monad m => MonadRandom (g :: * -> *) s m | m -> s where
+class Monad m => MonadRandom g s m | m -> s where
   data Frozen g :: *
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
@@ -534,7 +534,7 @@ class Monad m => MonadRandom (g :: * -> *) s m | m -> s where
   uniformShortByteString n = genShortByteStringWith n . uniformWord64
   {-# INLINE uniformShortByteString #-}
 
-class (RandomGen r, MonadRandom (g r) s m) => RandomGenM (g :: * -> * -> *) r s m where
+class (RandomGen r, MonadRandom (g r) s m) => RandomGenM g r s m where
   applyRandomGenM :: (r -> (a, r)) -> g r s -> m a
 
 -- | Split a pure random number generator, update the mutable and get the split version
