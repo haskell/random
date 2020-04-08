@@ -3,6 +3,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -317,7 +318,10 @@ module System.Random
     RandomGen(..)
   , MonadRandom(..)
   , Frozen(..)
-  , withGenM
+  , runGenM
+  , runGenM_
+  , RandomGenM(..)
+  , splitRandomGenM
   -- ** Standard random number generators
   , StdGen
   , mkStdGen
@@ -333,23 +337,17 @@ module System.Random
   , runGenStateT_
   , runPureGenST
   -- ** Mutable generators
-  -- *** AtomicGen - 
+  -- *** AtomicGen
   , AtomicGen
-  -- , runAtomicGenST
-  -- , runAtomicGenST_
-  -- , runAtomicGenIO
-  -- , runAtomicGenIO_
-  -- , splitAtomicGen
-  -- , atomicAtomicGen
+  , applyAtomicGen
+  -- *** IOGen
+  , IOGen
+  , applyIOGen
+  -- *** STGen
   , STGen
-  -- -- *** PrimGen - unboxed mutable state
-  -- , PrimGen
-  -- , runPrimGenST
-  -- , runPrimGenST_
-  -- , runPrimGenIO
-  -- , runPrimGenIO_
-  -- , splitPrimGen
-  -- , applyPrimGen
+  , applySTGen
+  , runSTGen
+  , runSTGen_
 
   -- ** The global random number generator
 
@@ -502,7 +500,7 @@ class RandomGen g where
   -- generators.
   split :: g -> (g, g)
 
-class Monad m => MonadRandom (g :: k -> *) s m where
+class Monad m => MonadRandom (g :: * -> *) s m | m -> s where
   data Frozen g :: *
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
@@ -532,31 +530,50 @@ class Monad m => MonadRandom (g :: k -> *) s m where
   uniformShortByteString n = genShortByteStringWith n . uniformWord64
   {-# INLINE uniformShortByteString #-}
 
--- class (RandomGen r, MonadRandom (g r) s m) => RandomGenM (g :: * -> * -> *) r s m where
---   applyRandomGenM :: (r -> (a, r)) -> g r s -> m a
+class (RandomGen r, MonadRandom (g r) s m) => RandomGenM (g :: * -> * -> *) r s m where
+  applyRandomGenM :: (r -> (a, r)) -> g r s -> m a
 
--- splitRandomGenM :: RandomGenM g r s m => g r s -> m r
--- splitRandomGenM = applyRandomGenM split
+-- | Split a pure random number generator, update the mutable and get the splitted version
+-- back
+splitRandomGenM :: RandomGenM g r s m => g r s -> m r
+splitRandomGenM = applyRandomGenM split
 
--- instance (RandomGen r, MonadIO m) => RandomGenM IOGen r r m where
---   applyRandomGenM = applyIOGen
+instance (RandomGen r, MonadIO m) => RandomGenM IOGen r RealWorld m where
+  applyRandomGenM = applyIOGen
 
--- instance (RandomGen r, MonadIO m) => RandomGenM AtomicGen r r m where
---   applyRandomGenM = applyAtomicGen
+instance (RandomGen r, MonadIO m) => RandomGenM AtomicGen r RealWorld m where
+  applyRandomGenM = applyAtomicGen
 
--- instance (RandomGen r, MonadState r m) => RandomGenM PureGen r r m where
---   applyRandomGenM f _ = state f
+instance (RandomGen r, MonadState r m) => RandomGenM PureGen r r m where
+  applyRandomGenM f _ = state f
 
--- instance RandomGen r => RandomGenM STGen r s (ST s) where
---   applyRandomGenM = applySTGen
+instance RandomGen r => RandomGenM STGen r s (ST s) where
+  applyRandomGenM = applySTGen
 
-withGenM :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m (a, Frozen g)
-withGenM fg action = do
+-- | Run a mutable generator by giving it a frozen seed.
+--
+-- >>> import Data.Int (Int8)
+-- >>> runGenM (IOGen (mkStdGen 217)) (`uniformListM` 5) :: IO ([Int8], Frozen (IOGen StdGen))
+-- ([-74,37,-50,-2,3],IOGen {unIOGen = SMGen 4273268533320920145 15251669095119325999})
+--
+-- @since 1.2
+runGenM :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m (a, Frozen g)
+runGenM fg action = do
   g <- thawGen fg
   res <- action g
   fg' <- freezeGen g
   pure (res, fg')
 
+
+-- | Same as `runGenM`, except drops the frozen generator
+--
+-- @since 1.2
+runGenM_ :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m a
+runGenM_ fg action = fst <$> runGenM fg action
+
+-- | Generate a list with random values
+--
+-- @since 1.2
 uniformListM :: (MonadRandom g s m, Uniform a) => g s -> Int -> m [a]
 uniformListM gen n = replicateM n (uniform gen)
 
@@ -690,8 +707,9 @@ runGenStateT_ g = fmap fst . runGenStateT g
 -- @since 1.2
 newtype AtomicGen g s = AtomicGenI (IORef g)
 
-instance (MonadIO m, RandomGen g) => MonadRandom (AtomicGen g) g m where
-  newtype Frozen (AtomicGen g) = AtomicGen g
+instance (MonadIO m, RandomGen g) => MonadRandom (AtomicGen g) RealWorld m where
+  newtype Frozen (AtomicGen g) = AtomicGen { unAtomicGen :: g }
+    deriving (Eq, Show, Read)
   thawGen (AtomicGen g) = fmap AtomicGenI (liftIO $ newIORef g)
   freezeGen (AtomicGenI gVar) = fmap AtomicGen (liftIO $ readIORef gVar)
   uniformWord32R r = applyAtomicGen (genWord32R r)
@@ -709,7 +727,7 @@ instance (MonadIO m, RandomGen g) => MonadRandom (AtomicGen g) g m where
   uniformShortByteString n = applyAtomicGen (genShortByteString n)
 
 -- | Apply a pure operation to generator atomically.
-applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGen g g -> m a
+applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGen g RealWorld -> m a
 applyAtomicGen op (AtomicGenI gVar) =
   liftIO $ atomicModifyIORef' gVar $ \g ->
     case op g of
@@ -721,11 +739,25 @@ applyAtomicGen op (AtomicGenI gVar) =
 -- `AtomicGen` wrapper, since atomic modification is not being used with `IOGen`. Which also
 -- means that it is not safe in a concurrent setting.
 --
+-- Both `IOGen` and `AtomicGen` are necessary when generation of random values happens in
+-- `IO` and especially when dealing with exception handling and resource allocation, which is
+-- where `StateT` should never be used. For example writing a random number of bytes into a
+-- temporary file:
+--
+-- >>> import UnliftIO.Temporary (withSystemTempFile)
+-- >>> import Data.ByteString (hPutStr)
+-- >>> let ioGen g = withSystemTempFile "foo.bin" $ \_ h -> uniformR (0, 100) g >>= flip uniformByteString g >>= hPutStr h
+--
+-- and then run it:
+--
+-- >>> runGenM_ (IOGen (mkStdGen 1729)) ioGen
+--
 -- @since 1.2
 newtype IOGen g s = IOGenI (IORef g)
 
-instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) g m where
-  newtype Frozen (IOGen g) = IOGen g
+instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) RealWorld m where
+  newtype Frozen (IOGen g) = IOGen { unIOGen :: g }
+    deriving (Eq, Show, Read)
   thawGen (IOGen g) = fmap IOGenI (liftIO $ newIORef g)
   freezeGen (IOGenI gVar) = fmap IOGen (liftIO $ readIORef gVar)
   uniformWord32R r = applyIOGen (genWord32R r)
@@ -743,7 +775,7 @@ instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) g m where
   uniformShortByteString n = applyIOGen (genShortByteString n)
 
 -- | Apply a pure operation to generator atomically.
-applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGen g g -> m a
+applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGen g RealWorld -> m a
 applyIOGen f (IOGenI ref) = liftIO $ do
   g <- readIORef ref
   case f g of
@@ -758,7 +790,8 @@ applyIOGen f (IOGenI ref) = liftIO $ do
 newtype STGen g s = STGenI (STRef s g)
 
 instance RandomGen g => MonadRandom (STGen g) s (ST s) where
-  newtype Frozen (STGen g) = STGen g
+  newtype Frozen (STGen g) = STGen { unSTGen :: g }
+    deriving (Eq, Show, Read)
   thawGen (STGen g) = fmap STGenI (newSTRef g)
   freezeGen (STGenI gVar) = fmap STGen (readSTRef gVar)
   uniformWord32R r = applySTGen (genWord32R r)
@@ -783,107 +816,18 @@ applySTGen f (STGenI ref) = do
     (!a, !g') -> a <$ writeSTRef ref g'
 {-# INLINE applySTGen #-}
 
--- -- | Split `MutGen` into atomically updated current generator and a newly created that is
--- -- returned.
--- --
--- -- @since 1.2
--- splitMGen ::
---      (RandomGen r, PrimMonad m, s ~ PrimState m) => g r -> m r
--- splitMGen = atomicMutGen split
+-- | Run ST action that uses mutable @STGen@
+--
+-- @since 1.2
+runSTGen :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> (a, g)
+runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 
--- runMutGenST :: RandomGen g => g -> (forall s . MutGen g s -> ST s a) -> (a, g)
--- runMutGenST g action = runST $ do
---   mutGen <- thawGen $ MutGen g
---   res <- action mutGen
---   MutGen g' <- freezeGen mutGen
---   pure (res, g')
+-- | Same as runSTGen, except discards the final generator state.
+--
+-- @since 1.2
+runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
+runSTGen_ g action = fst $ runSTGen g action
 
--- -- | Same as `runMutGenST`, but discard the resulting generator.
--- runMutGenST_ :: RandomGen g => g -> (forall s . MutGen g s -> ST s a) -> a
--- runMutGenST_ g action = fst $ runMutGenST g action
-
--- -- | Both `PrimGen` and `MutGen` and their corresponding functions like 'runPrimGenIO' are
--- -- necessary when generation of random values happens in `IO` and especially when dealing
--- -- with exception handling and resource allocation, which is where `StateT` should never be
--- -- used. For example writing a random number of bytes into a temporary file:
--- --
--- -- >>> import UnliftIO.Temporary (withSystemTempFile)
--- -- >>> import Data.ByteString (hPutStr)
--- -- >>> let ioGen g = withSystemTempFile "foo.bin" $ \_ h -> uniformR (0, 100) g >>= flip uniformByteStringPrim g >>= hPutStr h
--- --
--- -- and then run it:
--- --
--- -- >>> runMutGenIO_ (mkStdGen 1729) ioGen
--- --
--- runMutGenIO :: (RandomGen g, MonadIO m) => g -> (MutGen g RealWorld -> m a) -> m (a, g)
--- runMutGenIO g action = do
---   mutGen <- liftIO $ thawGen $ MutGen g
---   res <- action mutGen
---   MutGen g' <- liftIO $ freezeGen mutGen
---   pure (res, g')
--- {-# INLINE runMutGenIO #-}
-
--- -- | Same as `runMutGenIO`, but discard the resulting generator.
--- runMutGenIO_ :: (RandomGen g, MonadIO m) => g -> (MutGen g RealWorld -> m a) -> m a
--- runMutGenIO_ g action = fst <$> runMutGenIO g action
--- {-# INLINE runMutGenIO_ #-}
-
-
--- newtype PrimGen g s = PrimGenI (MutableByteArray s)
-
--- instance (s ~ PrimState m, PrimMonad m, RandomGen g, Prim g) =>
---          MonadRandom (PrimGen g) s m where
---   newtype Frozen (PrimGen g) = PrimGen g
---   thawGen (PrimGen g) = do
---     ma <- newByteArray (Primitive.sizeOf g)
---     writeByteArray ma 0 g
---     pure $ PrimGenI ma
---   freezeGen (PrimGenI ma) = PrimGen <$> readByteArray ma 0
---   uniformWord32R r = applyPrimGen (genWord32R r)
---   uniformWord64R r = applyPrimGen (genWord64R r)
---   uniformWord8 = applyPrimGen genWord8
---   uniformWord16 = applyPrimGen genWord16
---   uniformWord32 = applyPrimGen genWord32
---   uniformWord64 = applyPrimGen genWord64
---   uniformByteArray n = applyPrimGen (genByteArray n)
-
--- applyPrimGen :: (Prim g, PrimMonad m, s ~ PrimState m) => (g -> (a, g)) -> PrimGen g s -> m a
--- applyPrimGen f (PrimGenI ma) = do
---   g <- readByteArray ma 0
---   case f g of
---     (res, g') -> res <$ writeByteArray ma 0 g'
-
--- -- | Split `PrimGen` into atomically updated current generator and a newly created that is
--- -- returned.
--- --
--- -- @since 1.2
--- splitPrimGen ::
---      (Prim g, RandomGen g, PrimMonad m, s ~ PrimState m)
---   => PrimGen g s
---   -> m (PrimGen g s)
--- splitPrimGen = applyPrimGen split >=> thawGen . PrimGen
-
--- runPrimGenST :: (Prim g, RandomGen g) => g -> (forall s . PrimGen g s -> ST s a) -> (a, g)
--- runPrimGenST g action = runST $ do
---   primGen <- thawGen $ PrimGen g
---   res <- action primGen
---   PrimGen g' <- freezeGen primGen
---   pure (res, g')
-
--- -- | Same as `runPrimGenST`, but discard the resulting generator.
--- runPrimGenST_ :: (Prim g, RandomGen g) => g -> (forall s . PrimGen g s -> ST s a) -> a
--- runPrimGenST_ g action = fst $ runPrimGenST g action
-
--- runPrimGenIO :: (Prim g, RandomGen g, MonadIO m) => g -> (PrimGen g RealWorld -> m a) -> m (a, g)
--- runPrimGenIO g action = do
---   primGen <- liftIO $ thawGen $ PrimGen g
---   res <- action primGen
---   PrimGen g' <- liftIO $ freezeGen primGen
---   pure (res, g')
-
--- -- | Same as `runPrimGenIO`, but discard the resulting generator.
--- runPrimGenIO_ :: (Prim g, RandomGen g, MonadIO m) => g -> (PrimGen g RealWorld -> m a) -> m a
--- runPrimGenIO_ g action = fst <$> runPrimGenIO g action
 
 type StdGen = SM.SMGen
 
