@@ -502,7 +502,7 @@ class RandomGen g where
   -- generators.
   split :: g -> (g, g)
 
-class Monad m => MonadRandom (g :: * -> *) s m where
+class Monad m => MonadRandom (g :: k -> *) s m where
   data Frozen g :: *
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
@@ -532,6 +532,23 @@ class Monad m => MonadRandom (g :: * -> *) s m where
   uniformShortByteString n = genShortByteStringWith n . uniformWord64
   {-# INLINE uniformShortByteString #-}
 
+-- class (RandomGen r, MonadRandom (g r) s m) => RandomGenM (g :: * -> * -> *) r s m where
+--   applyRandomGenM :: (r -> (a, r)) -> g r s -> m a
+
+-- splitRandomGenM :: RandomGenM g r s m => g r s -> m r
+-- splitRandomGenM = applyRandomGenM split
+
+-- instance (RandomGen r, MonadIO m) => RandomGenM IOGen r r m where
+--   applyRandomGenM = applyIOGen
+
+-- instance (RandomGen r, MonadIO m) => RandomGenM AtomicGen r r m where
+--   applyRandomGenM = applyAtomicGen
+
+-- instance (RandomGen r, MonadState r m) => RandomGenM PureGen r r m where
+--   applyRandomGenM f _ = state f
+
+-- instance RandomGen r => RandomGenM STGen r s (ST s) where
+--   applyRandomGenM = applySTGen
 
 withGenM :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m (a, Frozen g)
 withGenM fg action = do
@@ -665,6 +682,7 @@ runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g g -> StateT g f a) 
 runGenStateT_ g = fmap fst . runGenStateT g
 
 
+
 -- | This is a wrapper around pure generator that can be used in an effectful environment.
 -- It is safe in presence of exceptions and concurrency since all operations are performed
 -- atomically.
@@ -769,9 +787,9 @@ applySTGen f (STGenI ref) = do
 -- -- returned.
 -- --
 -- -- @since 1.2
--- splitMutGen ::
---      (RandomGen g, PrimMonad m, s ~ PrimState m) => MutGen g s -> m (MutGen g s)
--- splitMutGen = atomicMutGen split >=> thawGen . MutGen
+-- splitMGen ::
+--      (RandomGen r, PrimMonad m, s ~ PrimState m) => g r -> m r
+-- splitMGen = atomicMutGen split
 
 -- runMutGenST :: RandomGen g => g -> (forall s . MutGen g s -> ST s a) -> (a, g)
 -- runMutGenST g action = runST $ do
