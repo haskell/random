@@ -445,7 +445,7 @@ class RandomGen g where
   {-# MINIMAL split,(genWord32|genWord64|(next,genRange)) #-}
   -- | Returns an 'Int' that is uniformly distributed over the range returned by
   -- 'genRange' (including both end points), and a new generator. Using 'next'
-  -- is inefficient as all operations go via 'Integer'.  See
+  -- is inefficient as all operations go via 'Integer'. See
   -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks) for
   -- more details. It is thus deprecated.
   next :: g -> (Int, g)
@@ -1456,7 +1456,7 @@ randomIvalInteger (l,h) rng
        b = fromIntegral genhi - fromIntegral genlo + 1
 
        -- Probabilities of the most likely and least likely result
-       -- will differ at most by a factor of (1 +- 1/q).  Assuming the RandomGen
+       -- will differ at most by a factor of (1 +- 1/q). Assuming the RandomGen
        -- is uniform, of course
 
        -- On average, log q / log b more random values will be generated
