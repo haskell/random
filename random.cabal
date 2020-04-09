@@ -34,7 +34,6 @@ library
     build-depends:
         base >=4.10 && <5,
         bytestring -any,
-        primitive >= 0.6.4.0 && <8,
         mtl -any,
         splitmix -any
     c-sources: cbits/CastFloatWord.cmm
@@ -66,6 +65,7 @@ test-suite doctests
         base -any,
         doctest >=0.15,
         mwc-random -any,
+        primitive -any,
         random -any,
         unliftio -any
 
