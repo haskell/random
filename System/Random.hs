@@ -747,7 +747,7 @@ genByteString :: RandomGen g => Int -> g -> (ByteString, g)
 genByteString n g = runPureGenST g (uniformByteString n)
 {-# INLINE genByteString #-}
 
--- | Runs an effectful generating action in the `ST` monad using a pure
+-- | Runs a monadic generating action in the `ST` monad using a pure
 -- pseudo-random number generator.
 --
 -- @since 1.2
@@ -787,35 +787,35 @@ genRandom = randomM
 splitGen :: (MonadState g m, RandomGen g) => m g
 splitGen = state split
 
--- | Runs an effectful generating action in the `State` monad using a pure
+-- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.
 --
 -- @since 1.2
 runGenState :: RandomGen g => g -> (PureGen g g -> State g a) -> (a, g)
 runGenState g f = runState (f PureGenI) g
 
--- | Runs an effectful generating action in the `State` monad using a pure
+-- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator. Returns only the resulting random value.
 --
 -- @since 1.2
 runGenState_ :: RandomGen g => g -> (PureGen g g -> State g a) -> a
 runGenState_ g = fst . runGenState g
 
--- | Runs an effectful generating action in the `StateT` monad using a pure
+-- | Runs a monadic generating action in the `StateT` monad using a pure
 -- pseudo-random number generator.
 --
 -- @since 1.2
 runGenStateT :: RandomGen g => g -> (PureGen g g -> StateT g m a) -> m (a, g)
 runGenStateT g f = runStateT (f PureGenI) g
 
--- | Runs an effectful generating action in the `StateT` monad using a pure
+-- | Runs a monadic generating action in the `StateT` monad using a pure
 -- pseudo-random number generator. Returns only the resulting random value.
 --
 -- @since 1.2
 runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g g -> StateT g f a) -> f a
 runGenStateT_ g = fmap fst . runGenStateT g
 
--- | This is a wrapper around pure generator that can be used in an effectful
+-- | This is a wrapper around pure generator that can be used in a monadic
 -- environment. It is safe in presence of exceptions and concurrency since all
 -- operations are performed atomically.
 --
@@ -940,14 +940,14 @@ applySTGen f (STGenI ref) = do
     (!a, !g') -> a <$ writeSTRef ref g'
 {-# INLINE applySTGen #-}
 
--- | Runs an effectful generating action in the `ST` monad using a pure
+-- | Runs a monadic generating action in the `ST` monad using a pure
 -- pseudo-random number generator.
 --
 -- @since 1.2
 runSTGen :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> (a, g)
 runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 
--- | Runs an effectful generating action in the `ST` monad using a pure
+-- | Runs a monadic generating action in the `ST` monad using a pure
 -- pseudo-random number generator. Returns only the resulting random value.
 --
 -- @since 1.2
