@@ -67,18 +67,21 @@
 --
 -- *   The methods 'next' and 'genRange' in 'RandomGen' are deprecated and only
 --     provided for backwards compatibility. New instances of 'RandomGen' should
---     implement word-based methods instead. See below for more information about
---     how to write a 'RandomGen' instance.
+--     implement word-based methods instead. See below for more information
+--     about how to write a 'RandomGen' instance.
 --
 -- *   This library provides instances for 'Random' for some unbounded datatypes
---     for backwards compatibility. For an unbounded datatype, there is no way to
---     generate a value with uniform probability out of its entire domain, so the
---     'random' implementation for unbounded datatypes actually generates a value
---     based on some fixed range.
+--     for backwards compatibility. For an unbounded datatype, there is no way
+--     to generate a value with uniform probability out of its entire domain, so
+--     the 'random' implementation for unbounded datatypes actually generates a
+--     value based on some fixed range.
 --
---     For 'Integer', 'random' generates a value in the 'Int' range. For 'Float' and 'Double', 'random' generates a floating point value in the range @[0, 1)@.
+--     For 'Integer', 'random' generates a value in the 'Int' range. For 'Float'
+--     and 'Double', 'random' generates a floating point value in the range @[0,
+--     1)@.
 --
---     This library does not provide 'Uniform' instances for any unbounded datatypes.
+--     This library does not provide 'Uniform' instances for any unbounded
+--     datatypes.
 --
 -- = Reproducibility
 --
@@ -312,8 +315,6 @@
 module System.Random
   (
 
-  -- $intro
-
   -- * Random number generators
 
     RandomGen(..)
@@ -436,32 +437,48 @@ import GHC.IO (IO(..))
 --   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
 -- :}
 
--- | The class 'RandomGen' provides a common interface to random number
--- generators.
+-- | 'RandomGen' is an interface to pure pseudo-random number generators.
+--
+-- 'StdGen' is the default 'RandomGen' instance provided by this library.
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
   {-# MINIMAL split,(genWord32|genWord64|(next,genRange)) #-}
-  -- |The 'next' operation returns an 'Int' that is uniformly
-  -- distributed in the range returned by 'genRange' (including both
-  -- end points), and a new generator. Using 'next' is inefficient as
-  -- all operations go via 'Integer'. See
-  -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks)
-  -- for more details. It is thus deprecated.
+  -- | Returns an 'Int' that is uniformly distributed over the range returned by
+  -- 'genRange' (including both end points), and a new generator. Using 'next'
+  -- is inefficient as all operations go via 'Integer'. See
+  -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks) for
+  -- more details. It is thus deprecated.
   next :: g -> (Int, g)
   next g = runGenState g (uniformR (genRange g))
 
+  -- | Returns a 'Word8' that is uniformly distributed over the entire 'Word8'
+  -- range.
+  --
+  -- @since 1.2
   genWord8 :: g -> (Word8, g)
   genWord8 = first fromIntegral . genWord32
 
+  -- | Returns a 'Word16' that is uniformly distributed over the entire 'Word16'
+  -- range.
+  --
+  -- @since 1.2
   genWord16 :: g -> (Word16, g)
   genWord16 = first fromIntegral . genWord32
 
+  -- | Returns a 'Word32' that is uniformly distributed over the entire 'Word32'
+  -- range.
+  --
+  -- @since 1.2
   genWord32 :: g -> (Word32, g)
   genWord32 = randomIvalIntegral (minBound, maxBound)
   -- Once `next` is removed, this implementation should be used instead:
   -- first fromIntegral . genWord64
 
+  -- | Returns a 'Word64' that is uniformly distributed over the entire 'Word64'
+  -- range.
+  --
+  -- @since 1.2
   genWord64 :: g -> (Word64, g)
   genWord64 g =
     case genWord32 g of
@@ -470,75 +487,144 @@ class RandomGen g where
           (h32, g'') ->
             ((fromIntegral h32 `unsafeShiftL` 32) .|. fromIntegral l32, g'')
 
+  -- | @genWord32R upperBound g@ returns a 'Word32' that is uniformly
+  -- distributed over the range @[0, upperBound]@.
+  --
+  -- @since 1.2
   genWord32R :: Word32 -> g -> (Word32, g)
   genWord32R m g = runGenState g (unbiasedWordMult32 m)
 
+  -- | @genWord64R upperBound g@ returns a 'Word64' that is uniformly
+  -- distributed over the range @[0, upperBound]@.
+  --
+  -- @since 1.2
   genWord64R :: Word64 -> g -> (Word64, g)
   genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
 
+  -- | @genShortByteString n g@ returns a 'ShortByteString' of length @n@
+  -- filled with random bytes.
+  --
+  -- @since 1.2
   genShortByteString :: Int -> g -> (ShortByteString, g)
   genShortByteString n g =
     unsafePerformIO $ runGenStateT g (genShortByteStringWith n . uniformWord64)
   {-# INLINE genShortByteString #-}
-  -- |The 'genRange' operation yields the range of values returned by
-  -- the generator.
+
+  -- | Yields the range of values returned by 'next'.
   --
   -- It is required that:
   --
-  -- * If @(a, b) = 'genRange' g@, then @a <= b@.
-  --
-  -- * 'genRange' always returns a pair of defined 'Int's.
-  --
-  -- The second condition ensures that 'genRange' cannot examine its
-  -- argument, and hence the value it returns can be determined only by the
-  -- instance of 'RandomGen'.  That in turn allows an implementation to make
-  -- a single call to 'genRange' to establish a generator's range, without
-  -- being concerned that the generator returned by (say) 'next' might have
-  -- a different range to the generator passed to 'next'.
+  -- *   If @(a, b) = 'genRange' g@, then @a < b@.
+  -- *   'genRange' must not examine its argument so the value it returns is
+  --     determined only by the instance of 'RandomGen'.
   --
   -- The default definition spans the full range of 'Int'.
   genRange :: g -> (Int, Int)
   genRange _ = (minBound, maxBound)
 
-  -- | The 'split' operation allows one to obtain two distinct random number
-  -- generators.
+  -- | Returns two distinct pseudo-random number generators.
+  --
+  -- Implementations should take care to ensure that the resulting generators
+  -- are not correlated. Some pseudo-random number generators are not
+  -- splittable. In that case, the 'split' implementation should fail with a
+  -- descriptive 'error' message.
   split :: g -> (g, g)
 
+-- | 'MonadRandom' is an interface to monadic pseudo-random number generators.
 class Monad m => MonadRandom g s m | m -> s where
+  -- | Represents the state of the pseudo-random number generator for use with
+  -- 'thawGen' and 'freezeGen'.
+  --
+  -- @since 1.2
   data Frozen g :: *
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
+  -- | Restores the pseudo-random number generator from its 'Frozen'
+  -- representation.
+  --
+  -- @since 1.2
   thawGen :: Frozen g -> m (g s)
+
+  -- | Saves the state of the pseudo-random number generator to its 'Frozen'
+  -- representation.
+  --
+  -- @since 1.2
   freezeGen :: g s -> m (Frozen g)
-  -- | Generate 'Word32' up to and including the supplied max value
+
+  -- | @uniformWord32R upperBound g@ generates a 'Word32' that is uniformly
+  -- distributed over the range @[0, upperBound]@.
+  --
+  -- @since 1.2
   uniformWord32R :: Word32 -> g s -> m Word32
   uniformWord32R = unsignedBitmaskWithRejectionM uniformWord32
 
-  -- | Generate 'Word64' up to and including the supplied max value
+  -- | @uniformWord64R upperBound g@ generates a 'Word64' that is uniformly
+  -- distributed over the range @[0, upperBound]@.
+  --
+  -- @since 1.2
   uniformWord64R :: Word64 -> g s -> m Word64
   uniformWord64R = unsignedBitmaskWithRejectionM uniformWord64
 
+  -- | Generates a 'Word8' that is uniformly distributed over the entire 'Word8'
+  -- range.
+  --
+  -- The default implementation extracts a 'Word8' from 'uniformWord32'.
+  --
+  -- @since 1.2
   uniformWord8 :: g s -> m Word8
   uniformWord8 = fmap fromIntegral . uniformWord32
+
+  -- | Generates a 'Word16' that is uniformly distributed over the entire
+  -- 'Word16' range.
+  --
+  -- The default implementation extracts a 'Word16' from 'uniformWord32'.
+  --
+  -- @since 1.2
   uniformWord16 :: g s -> m Word16
   uniformWord16 = fmap fromIntegral . uniformWord32
+
+  -- | Generates a 'Word32' that is uniformly distributed over the entire
+  -- 'Word32' range.
+  --
+  -- The default implementation extracts a 'Word32' from 'uniformWord64'.
+  --
+  -- @since 1.2
   uniformWord32 :: g s -> m Word32
   uniformWord32 = fmap fromIntegral . uniformWord64
+
+  -- | Generates a 'Word64' that is uniformly distributed over the entire
+  -- 'Word64' range.
+  --
+  -- The default implementation combines two 'Word32' from 'uniformWord32' into
+  -- one 'Word64'.
+  --
+  -- @since 1.2
   uniformWord64 :: g s -> m Word64
   uniformWord64 g = do
     l32 <- uniformWord32 g
     h32 <- uniformWord32 g
     pure (unsafeShiftL (fromIntegral h32) 32 .|. fromIntegral l32)
+
+  -- | @uniformShortByteString n g@ generates a 'ShortByteString' of length @n@
+  -- filled with random bytes.
+  --
+  -- @since 1.2
   uniformShortByteString :: Int -> g s -> m ShortByteString
   default uniformShortByteString :: MonadIO m => Int -> g s -> m ShortByteString
   uniformShortByteString n = genShortByteStringWith n . uniformWord64
   {-# INLINE uniformShortByteString #-}
 
+
+-- | Interface to operations on 'RandomGen' wrappers like 'IOGen' and 'PureGen'.
+--
+-- @since 1.2
 class (RandomGen r, MonadRandom (g r) s m) => RandomGenM g r s m where
   applyRandomGenM :: (r -> (a, r)) -> g r s -> m a
 
--- | Split a pure random number generator, update the mutable and get the split version
--- back
+-- | Splits a pseudo-random number generator into two. Overwrites the mutable
+-- wrapper with one of the resulting generators and returns the other.
+--
+-- @since 1.2
 splitRandomGenM :: RandomGenM g r s m => g r s -> m r
 splitRandomGenM = applyRandomGenM split
 
@@ -554,7 +640,7 @@ instance (RandomGen r, MonadState r m) => RandomGenM PureGen r r m where
 instance RandomGen r => RandomGenM STGen r s (ST s) where
   applyRandomGenM = applySTGen
 
--- | Run a mutable generator by giving it a frozen seed.
+-- | Runs a mutable pseudo-random number generator from its 'Frozen' state.
 --
 -- >>> import Data.Int (Int8)
 -- >>> runGenM (IOGen (mkStdGen 217)) (`uniformListM` 5) :: IO ([Int8], Frozen (IOGen StdGen))
@@ -568,14 +654,13 @@ runGenM fg action = do
   fg' <- freezeGen g
   pure (res, fg')
 
-
--- | Same as `runGenM`, except drops the frozen generator
+-- | Same as 'runGenM', but only returns the generated value.
 --
 -- @since 1.2
 runGenM_ :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m a
 runGenM_ fg action = fst <$> runGenM fg action
 
--- | Generate a list with random values
+-- | Generates a list of random values.
 --
 -- @since 1.2
 uniformListM :: (MonadRandom g s m, Uniform a) => g s -> Int -> m [a]
@@ -584,9 +669,11 @@ uniformListM gen n = replicateM n (uniform gen)
 data MBA s = MBA (MutableByteArray# s)
 
 
--- | This function will efficiently generate a sequence of random bytes in a platform
--- independent manner. Memory allocated will be pinned, so it is safe to use with FFI
+-- | Efficiently generates a sequence of random bytes in a platform independent
+-- manner. The allocated memory is be pinned, so it is safe to use with FFI
 -- calls.
+--
+-- @since 1.2
 genShortByteStringWith :: MonadIO m => Int -> m Word64 -> m ShortByteString
 genShortByteStringWith n0 gen64 = do
   let !n@(I# n#) = max 0 n0
@@ -599,19 +686,19 @@ genShortByteStringWith n0 gen64 = do
   let go i ptr
         | i < n64 = do
           w64 <- gen64
-          -- Writing 8 bytes at a time in a Little-endian order gives us platform
-          -- portability
+          -- Writing 8 bytes at a time in a Little-endian order gives us
+          -- platform portability
           liftIO $ runF word64LE w64 ptr
           go (i + 1) (ptr `plusPtr` 8)
         | otherwise = return ptr
   ptr <- go 0 (Ptr (byteArrayContents# (unsafeCoerce# mba#)))
   when (nrem64 > 0) $ do
     w64 <- gen64
-    -- In order to not mess up the byte order we write generated Word64 into a temporary
-    -- pointer and then copy only the missing bytes over to the array. It is tempting to
-    -- simply generate as many bytes as we still need using smaller generators
-    -- (eg. uniformWord8), but that would result in inconsistent tail when total length is
-    -- slightly varied.
+    -- In order to not mess up the byte order we write generated Word64 into a
+    -- temporary pointer and then copy only the missing bytes over to the array.
+    -- It is tempting to simply generate as many bytes as we still need using
+    -- smaller generators (eg. uniformWord8), but that would result in
+    -- inconsistent tail when total length is slightly varied.
     liftIO $
       alloca $ \w64ptr -> do
         runF word64LE w64 w64ptr
@@ -624,6 +711,9 @@ genShortByteStringWith n0 gen64 = do
         (# s'#, ba# #) -> (# s'#, SBS ba# #)
 {-# INLINE genShortByteStringWith #-}
 
+-- | Same as 'genShortByteStringWith', but runs in 'ST'.
+--
+-- @since 1.2
 genShortByteStringST :: Int -> ST s Word64 -> ST s ShortByteString
 genShortByteStringST n action =
   unsafeIOToST (genShortByteStringWith n (unsafeSTToIO action))
@@ -638,7 +728,7 @@ pinnedByteArrayToForeignPtr ba# =
   ForeignPtr (byteArrayContents# ba#) (PlainPtr (unsafeCoerce# ba#))
 {-# INLINE pinnedByteArrayToForeignPtr #-}
 
--- | Generate a random ByteString of specified size.
+-- | Generates a random 'ByteString' of the specified size.
 --
 -- @since 1.2
 uniformByteString :: MonadRandom g s m => Int -> g s -> m ByteString
@@ -650,15 +740,16 @@ uniformByteString n g = do
       else fromShort ba
 {-# INLINE uniformByteString #-}
 
--- | Generate a ByteString using a pure generator. For monadic counterpart see
--- `uniformByteStringPrim`.
+-- | Generates a 'ByteString' of the specified size using a pure pseudo-random
+-- number generator. See 'uniformByteString' for the monadic version.
 --
 -- @since 1.2
 genByteString :: RandomGen g => Int -> g -> (ByteString, g)
 genByteString n g = runPureGenST g (uniformByteString n)
 {-# INLINE genByteString #-}
 
--- | Run an effectful generating action in `ST` monad using a pure generator.
+-- | Runs a monadic generating action in the `ST` monad using a pure
+-- pseudo-random number generator.
 --
 -- @since 1.2
 runPureGenST :: RandomGen g => g -> (forall s . PureGen g g -> StateT g (ST s) a) -> (a, g)
@@ -666,10 +757,13 @@ runPureGenST g action = runST $ runGenStateT g $ action
 {-# INLINE runPureGenST #-}
 
 
--- | An opaque data type that carries the type of a pure generator
+-- | Opaque data type that carries the type of a pure pseudo-random number
+-- generator.
+--
+-- @since 1.2
 data PureGen g s = PureGenI
 
-instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) g m where
+instance (RandomGen g, MonadState g m) => MonadRandom (PureGen g) g m where
   newtype Frozen (PureGen g) = PureGen g
   thawGen (PureGen g) = PureGenI <$ put g
   freezeGen _ = fmap PureGen get
@@ -681,40 +775,55 @@ instance (MonadState g m, RandomGen g) => MonadRandom (PureGen g) g m where
   uniformWord64 _ = state genWord64
   uniformShortByteString n _ = state (genShortByteString n)
 
--- | Generate a random value in a state monad
+-- | Generates a random value in a state monad.
 --
 -- @since 1.2
 genRandom :: (RandomGen g, Random a, MonadState g m) => PureGen g g -> m a
 genRandom = randomM
 
--- | Split current generator and update the state with one part, while returning the other.
+-- | Splits a pseudo-random number generator into two. Updates the state with
+-- one of the resulting generators and returns the other.
 --
 -- @since 1.2
 splitGen :: (MonadState g m, RandomGen g) => m g
 splitGen = state split
 
+-- | Runs a monadic generating action in the `State` monad using a pure
+-- pseudo-random number generator.
+--
+-- @since 1.2
 runGenState :: RandomGen g => g -> (PureGen g g -> State g a) -> (a, g)
 runGenState g f = runState (f PureGenI) g
 
+-- | Runs a monadic generating action in the `State` monad using a pure
+-- pseudo-random number generator. Returns only the resulting random value.
+--
+-- @since 1.2
 runGenState_ :: RandomGen g => g -> (PureGen g g -> State g a) -> a
 runGenState_ g = fst . runGenState g
 
+-- | Runs a monadic generating action in the `StateT` monad using a pure
+-- pseudo-random number generator.
+--
+-- @since 1.2
 runGenStateT :: RandomGen g => g -> (PureGen g g -> StateT g m a) -> m (a, g)
 runGenStateT g f = runStateT (f PureGenI) g
 
+-- | Runs a monadic generating action in the `StateT` monad using a pure
+-- pseudo-random number generator. Returns only the resulting random value.
+--
+-- @since 1.2
 runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g g -> StateT g f a) -> f a
 runGenStateT_ g = fmap fst . runGenStateT g
 
-
-
--- | This is a wrapper around pure generator that can be used in an effectful environment.
--- It is safe in presence of exceptions and concurrency since all operations are performed
--- atomically.
+-- | This is a wrapper around pure generator that can be used in a monadic
+-- environment. It is safe in presence of exceptions and concurrency since all
+-- operations are performed atomically.
 --
 -- @since 1.2
 newtype AtomicGen g s = AtomicGenI (IORef g)
 
-instance (MonadIO m, RandomGen g) => MonadRandom (AtomicGen g) RealWorld m where
+instance (RandomGen g, MonadIO m) => MonadRandom (AtomicGen g) RealWorld m where
   newtype Frozen (AtomicGen g) = AtomicGen { unAtomicGen :: g }
     deriving (Eq, Show, Read)
   thawGen (AtomicGen g) = fmap AtomicGenI (liftIO $ newIORef g)
@@ -733,7 +842,10 @@ instance (MonadIO m, RandomGen g) => MonadRandom (AtomicGen g) RealWorld m where
   {-# INLINE uniformWord64 #-}
   uniformShortByteString n = applyAtomicGen (genShortByteString n)
 
--- | Apply a pure operation to generator atomically.
+-- | Atomically applies a pure operation to the wrapped pseudo-random number
+-- generator.
+--
+-- @since 1.2
 applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGen g RealWorld -> m a
 applyAtomicGen op (AtomicGenI gVar) =
   liftIO $ atomicModifyIORef' gVar $ \g ->
@@ -741,15 +853,16 @@ applyAtomicGen op (AtomicGenI gVar) =
       (a, g') -> (g', a)
 {-# INLINE applyAtomicGen #-}
 
--- | This is a wrapper wround an @IORef@ that holds a pure generator. Because of extra pointer
--- indirection it will be slightly slower than if `PureGen` is being used, but faster than
--- `AtomicGen` wrapper, since atomic modification is not being used with `IOGen`. Which also
--- means that it is not safe in a concurrent setting.
+-- | This is a wrapper around an @IORef@ that holds a pure generator. Because of
+-- extra pointer indirection it will be slightly slower than if `PureGen` is
+-- being used, but faster than `AtomicGen` wrapper, since atomic modification is
+-- not being used with `IOGen`. Which also means that it is not safe in a
+-- concurrent setting.
 --
--- Both `IOGen` and `AtomicGen` are necessary when generation of random values happens in
--- `IO` and especially when dealing with exception handling and resource allocation, which is
--- where `StateT` should never be used. For example writing a random number of bytes into a
--- temporary file:
+-- Both `IOGen` and `AtomicGen` are necessary when generation of random values
+-- happens in `IO` and especially when dealing with exception handling and
+-- resource allocation, which is where `StateT` should never be used. For
+-- example writing a random number of bytes into a temporary file:
 --
 -- >>> import UnliftIO.Temporary (withSystemTempFile)
 -- >>> import Data.ByteString (hPutStr)
@@ -781,7 +894,9 @@ instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) RealWorld m where
   {-# INLINE uniformWord64 #-}
   uniformShortByteString n = applyIOGen (genShortByteString n)
 
--- | Apply a pure operation to the generator.
+-- | Applies a pure operation to the wrapped pseudo-random number generator.
+--
+-- @since 1.2
 applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGen g RealWorld -> m a
 applyIOGen f (IOGenI ref) = liftIO $ do
   g <- readIORef ref
@@ -790,8 +905,9 @@ applyIOGen f (IOGenI ref) = liftIO $ do
 {-# INLINE applyIOGen #-}
 
 
--- | This is a wrapper wround an @STRef@ that holds a pure generator. Because of extra pointer
--- indirection it will be slightly slower than if `PureGen` is being used.
+-- | This is a wrapper wround an @STRef@ that holds a pure generator. Because of
+-- extra pointer indirection it will be slightly slower than if `PureGen` is
+-- being used.
 --
 -- @since 1.2
 newtype STGen g s = STGenI (STRef s g)
@@ -815,7 +931,9 @@ instance RandomGen g => MonadRandom (STGen g) s (ST s) where
   {-# INLINE uniformWord64 #-}
   uniformShortByteString n = applySTGen (genShortByteString n)
 
--- | Apply a pure operation to generator atomically.
+-- | Applies a pure operation to the wrapped pseudo-random number generator.
+--
+-- @since 1.2
 applySTGen :: (g -> (a, g)) -> STGen g s -> ST s a
 applySTGen f (STGenI ref) = do
   g <- readSTRef ref
@@ -823,19 +941,21 @@ applySTGen f (STGenI ref) = do
     (!a, !g') -> a <$ writeSTRef ref g'
 {-# INLINE applySTGen #-}
 
--- | Run ST action that uses mutable @STGen@
+-- | Runs a monadic generating action in the `ST` monad using a pure
+-- pseudo-random number generator.
 --
 -- @since 1.2
 runSTGen :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> (a, g)
 runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 
--- | Same as runSTGen, except discards the final generator state.
+-- | Runs a monadic generating action in the `ST` monad using a pure
+-- pseudo-random number generator. Returns only the resulting random value.
 --
 -- @since 1.2
 runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
 runSTGen_ g action = fst $ runSTGen g action
 
-
+-- | The default pseudo-random number generator.
 type StdGen = SM.SMGen
 
 instance RandomGen StdGen where
@@ -880,6 +1000,8 @@ mkStdGen s = SM.mkSMGen $ fromIntegral s
 
 
 -- | Generate every possible value for data type with equal probability.
+--
+-- @since 1.2
 class Uniform a where
   uniform :: MonadRandom g s m => g s -> m a
 
@@ -892,6 +1014,8 @@ class Uniform a where
 --   elements in range shouldn't matter and following law should hold:
 --
 -- > uniformR (a,b) = uniform (b,a)
+--
+-- @since 1.2
 class UniformRange a where
   uniformR :: MonadRandom g s m => (a, a) -> g s -> m a
 
@@ -908,7 +1032,7 @@ Minimal complete definition: 'randomR' and 'random'.
 class Random a where
 
   -- | Takes a range /(lo,hi)/ and a random number generator
-  -- /g/, and returns a random value uniformly distributed in the closed
+  -- /g/, and returns a random value uniformly distributed over the closed
   -- interval /[lo,hi]/, together with a new generator. It is unspecified
   -- what happens if /lo>hi/. For continuous types there is no requirement
   -- that the values /lo/ and /hi/ are ever produced, but they may be,
@@ -1333,7 +1457,7 @@ randomIvalInteger (l,h) rng
        b = fromIntegral genhi - fromIntegral genlo + 1
 
        -- Probabilities of the most likely and least likely result
-       -- will differ at most by a factor of (1 +- 1/q).  Assuming the RandomGen
+       -- will differ at most by a factor of (1 +- 1/q). Assuming the RandomGen
        -- is uniform, of course
 
        -- On average, log q / log b more random values will be generated
@@ -1426,9 +1550,9 @@ unbiasedWordMult32 s g
 {-# INLINE unbiasedWordMult32 #-}
 
 -- | See [Lemire's paper](https://arxiv.org/pdf/1805.10941.pdf),
--- [O'Neill's
+-- [O\'Neill's
 -- blogpost](https://www.pcg-random.org/posts/bounded-rands.html) and
--- more directly [O'Neill's github
+-- more directly [O\'Neill's github
 -- repo](https://github.com/imneme/bounded-rands/blob/3d71f53c975b1e5b29f2f3b05a74e26dab9c3d84/bounded32.cpp#L234).
 -- N.B. The range is [0,t) **not** [0,t].
 unbiasedWordMult32Exclusive  :: MonadRandom g s m => Word32 -> g s -> m Word32
@@ -1525,7 +1649,6 @@ between 1 and 6:
 >  rollDice = getStdRandom (randomR (1,6))
 
 -}
-
 getStdRandom :: (StdGen -> (a,StdGen)) -> IO a
 getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
   where swap (v,g) = (g,v)
