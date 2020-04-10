@@ -46,7 +46,7 @@
 --     'RandomGen' instance into a 'MonadRandom' instance.
 --
 -- [Drawing from a range] 'UniformRange' is used to generate a value of a
---     datatype uniformly within a range.
+--     datatype uniformly within an inclusive range.
 --
 --     This library provides instances of 'UniformRange' for many common
 --     numeric datatypes.
@@ -956,7 +956,9 @@ runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
 runSTGen_ g action = fst $ runSTGen g action
 
--- | The standard pseudo-random number generator.
+-- | The standard pseudo-random number generator. Uses the SplitMix
+-- implementation provided by the
+-- [splitmix](https://hackage.haskell.org/package/splitmix) package.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
   deriving Show
 
@@ -972,50 +974,50 @@ mkStdGen = StdGen . SM.mkSMGen . fromIntegral
 
 
 -- $uniform
+-- This library provides two type classes to generate pseudo-random values:
 --
--- @random@ has two type classes for generation of random numbers:
--- 'Uniform' and 'UniformRange'. One for generating every possible
--- value and another for generating every value in range. In other
--- libraries this functionality frequently bundled into single type
--- class but here we have two type classes because there're types
--- which could have instance for one type class but not the other.
+-- *   'UniformRange' is used to generate a value of a datatype uniformly
+--     within an inclusive range.
+-- *   'Uniform' is used to generate a value of a datatype uniformly over all
+--     possible values of that datatype.
 --
--- For example: 'Integer', 'Float', 'Double' have instance for
--- @UniformRange@ but there's no way to define @Uniform@.
+-- Types may have instances for both or just one of 'UniformRange' and
+-- 'Uniform'. A few examples illustrate this:
 --
--- Conversely there're types where @Uniform@ instance is possible
--- while @UniformRange@ is not. One example is tuples: @(a,b)@. While
--- @Uniform@ instance is straightforward it's not clear how to define
--- @UniformRange@. We could try to generate values that @a <= x <= b@
--- But to do that we need to know number of elements of tuple's second
--- type parameter @b@ which we don't have.
---
--- Or type could have no order at all. Take for example
--- angle. Defining @Uniform@ instance is again straghtforward: just
--- generate value in @[0,2π)@ range. But for any two pair of angles
--- there're two ranges: clockwise and counterclockwise.
+-- *   'Int', 'Word16' and 'Bool' are instances of both 'UniformRange' and
+--     'Uniform'.
+-- *   'Integer', 'Float' and 'Double' each have an instance for 'UniformRange'
+--     but no 'Uniform' instance.
+-- *   It is trivial to construct a @Uniform (a, b)@ instance given
+--     @Uniform a@ and @Uniform b@ (and this library provides this tuple
+--     instance).
+-- *   On the other hand, there is no correct way to construct a
+--     @UniformRange (a, b)@ instance based on just @UniformRange a@ and
+--     @UniformRange b@.
 
 
--- | Generate every possible value for data type with equal probability.
+-- | Generates a value uniformly distributed over all possible values of that
+-- datatype.
 --
 -- @since 1.2
 class Uniform a where
   uniform :: MonadRandom g s m => g s -> m a
 
--- | Generate every value in provided inclusive range with equal
---   probability. So @uniformR (1,4)@ should generate values from set
---   @[1,2,3,4]@. Inclusive range is used to allow to express any
---   interval for fixed-size ints, enumerations etc.
+-- | Generates a value uniformly distributed over the provided inclusive range.
 --
---   Additionally in order to make function always defined order of
---   elements in range shouldn't matter and following law should hold:
+-- For example, @uniformR (1,4)@ should generate values uniformly from the set
+-- @[1,2,3,4]@.
+--
+-- The API uses an inclusive range so any range can be expressed, even when
+-- using fixed-size ints, enumerations etc.
+--
+-- The following law should hold to make the function always defined:
 --
 -- > uniformR (a,b) = uniform (b,a)
 --
 -- @since 1.2
 class UniformRange a where
   uniformR :: MonadRandom g s m => (a, a) -> g s -> m a
-
 
 {- |
 With a source of random number supply in hand, the 'Random' class allows the
