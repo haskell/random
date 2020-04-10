@@ -319,6 +319,7 @@ module System.Random
 
     RandomGen(..)
   , MonadRandom(..)
+  , Frozen(..)
   , runGenM
   , runGenM_
   , RandomGenM(..)
