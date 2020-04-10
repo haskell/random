@@ -96,10 +96,10 @@
 --
 -- Pseudo-random number generators come in two flavours: /pure/ and /monadic/.
 --
--- [Pure pseudo-random number generators] These generators produce a new random
---     value together with a new instance of the pseudo-random number
---     generator. 'RandomGen' defines the interface for pure pseudo-random
---     number generators.
+-- [Pure pseudo-random number generators] These generators produce a new
+--     pseudo-random value together with a new instance of the pseudo-random
+--     number generator. 'RandomGen' defines the interface for pure
+--     pseudo-random number generators.
 --
 --     Pure pseudo-random number generators should implement 'split' if they
 --     are /splittable/, that is, if there is an efficient method to turn one
@@ -108,9 +108,9 @@
 --     some background on splittable pseudo-random generators.
 --
 -- [Monadic pseudo-random number generators] These generators mutate their own
---     state as they produce random values. They generally live in 'ST' or 'IO'
---     or some transformer that implements @PrimMonad@. 'MonadRandom' defines
---     the interface for monadic pseudo-random number generators.
+--     state as they produce pseudo-random values. They generally live in 'ST'
+--     or 'IO' or some transformer that implements @PrimMonad@. 'MonadRandom'
+--     defines the interface for monadic pseudo-random number generators.
 --
 -- Pure pseudo-random number generators can be used in monadic code via the
 -- adapters 'PureGen', 'AtomicGen', 'IOGen' and 'STGen'.
@@ -147,13 +147,13 @@
 --     a concern and the pseudo-random number generator is not shared between
 --     threads.
 --
--- = How to generate random values in monadic code
+-- = How to generate pseudo-random values in monadic code
 --
 -- In monadic code, use the relevant 'Uniform' and 'UniformRange' instances to
--- generate random values via 'uniform' and 'uniformR', respectively.
+-- generate pseudo-random values via 'uniform' and 'uniformR', respectively.
 --
--- As an example, @rolls@ generates @n@ random values of @Word8@ in the range
--- @[1, 6]@.
+-- As an example, @rolls@ generates @n@ pseudo-random values of @Word8@ in the
+-- range @[1, 6]@.
 --
 -- >>> :{
 -- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
@@ -175,11 +175,11 @@
 -- >>> runGenM_ (IOGen pureGen) (rolls 10) :: IO [Word8]
 -- [1,1,3,2,4,5,3,4,6,2]
 --
--- = How to generate random values in pure code
+-- = How to generate pseudo-random values in pure code
 --
---  In pure code, use 'runGenState' and its variants to extract the pure random
---  value from a monadic computation based on a pure pseudo-random number
---  generator.
+--  In pure code, use 'runGenState' and its variants to extract the pure
+--  pseudo-random value from a monadic computation based on a pure pseudo-random
+--  number generator.
 --
 -- >>> let pureGen = mkStdGen 42
 -- >>> runGenState_ pureGen (rolls 10) :: [Word8]
@@ -264,9 +264,9 @@
 -- Pseudo-random number generators without a power-of-2 modulus perform
 -- /significantly worse/ than pseudo-random number generators with a power-of-2
 -- modulus with this library. This is because most functionality in this
--- library is based on generating and transforming uniformly random machine
--- words, and generating uniformly random machine words using a pseudo-random
--- number generator without a power-of-2 modulus is expensive.
+-- library is based on generating and transforming uniformly pseudo-random
+-- machine words, and generating uniformly pseudo-random machine words using a
+-- pseudo-random number generator without a power-of-2 modulus is expensive.
 --
 -- The pseudo-random number generator from
 -- <https://dl.acm.org/doi/abs/10.1145/62959.62969 L’Ecuyer (1988)> natively
@@ -299,7 +299,7 @@
 -- = How to implement 'MonadRandom'
 --
 -- Typically, a monadic pseudo-random number generator has facilities to save
--- and restore its internal state in addition to generating random
+-- and restore its internal state in addition to generating pseudo-random
 -- pseudo-random numbers.
 --
 -- Here is an example instance for the monadic pseudo-random number generator
@@ -503,7 +503,7 @@ class RandomGen g where
   genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
 
   -- | @genShortByteString n g@ returns a 'ShortByteString' of length @n@
-  -- filled with random bytes.
+  -- filled with pseudo-random bytes.
   --
   -- @since 1.2
   genShortByteString :: Int -> g -> (ShortByteString, g)
@@ -607,7 +607,7 @@ class Monad m => MonadRandom g s m | g m -> s where
     pure (unsafeShiftL (fromIntegral h32) 32 .|. fromIntegral l32)
 
   -- | @uniformShortByteString n g@ generates a 'ShortByteString' of length @n@
-  -- filled with random bytes.
+  -- filled with pseudo-random bytes.
   --
   -- @since 1.2
   uniformShortByteString :: Int -> g s -> m ShortByteString
@@ -661,7 +661,7 @@ runGenM fg action = do
 runGenM_ :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m a
 runGenM_ fg action = fst <$> runGenM fg action
 
--- | Generates a list of random values.
+-- | Generates a list of pseudo-random values.
 --
 -- @since 1.2
 uniformListM :: (MonadRandom g s m, Uniform a) => g s -> Int -> m [a]
@@ -670,9 +670,9 @@ uniformListM gen n = replicateM n (uniform gen)
 data MBA s = MBA (MutableByteArray# s)
 
 
--- | Efficiently generates a sequence of random bytes in a platform independent
--- manner. The allocated memory is be pinned, so it is safe to use with FFI
--- calls.
+-- | Efficiently generates a sequence of pseudo-random bytes in a platform
+-- independent manner. The allocated memory is be pinned, so it is safe to use
+-- with FFI calls.
 --
 -- @since 1.2
 genShortByteStringIO :: MonadIO m => Int -> m Word64 -> m ShortByteString
@@ -729,7 +729,7 @@ pinnedByteArrayToForeignPtr ba# =
   ForeignPtr (byteArrayContents# ba#) (PlainPtr (unsafeCoerce# ba#))
 {-# INLINE pinnedByteArrayToForeignPtr #-}
 
--- | Generates a random 'ByteString' of the specified size.
+-- | Generates a pseudo-random 'ByteString' of the specified size.
 --
 -- @since 1.2
 uniformByteString :: MonadRandom g s m => Int -> g s -> m ByteString
@@ -776,7 +776,7 @@ instance (RandomGen g, MonadState g m) => MonadRandom (PureGen g) g m where
   uniformWord64 _ = state genWord64
   uniformShortByteString n _ = state (genShortByteString n)
 
--- | Generates a random value in a state monad.
+-- | Generates a pseudo-random value in a state monad.
 --
 -- @since 1.2
 genRandom :: (RandomGen g, Random a, MonadState g m) => PureGen g g -> m a
@@ -797,7 +797,8 @@ runGenState :: RandomGen g => g -> (PureGen g g -> State g a) -> (a, g)
 runGenState g f = runState (f PureGenI) g
 
 -- | Runs a monadic generating action in the `State` monad using a pure
--- pseudo-random number generator. Returns only the resulting random value.
+-- pseudo-random number generator. Returns only the resulting pseudo-random
+-- value.
 --
 -- @since 1.2
 runGenState_ :: RandomGen g => g -> (PureGen g g -> State g a) -> a
@@ -811,7 +812,8 @@ runGenStateT :: RandomGen g => g -> (PureGen g g -> StateT g m a) -> m (a, g)
 runGenStateT g f = runStateT (f PureGenI) g
 
 -- | Runs a monadic generating action in the `StateT` monad using a pure
--- pseudo-random number generator. Returns only the resulting random value.
+-- pseudo-random number generator. Returns only the resulting pseudo-random
+-- value.
 --
 -- @since 1.2
 runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g g -> StateT g f a) -> f a
@@ -860,10 +862,10 @@ applyAtomicGen op (AtomicGenI gVar) =
 -- not being used with `IOGen`. Which also means that it is not safe in a
 -- concurrent setting.
 --
--- Both `IOGen` and `AtomicGen` are necessary when generation of random values
--- happens in `IO` and especially when dealing with exception handling and
--- resource allocation, which is where `StateT` should never be used. For
--- example writing a random number of bytes into a temporary file:
+-- Both `IOGen` and `AtomicGen` are necessary when generation of pseudo-random
+-- values happens in `IO` and especially when dealing with exception handling
+-- and resource allocation, which is where `StateT` should never be used. For
+-- example writing a pseudo-random number of bytes into a temporary file:
 --
 -- >>> import UnliftIO.Temporary (withSystemTempFile)
 -- >>> import Data.ByteString (hPutStr)
@@ -950,7 +952,8 @@ runSTGen :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> (a, g)
 runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 
 -- | Runs a monadic generating action in the `ST` monad using a pure
--- pseudo-random number generator. Returns only the resulting random value.
+-- pseudo-random number generator. Returns only the resulting pseudo-random
+-- value.
 --
 -- @since 1.2
 runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
@@ -1020,8 +1023,8 @@ class UniformRange a where
   uniformR :: MonadRandom g s m => (a, a) -> g s -> m a
 
 {- |
-With a source of random number supply in hand, the 'Random' class allows the
-programmer to extract random values of a variety of types.
+With a source of pseudo-random number supply in hand, the 'Random' class allows
+the programmer to extract pseudo-random values of a variety of types.
 
 Minimal complete definition: 'randomR' and 'random'.
 
@@ -1030,9 +1033,9 @@ Minimal complete definition: 'randomR' and 'random'.
 {-# DEPRECATED randomIO "In favor of `uniformR`" #-}
 class Random a where
 
-  -- | Takes a range /(lo,hi)/ and a random number generator
-  -- /g/, and returns a random value uniformly distributed over the closed
-  -- interval /[lo,hi]/, together with a new generator. It is unspecified
+  -- | Takes a range /(lo,hi)/ and a pseudo-random number generator
+  -- /g/, and returns a pseudo-random value uniformly distributed over the
+  -- closed interval /[lo,hi]/, together with a new generator. It is unspecified
   -- what happens if /lo>hi/. For continuous types there is no requirement
   -- that the values /lo/ and /hi/ are ever produced, but they may be,
   -- depending on the implementation and the interval.
@@ -1060,28 +1063,28 @@ class Random a where
   -- randomM = uniform
 
   -- | Plural variant of 'randomR', producing an infinite list of
-  -- random values instead of returning a new generator.
+  -- pseudo-random values instead of returning a new generator.
   {-# INLINE randomRs #-}
   randomRs :: RandomGen g => (a,a) -> g -> [a]
   randomRs ival g = build (\cons _nil -> buildRandoms cons (randomR ival) g)
 
   -- | Plural variant of 'random', producing an infinite list of
-  -- random values instead of returning a new generator.
+  -- pseudo-random values instead of returning a new generator.
   {-# INLINE randoms #-}
   randoms  :: RandomGen g => g -> [a]
   randoms  g      = build (\cons _nil -> buildRandoms cons random g)
 
-  -- | A variant of 'randomR' that uses the global random number generator
-  -- (see "System.Random#globalrng").
+  -- | A variant of 'randomR' that uses the global pseudo-random number
+  -- generator (see "System.Random#globalrng").
   randomRIO :: (a,a) -> IO a
   randomRIO range  = getStdRandom (randomR range)
 
-  -- | A variant of 'random' that uses the global random number generator
+  -- | A variant of 'random' that uses the global pseudo-random number generator
   -- (see "System.Random#globalrng").
   randomIO  :: IO a
   randomIO   = getStdRandom random
 
--- | Produce an infinite list-equivalent of random values.
+-- | Produce an infinite list-equivalent of pseudo-random values.
 {-# INLINE buildRandoms #-}
 buildRandoms :: RandomGen g
              => (a -> as -> as)  -- ^ E.g. '(:)' but subject to fusion
@@ -1459,13 +1462,13 @@ randomIvalInteger (l,h) rng
        -- will differ at most by a factor of (1 +- 1/q). Assuming the RandomGen
        -- is uniform, of course
 
-       -- On average, log q / log b more random values will be generated
+       -- On average, log q / log b more pseudo-random values will be generated
        -- than the minimum
        q = 1000
        k = h - l + 1
        magtgt = k * q
 
-       -- generate random values until we exceed the target magnitude
+       -- generate pseudo-random values until we exceed the target magnitude
        f mag v g | mag >= magtgt = (v, g)
                  | otherwise = v' `seq`f (mag*b) v' g' where
                         (x,g') = next g
@@ -1529,7 +1532,7 @@ integerWordSize = go 0
       | otherwise = go (acc + 1) (i `shiftR` WORD_SIZE_IN_BITS)
 {-# INLINE integerWordSize #-}
 
--- | @uniformIntegerWords n@ is a uniformly random 'Integer' in the range
+-- | @uniformIntegerWords n@ is a uniformly pseudo-random 'Integer' in the range
 -- @[0, WORD_SIZE_IN_BITS^n)@.
 uniformIntegerWords :: (MonadRandom g s m) => Int -> g s -> m Integer
 uniformIntegerWords n gen = go 0 n
@@ -1655,22 +1658,22 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) => U
     f <- uniform g
     return (a, b, c, d, e, f)
 
--- The global random number generator
+-- The global pseudo-random number generator
 
 {- $globalrng #globalrng#
 
-There is a single, implicit, global random number generator of type
+There is a single, implicit, global pseudo-random number generator of type
 'StdGen', held in some global variable maintained by the 'IO' monad. It is
 initialised automatically in some system-dependent fashion, for example, by
-using the time of day, or Linux's kernel random number generator. To get
+using the time of day, or Linux's kernel pseudo-random number generator. To get
 deterministic behaviour, use 'setStdGen'.
 -}
 
--- |Sets the global random number generator.
+-- |Sets the global pseudo-random number generator.
 setStdGen :: StdGen -> IO ()
 setStdGen sgen = writeIORef theStdGen sgen
 
--- |Gets the global random number generator.
+-- |Gets the global pseudo-random number generator.
 getStdGen :: IO StdGen
 getStdGen  = readIORef theStdGen
 
@@ -1678,14 +1681,14 @@ theStdGen :: IORef StdGen
 theStdGen  = unsafePerformIO $ SM.initSMGen >>= newIORef . StdGen
 {-# NOINLINE theStdGen #-}
 
--- |Applies 'split' to the current global random generator,
+-- |Applies 'split' to the current global pseudo-random generator,
 -- updates it with one of the results, and returns the other.
 newStdGen :: IO StdGen
 newStdGen = atomicModifyIORef' theStdGen split
 
 {- |Uses the supplied function to get a value from the current global
 random generator, and updates the global generator with the new generator
-returned by the function. For example, @rollDice@ gets a random integer
+returned by the function. For example, @rollDice@ gets a pseudo-random integer
 between 1 and 6:
 
 >  rollDice :: IO Int
