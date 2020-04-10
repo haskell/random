@@ -42,8 +42,8 @@
 -- [Monadic pseudo-random number generators] 'MonadRandom' is an interface to
 --     monadic pseudo-random number generators.
 --
--- [Monadic adapters] 'PureGen', 'PrimGen' and 'MutGen' turn a 'RandomGen'
---     instance into a 'MonadRandom' instance.
+-- [Monadic adapters] 'PureGen', 'AtomicGen', 'IOGen' and 'STGen' turn a
+--     'RandomGen' instance into a 'MonadRandom' instance.
 --
 -- [Drawing from a range] 'UniformRange' is used to generate a value of a
 --     datatype uniformly within a range.
@@ -109,36 +109,43 @@
 --
 -- [Monadic pseudo-random number generators] These generators mutate their own
 --     state as they produce random values. They generally live in 'ST' or 'IO'
---     or some transformer that implements 'PrimMonad'. 'MonadRandom' defines
+--     or some transformer that implements @PrimMonad@. 'MonadRandom' defines
 --     the interface for monadic pseudo-random number generators.
 --
 -- Pure pseudo-random number generators can be used in monadic code via the
--- adapters 'PureGen', 'PrimGen' and 'MutGen'.
+-- adapters 'PureGen', 'AtomicGen', 'IOGen' and 'STGen'.
 --
 -- *   'PureGen' can be used in any state monad. With strict 'StateT' there is
---     even no performance overhead when compared to the 'RandomGen' directly.
---     But it is not safe to use it in presence of exceptions and resource
---     allocation that requires cleanup.
+--     no performance overhead compared to using the 'RandomGen' instance
+--     directly. 'PureGen' is /not/ safe to use in the presence of exceptions
+--     and concurrency.
 --
--- *   'PrimGen' can be used in any 'PrimMonad' if the pseudo-random number
---     generator is also an instance of 'Prim'. It will perform much faster
---     than 'MutGen', but it can't be used in a concurrent setting.
+-- *   'AtomicGen' is safe in the presence of exceptions and concurrency since
+--     it performs all actions atomically.
 --
--- *   'MutGen' can be used in any 'PrimMonad' (this includes 'ST' and 'IO') and
---     can safely be shared between threads.
+-- *   'IOGen' is a wrapper around an 'IORef' that holds a pure generator.
+--     'IOGen' is /not/ safe to use in the presence of exceptions and
+--     concurrency.
+--
+-- *   'STGen' is a wrapper around an 'STRef' that holds a pure generator.
+--     'STGen' is /not/ safe to use in the presence of exceptions and
+--     concurrency.
 --
 -- When to use which?
 --
 -- *   Use 'PureGen' if your computation does not have side effects and results
 --     in a pure function.
 --
--- *   Use 'PrimGen' if the pseudo-random number generator implements 'Prim'
---     class and random value generation is intermixed with 'IO' or 'ST'.
+-- *   Use 'AtomicGen' if the pseudo-random number generator must be shared
+--     between threads or if exception safety is a requirement.
 --
--- *   Otherwise use 'MutGen'. Whenever a 'MutGen' is shared between threads,
---     make sure there is not much contention for it, otherwise performance
---     will suffer. For parallel random value generation it is best to split
---     the generator and use a single 'PureGen' or 'PrimGen' per thread.
+-- *   Use 'IOGen' if operating in a 'MonadIO' context, exception safety is not
+--     a concern and the pseudo-random number generator is not shared between
+--     threads.
+--
+-- *   Use 'STGen' if operating in an 'ST' context, exception safety is not
+--     a concern and the pseudo-random number generator is not shared between
+--     threads.
 --
 -- = How to generate random values in monadic code
 --
@@ -161,9 +168,8 @@
 -- [2,3,6,6,4,4,3,1,5,4]
 --
 -- Given a /pure/ pseudo-random number generator, you can run it in an 'IO' or
--- 'ST' context using 'runPrimGenIO' or 'runPrimGenST' and their variants,
--- respectively. If the pseudo-random number generator does not implement
--- 'Prim', you can also use 'runMutGenIO' or 'runMutGenST' and their variants.
+-- 'ST' context by first applying a monadic adapter like 'AtomicGen', 'IOGen'
+-- or 'STGen' and then running it with 'runGenM'.
 --
 -- >>> let pureGen = mkStdGen 42
 -- >>> runGenM_ (IOGen pureGen) (rolls 10) :: IO [Word8]
@@ -193,10 +199,8 @@
 --     modulus, implement 'next' and 'genRange'. See below for more details.
 --
 -- *   If the pseudo-random number generator is splittable, implement 'split'.
---
--- Additionally, implement 'Prim' for the pseudo-random number generator if
--- possible. This allows users to use the fast 'MutGen' adapter with the
--- pseudo-random number generator.
+--     If there is no suitable implementation, 'split' should fail with a
+--     helpful error message.
 --
 -- == How to implement 'RandomGen' for a pseudo-random number generator with power-of-2 modulus
 --
@@ -315,8 +319,7 @@
 module System.Random
   (
 
-  -- * Random number generators
-
+  -- * Pseudo-random number generator interfaces
     RandomGen(..)
   , MonadRandom(..)
   , Frozen(..)
@@ -324,12 +327,12 @@ module System.Random
   , runGenM_
   , RandomGenM(..)
   , splitRandomGenM
-  -- ** Standard random number generators
+  -- ** Standard pseudo-random number generator
   , StdGen
   , mkStdGen
 
-  -- * Stateful interface for pure generators
-  -- ** Based on StateT
+  -- * Monadic adapters for pure pseudo-random number generators
+  -- ** Pure adapter
   , PureGen
   , splitGen
   , genRandom
@@ -338,7 +341,7 @@ module System.Random
   , runGenStateT
   , runGenStateT_
   , runPureGenST
-  -- ** Mutable generators
+  -- ** Mutable adapters
   -- *** AtomicGen
   , AtomicGen
   , applyAtomicGen
@@ -351,23 +354,21 @@ module System.Random
   , runSTGen
   , runSTGen_
 
-  -- ** The global random number generator
-
+  -- ** The global pseudo-random number generator
   -- $globalrng
-
   , getStdRandom
   , getStdGen
   , setStdGen
   , newStdGen
 
-  -- * Random values of various types
+  -- * Pseudo-random values of various types
   -- $uniform
   , Uniform(..)
   , uniformListM
   , UniformRange(..)
   , Random(..)
 
-  -- * Generators for sequences of bytes
+  -- * Generators for sequences of pseudo-random bytes
   , genShortByteStringIO
   , genShortByteStringST
   , uniformByteString
@@ -439,7 +440,7 @@ import GHC.IO (IO(..))
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
--- 'StdGen' is the default 'RandomGen' instance provided by this library.
+-- 'StdGen' is the standard 'RandomGen' instance provided by this library.
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
@@ -955,7 +956,7 @@ runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
 runSTGen_ g action = fst $ runSTGen g action
 
--- | The default pseudo-random number generator.
+-- | The standard pseudo-random number generator.
 type StdGen = SM.SMGen
 
 instance RandomGen StdGen where
@@ -964,12 +965,7 @@ instance RandomGen StdGen where
   genWord64 = SM.nextWord64
   split = SM.splitSMGen
 
-
-{- |
-The function 'mkStdGen' provides an alternative way of producing an initial
-generator, by mapping an 'Int' into a generator. Again, distinct arguments
-should be likely to produce distinct generators.
--}
+-- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen
 mkStdGen s = SM.mkSMGen $ fromIntegral s
 
