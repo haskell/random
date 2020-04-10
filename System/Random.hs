@@ -1611,6 +1611,50 @@ unsignedBitmaskWithRejectionM genUniform range gen = go
         else pure x'
 {-# INLINE unsignedBitmaskWithRejectionM #-}
 
+-------------------------------------------------------------------------------
+-- 'Uniform' instances for tuples
+-------------------------------------------------------------------------------
+
+instance (Uniform a, Uniform b) => Uniform (a, b) where
+  uniform g = do
+    a <- uniform g
+    b <- uniform g
+    return (a, b)
+
+instance (Uniform a, Uniform b, Uniform c) => Uniform (a, b, c) where
+  uniform g = do
+    a <- uniform g
+    b <- uniform g
+    c <- uniform g
+    return (a, b, c)
+
+instance (Uniform a, Uniform b, Uniform c, Uniform d) => Uniform (a, b, c, d) where
+  uniform g = do
+    a <- uniform g
+    b <- uniform g
+    c <- uniform g
+    d <- uniform g
+    return (a, b, c, d)
+
+instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e) => Uniform (a, b, c, d, e) where
+  uniform g = do
+    a <- uniform g
+    b <- uniform g
+    c <- uniform g
+    d <- uniform g
+    e <- uniform g
+    return (a, b, c, d, e)
+
+instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) => Uniform (a, b, c, d, e, f) where
+  uniform g = do
+    a <- uniform g
+    b <- uniform g
+    c <- uniform g
+    d <- uniform g
+    e <- uniform g
+    f <- uniform g
+    return (a, b, c, d, e, f)
+
 -- The global random number generator
 
 {- $globalrng #globalrng#
