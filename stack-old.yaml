@@ -50,8 +50,7 @@ extra-deps:
   # In addition, the doctests require 'SMGen' from the splitmix package to
   # implement 'Prim'. So far, this is only the case on lehin's fork, so we use
   # that.
-- git: https://github.com/lehins/splitmix.git
-  commit: bb92e025a0d0a0353e2d6369191fecec8e8c99ad
+- splitmix-0.0.4@sha256:fb9bb8b54a2e76c8a021fe5c4c3798047e1f60e168379a1f80693047fe00ad0e,4813
   # Not contained in all snapshots we want to test against
 - doctest-0.16.2@sha256:2f96e9bbe9aee11b47453c82c24b3dc76cdbb8a2a7c984dfd60b4906d08adf68,6942
 - cabal-doctest-1.0.8@sha256:34dff6369d417df2699af4e15f06bc181d495eca9c51efde173deae2053c197c,1491
