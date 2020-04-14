@@ -531,7 +531,7 @@ class RandomGen g where
   split :: g -> (g, g)
 
 -- | 'MonadRandom' is an interface to monadic pseudo-random number generators.
-class Monad m => MonadRandom g s m | m -> s where
+class Monad m => MonadRandom g s m | g m -> s where
   -- | Represents the state of the pseudo-random number generator for use with
   -- 'thawGen' and 'freezeGen'.
   --
