@@ -124,12 +124,10 @@
 --     it performs all actions atomically.
 --
 -- *   'IOGen' is a wrapper around an 'IORef' that holds a pure generator.
---     'IOGen' is /not/ safe to use in the presence of exceptions and
---     concurrency.
+--     'IOGen' is safe in the presence of exceptions, but not concurrency.
 --
 -- *   'STGen' is a wrapper around an 'STRef' that holds a pure generator.
---     'STGen' is /not/ safe to use in the presence of exceptions and
---     concurrency.
+--     'STGen' is safe in the presence of exceptions, but not concurrency.
 --
 -- When to use which?
 --
@@ -137,15 +135,13 @@
 --     in a pure function.
 --
 -- *   Use 'AtomicGen' if the pseudo-random number generator must be shared
---     between threads or if exception safety is a requirement.
+--     between threads.
 --
--- *   Use 'IOGen' if operating in a 'MonadIO' context, exception safety is not
---     a concern and the pseudo-random number generator is not shared between
---     threads.
+-- *   Use 'IOGen' if operating in a 'MonadIO' context and the pseudo-random
+--     number generator is not shared between threads.
 --
--- *   Use 'STGen' if operating in an 'ST' context, exception safety is not
---     a concern and the pseudo-random number generator is not shared between
---     threads.
+-- *   Use 'STGen' if operating in an 'ST' context and the pseudo-random number
+--     generator is not shared between threads.
 --
 -- = How to generate pseudo-random values in monadic code
 --
