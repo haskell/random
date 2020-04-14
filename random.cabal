@@ -29,14 +29,14 @@ custom-setup
 
 library
     exposed-modules:  System.Random
+    c-sources:        cbits/CastFloatWord.cmm
     default-language: Haskell2010
     ghc-options:      -Wall
     build-depends:
         base >=4.10 && <5,
-        bytestring -any,
-        mtl -any,
-        splitmix -any
-    c-sources: cbits/CastFloatWord.cmm
+        bytestring >=0.10 && <0.11,
+        mtl >=2.2 && <2.3,
+        splitmix >=0.0.3 && <0.1
 
 test-suite legacy
     type:             exitcode-stdio-1.0
