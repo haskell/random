@@ -1613,44 +1613,22 @@ unsignedBitmaskWithRejectionM genUniform range gen = go
 -------------------------------------------------------------------------------
 
 instance (Uniform a, Uniform b) => Uniform (a, b) where
-  uniform g = do
-    a <- uniform g
-    b <- uniform g
-    return (a, b)
+  uniform g = (,) <$> uniform g <*> uniform g
 
 instance (Uniform a, Uniform b, Uniform c) => Uniform (a, b, c) where
-  uniform g = do
-    a <- uniform g
-    b <- uniform g
-    c <- uniform g
-    return (a, b, c)
+  uniform g = (,,) <$> uniform g <*> uniform g <*> uniform g
 
 instance (Uniform a, Uniform b, Uniform c, Uniform d) => Uniform (a, b, c, d) where
-  uniform g = do
-    a <- uniform g
-    b <- uniform g
-    c <- uniform g
-    d <- uniform g
-    return (a, b, c, d)
+  uniform g = (,,,) <$> uniform g <*> uniform g <*> uniform g <*> uniform g
 
 instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e) => Uniform (a, b, c, d, e) where
-  uniform g = do
-    a <- uniform g
-    b <- uniform g
-    c <- uniform g
-    d <- uniform g
-    e <- uniform g
-    return (a, b, c, d, e)
+  uniform g = (,,,,) <$> uniform g <*> uniform g <*> uniform g <*> uniform g <*> uniform g
 
 instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) => Uniform (a, b, c, d, e, f) where
-  uniform g = do
-    a <- uniform g
-    b <- uniform g
-    c <- uniform g
-    d <- uniform g
-    e <- uniform g
-    f <- uniform g
-    return (a, b, c, d, e, f)
+  uniform g = (,,,,,) <$> uniform g <*> uniform g <*> uniform g <*> uniform g <*> uniform g <*> uniform g
+
+instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Uniform g) => Uniform (a, b, c, d, e, f, g) where
+  uniform g = (,,,,,,) <$> uniform g <*> uniform g <*> uniform g <*> uniform g <*> uniform g <*> uniform g <*> uniform g
 
 -- The global pseudo-random number generator
 
