@@ -27,24 +27,25 @@ bumped version for float/double range bugfix
 # 1.2
 
 1. Breaking change which mostly maintains backwards compatibility.
-2. Faster by more x10 (depending on the type) - see below for benchmarks.
-3. Passes a large number of random number test suites:
+2. Support for monadic generators e.g. [mwc-random](https://hackage.haskell.org/package/mwc-random).
+3. Monadic adapters for pure generators (providing a uniform monadic
+   interface to pure and monadic generators).
+4. Faster by more x10 (depending on the type) - see below for benchmarks.
+5. Passes a large number of random number test suites:
   * [dieharder](http://webhome.phy.duke.edu/~rgb/General/dieharder.php "venerable")
   * [TestU01 (SmallCrush, Crush, BigCrush)](http://simul.iro.umontreal.ca/testu01/tu01.html "venerable")
   * [PractRand](http://pracrand.sourceforge.net/ "active")
   * [gjrand](http://gjrand.sourceforge.net/ "active")
-  * [rademacher-fpl](https://gitlab.com/christoph-conrads/rademacher-fpl/-/tree/master "active")
-  * [gjrand](http://gjrand.sourceforge.net/ "active")
   * See [random-quality](https://github.com/tweag/random-quality)
 		 for details on how to do this yourself.
-4. Better quality split as judged by these
+6. Better quality split as judged by these
 	[tests](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/evaluation-of-splittable-pseudorandom-generators/3EBAA9F14939C5BB5560E32D1A132637). Again
 	see [random-quality](https://github.com/tweag/random-quality) for
 	details on how to do this yourself.
-5. Unbiased generation of ranges.
-6. Updated tests and benchmarks.
-7. [Conntinuous integration](https://travis-ci.org/github/idontgetoutmuch/random).
-8. Fully documented - for more details see the [haddock](https://htmlpreview.github.io/?https://github.com/idontgetoutmuch/random/blob/release-notes/docs/System-Random.html).
+7. Unbiased generation of ranges.
+8. Updated tests and benchmarks.
+9. [Continuous integration](https://travis-ci.org/github/idontgetoutmuch/random).
+10. Fully documented - for more details see the [haddock](https://htmlpreview.github.io/?https://github.com/idontgetoutmuch/random/blob/release-notes/docs/System-Random.html).
 
 ## Benchmarks
 
