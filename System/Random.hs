@@ -177,10 +177,8 @@ import GHC.IO (IO(..))
 -- As an example, @rolls@ generates @n@ pseudo-random values of @Word8@ in the
 -- range @[1, 6]@.
 --
--- >>> :{
--- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
---     rolls n = replicateM n . uniformR (1, 6)
--- :}
+-- > rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
+-- > rolls n = replicateM n . uniformR (1, 6)
 --
 -- Given a /monadic/ pseudo-random number generator, you can run this
 -- probabilistic computation as follows:
@@ -1769,4 +1767,9 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 --   uniformWord32 = MWC.uniform
 --   uniformWord64 = MWC.uniform
 --   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
+-- :}
+--
+-- >>> :{
+-- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
+--     rolls n = replicateM n . uniformR (1, 6)
 -- :}
