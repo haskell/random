@@ -627,7 +627,7 @@ instance RandomGen r => RandomGenM STGen r s (ST s) where
 --
 -- >>> import Data.Int (Int8)
 -- >>> runGenM (IOGen (mkStdGen 217)) (`uniformListM` 5) :: IO ([Int8], Frozen (IOGen StdGen))
--- ([-74,37,-50,-2,3],IOGen {unIOGen = StdGen {unStdGen = SMGen 4273268533320920145 15251669095119325999}})
+-- ([-74,37,-50,-2,3],IOGen {unIOGen = SMGen 4273268533320920145 15251669095119325999})
 --
 -- @since 1.2
 runGenM :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m (a, Frozen g)
@@ -941,21 +941,18 @@ runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
 runSTGen_ g action = fst $ runSTGen g action
 
--- | The standard pseudo-random number generator. Uses the SplitMix
--- implementation provided by the
--- [splitmix](https://hackage.haskell.org/package/splitmix) package.
-newtype StdGen = StdGen { unStdGen :: SM.SMGen }
-  deriving Show
+-- | The standard pseudo-random number generator.
+type StdGen = SM.SMGen
 
 instance RandomGen StdGen where
-  next = second StdGen . SM.nextInt . unStdGen
-  genWord32 = second StdGen . SM.nextWord32 . unStdGen
-  genWord64 = second StdGen . SM.nextWord64 . unStdGen
-  split g = let (g1, g2) = SM.splitSMGen $ unStdGen g in (StdGen g1, StdGen g2)
+  next = SM.nextInt
+  genWord32 = SM.nextWord32
+  genWord64 = SM.nextWord64
+  split = SM.splitSMGen
 
 -- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen
-mkStdGen = StdGen . SM.mkSMGen . fromIntegral
+mkStdGen s = SM.mkSMGen $ fromIntegral s
 
 
 -- $uniform
@@ -1636,7 +1633,7 @@ getStdGen :: IO StdGen
 getStdGen  = readIORef theStdGen
 
 theStdGen :: IORef StdGen
-theStdGen  = unsafePerformIO $ SM.initSMGen >>= newIORef . StdGen
+theStdGen  = unsafePerformIO $ SM.initSMGen >>= newIORef
 {-# NOINLINE theStdGen #-}
 
 -- |Applies 'split' to the current global pseudo-random generator,
