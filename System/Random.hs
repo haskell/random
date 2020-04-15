@@ -368,7 +368,7 @@ module System.Random
   , Random(..)
 
   -- * Generators for sequences of bytes
-  , genShortByteStringWith
+  , genShortByteStringIO
   , genShortByteStringST
   , uniformByteString
   , genByteString
@@ -507,7 +507,7 @@ class RandomGen g where
   -- @since 1.2
   genShortByteString :: Int -> g -> (ShortByteString, g)
   genShortByteString n g =
-    unsafePerformIO $ runGenStateT g (genShortByteStringWith n . uniformWord64)
+    unsafePerformIO $ runGenStateT g (genShortByteStringIO n . uniformWord64)
   {-# INLINE genShortByteString #-}
 
   -- | Yields the range of values returned by 'next'.
@@ -611,7 +611,7 @@ class Monad m => MonadRandom g s m | g m -> s where
   -- @since 1.2
   uniformShortByteString :: Int -> g s -> m ShortByteString
   default uniformShortByteString :: MonadIO m => Int -> g s -> m ShortByteString
-  uniformShortByteString n = genShortByteStringWith n . uniformWord64
+  uniformShortByteString n = genShortByteStringIO n . uniformWord64
   {-# INLINE uniformShortByteString #-}
 
 
@@ -674,8 +674,8 @@ data MBA s = MBA (MutableByteArray# s)
 -- calls.
 --
 -- @since 1.2
-genShortByteStringWith :: MonadIO m => Int -> m Word64 -> m ShortByteString
-genShortByteStringWith n0 gen64 = do
+genShortByteStringIO :: MonadIO m => Int -> m Word64 -> m ShortByteString
+genShortByteStringIO n0 gen64 = do
   let !n@(I# n#) = max 0 n0
       (n64, nrem64) = n `quotRem` 8
   MBA mba# <-
@@ -709,14 +709,14 @@ genShortByteStringWith n0 gen64 = do
     IO $ \s# ->
       case unsafeFreezeByteArray# mba# s# of
         (# s'#, ba# #) -> (# s'#, SBS ba# #)
-{-# INLINE genShortByteStringWith #-}
+{-# INLINE genShortByteStringIO #-}
 
--- | Same as 'genShortByteStringWith', but runs in 'ST'.
+-- | Same as 'genShortByteStringIO', but runs in 'ST'.
 --
 -- @since 1.2
 genShortByteStringST :: Int -> ST s Word64 -> ST s ShortByteString
 genShortByteStringST n action =
-  unsafeIOToST (genShortByteStringWith n (unsafeSTToIO action))
+  unsafeIOToST (genShortByteStringIO n (unsafeSTToIO action))
 
 pinnedByteArrayToByteString :: ByteArray# -> ByteString
 pinnedByteArrayToByteString ba# =
