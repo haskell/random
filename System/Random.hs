@@ -970,6 +970,10 @@ mkStdGen s = SM.mkSMGen $ fromIntegral s
 --     'Uniform'.
 -- *   'Integer', 'Float' and 'Double' each have an instance for 'UniformRange'
 --     but no 'Uniform' instance.
+-- *   A hypothetical type @Radian@ representing angles by taking values in the
+--     range @[0, 2π)@ has a trivial 'Uniform' instance, but no 'UniformRange'
+--     instance: the problem is that two given @Radian@ values always span /two/
+--     ranges, one clockwise and one anti-clockwise.
 -- *   It is trivial to construct a @Uniform (a, b)@ instance given
 --     @Uniform a@ and @Uniform b@ (and this library provides this tuple
 --     instance).
