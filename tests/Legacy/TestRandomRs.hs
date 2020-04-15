@@ -12,11 +12,12 @@
 
 module Legacy.TestRandomRs where
 
-import Control.Monad (liftM, replicateM)
+import Control.Monad (liftM)
 import System.Random (randomRs, getStdGen)
 
 -- Return the five-thousandth random number:
 -- Should run in constant space (< 1Mb heap).
+main :: IO ()
 main = do
     n <- (last . take 5000 . randomRs (0, 1000000)) `liftM` getStdGen
     print (n::Integer)

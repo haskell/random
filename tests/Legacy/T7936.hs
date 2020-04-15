@@ -11,4 +11,5 @@ module Legacy.T7936 where
 import System.Random (newStdGen)
 import Control.Monad (replicateM_)
 
+main :: IO ()
 main = replicateM_ 100000 newStdGen
