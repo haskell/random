@@ -135,6 +135,7 @@ import GHC.Exts
 import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
+import qualified System.Random.SplitMix32 as SM32
 import GHC.Word
 import GHC.IO (IO(..))
 
@@ -780,6 +781,12 @@ instance RandomGen StdGen where
   genWord32 = SM.nextWord32
   genWord64 = SM.nextWord64
   split = SM.splitSMGen
+
+instance RandomGen SM32.SMGen where
+  next = SM32.nextInt
+  genWord32 = SM32.nextWord32
+  genWord64 = SM32.nextWord64
+  split = SM32.splitSMGen
 
 -- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen
