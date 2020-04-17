@@ -329,6 +329,7 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 -- >>> :{
 -- instance RandomGen PCGen where
 --   genWord32 = stepGen
+--   split _ = error "PCG is not splittable"
 -- :}
 --
 --
@@ -369,26 +370,8 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 -- instance RandomGen LegacyGen where
 --   next = legacyNext
 --   genRange _ = (1, 2147483562)
+--   split _ = error "Not implemented"
 -- :}
---
--- $implementmonadrandom
---
--- Typically, a monadic pseudo-random number generator has facilities to save
--- and restore its internal state in addition to generating pseudo-random
--- pseudo-random numbers.
---
--- Here is an example instance for the monadic pseudo-random number generator
--- from the @mwc-random@ package:
---
--- > instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
--- >   newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
--- >   thawGen = fmap MWC.restore unFrozen
--- >   freezeGen = fmap Frozen . MWC.save
--- >   uniformWord8 = MWC.uniform
--- >   uniformWord16 = MWC.uniform
--- >   uniformWord32 = MWC.uniform
--- >   uniformWord64 = MWC.uniform
--- >   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
 --
 -- $deprecations
 --

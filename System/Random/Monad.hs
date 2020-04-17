@@ -22,11 +22,7 @@ module System.Random.Monad
   -- $introduction
 
   -- * Usage
-  -- ** How to generate pseudo-random values in monadic code
   -- $usagemonadic
-
-  -- ** How to generate pseudo-random values in pure code
-  -- $usagepure
 
   -- * Pure and monadic pseudo-random number generator interfaces
   -- $interfaces
@@ -113,14 +109,18 @@ import System.Random.Internal
 --
 -- $usagemonadic
 --
+-- == How to generate pseudo-random values in monadic code
+--
 -- In monadic code, use the relevant 'Uniform' and 'UniformRange' instances to
 -- generate pseudo-random values via 'uniformM' and 'uniformRM', respectively.
 --
 -- As an example, @rolls@ generates @n@ pseudo-random values of @Word8@ in the
 -- range @[1, 6]@.
 --
--- > rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
--- > rolls n = replicateM n . uniformR (1, 6)
+-- >>> :{
+-- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
+--     rolls n = replicateM n . uniformRM (1, 6)
+-- :}
 --
 -- Given a /monadic/ pseudo-random number generator, you can run this
 -- probabilistic computation as follows:
@@ -137,7 +137,7 @@ import System.Random.Internal
 -- >>> runGenM_ (IOGen pureGen) (rolls 10) :: IO [Word8]
 -- [1,1,3,2,4,5,3,4,6,2]
 --
--- $usagepure
+-- == How to generate pseudo-random values in pure code
 --
 -- In pure code, use 'runGenState' and its variants to extract the pure
 -- pseudo-random value from a monadic computation based on a pure pseudo-random
@@ -460,8 +460,6 @@ runSTGen_ g action = fst $ runSTGen g action
 -- >>> :set -XTypeFamilies
 -- >>> :set -XUndecidableInstances
 --
--- >>> :set -fno-warn-missing-methods
---
 -- >>> :{
 -- instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
 --   newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
@@ -474,7 +472,3 @@ runSTGen_ g action = fst $ runSTGen g action
 --   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
 -- :}
 --
--- >>> :{
--- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
---     rolls n = replicateM n . uniformRM (1, 6)
--- :}
