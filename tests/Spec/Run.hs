@@ -1,7 +1,7 @@
 module Spec.Run (runsEqual) where
 
 import Data.Word (Word64)
-import System.Random
+import System.Random.Monad
 
 runsEqual :: RandomGen g => g -> IO Bool
 runsEqual g = do

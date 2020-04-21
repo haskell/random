@@ -29,6 +29,8 @@ custom-setup
 
 library
     exposed-modules:  System.Random
+                    , System.Random.Internal
+                    , System.Random.Monad
     c-sources:        cbits/CastFloatWord.cmm
     default-language: Haskell2010
     ghc-options:      -Wall
