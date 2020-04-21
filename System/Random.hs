@@ -106,8 +106,8 @@ uniform g = runGenState g uniformM
 -- | Pure version of `uniformRM` that works with instances of `RandomGen`
 --
 -- @since 1.2
-uniformR :: (RandomGen g, UniformRange a) => g -> (a, a) -> (a, g)
-uniformR g r = runGenState g (uniformRM r)
+uniformR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
+uniformR r g = runGenState g (uniformRM r)
 
 -- | Generates a 'ByteString' of the specified size using a pure pseudo-random
 -- number generator. See 'uniformByteString' for the monadic version.

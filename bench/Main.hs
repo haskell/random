@@ -207,7 +207,7 @@ pureUniformRIncludeHalfEnumBench =
 pureUniformRBench :: forall a. (Typeable a, UniformRange a) => (a, a) -> Int -> Benchmark
 pureUniformRBench range =
   let !stdGen = mkStdGen 1337
-  in pureBench @a (genMany (flip uniformR range) stdGen)
+  in pureBench @a (genMany (uniformR range) stdGen)
 
 pureBench :: forall a. (Typeable a) => (Int -> ()) -> Int -> Benchmark
 pureBench f sz = bench (showsTypeRep (typeRep (Proxy :: Proxy a)) "") $ nf f sz
