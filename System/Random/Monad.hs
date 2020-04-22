@@ -244,9 +244,12 @@ uniformListM gen n = replicateM n (uniformM gen)
 genRandom :: (RandomGen g, Random a, MonadState g m) => PureGen g g -> m a
 genRandom _ = state random
 
--- | This is a wrapper around pure generator that can be used in a monadic
--- environment. It is safe in presence of exceptions and concurrency since all
+-- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
 -- operations are performed atomically.
+--
+-- *   'AtomicGen' is safe in the presence of exceptions and concurrency.
+-- *   'AtomicGen' is the slowest of the monadic adapters due to the overhead
+--     of its atomic operations.
 --
 -- @since 1.2
 newtype AtomicGen g s = AtomicGenI (IORef g)
@@ -281,16 +284,14 @@ applyAtomicGen op (AtomicGenI gVar) =
       (a, g') -> (g', a)
 {-# INLINE applyAtomicGen #-}
 
--- | This is a wrapper around an @IORef@ that holds a pure generator. Because of
--- extra pointer indirection it will be slightly slower than if `PureGen` is
--- being used, but faster than `AtomicGen` wrapper, since atomic modification is
--- not being used with `IOGen`. Which also means that it is not safe in a
--- concurrent setting.
+-- | Wraps an 'IORef' that holds a pure pseudo-random number generator.
 --
--- Both `IOGen` and `AtomicGen` are necessary when generation of pseudo-random
--- values happens in `IO` and especially when dealing with exception handling
--- and resource allocation, which is where `StateT` should never be used. For
--- example writing a pseudo-random number of bytes into a temporary file:
+-- *   'IOGen' is safe in the presence of exceptions, but not concurrency.
+-- *   'IOGen' is slower than 'PureGen' due to the extra pointer indirection.
+-- *   'IOGen' is faster than 'AtomicGen' since the 'IORef' operations used by
+--     'IOGen' are not atomic.
+--
+-- An example use case is writing pseudo-random bytes into a file:
 --
 -- >>> import UnliftIO.Temporary (withSystemTempFile)
 -- >>> import Data.ByteString (hPutStr)
@@ -332,10 +333,10 @@ applyIOGen f (IOGenI ref) = liftIO $ do
     (!a, !g') -> a <$ writeIORef ref g'
 {-# INLINE applyIOGen #-}
 
-
--- | This is a wrapper wround an @STRef@ that holds a pure generator. Because of
--- extra pointer indirection it will be slightly slower than if `PureGen` is
--- being used.
+-- | Wraps an 'STRef' that holds a pure pseudo-random number generator.
+--
+-- *   'STGen' is safe in the presence of exceptions, but not concurrency.
+-- *   'STGen' is slower than 'PureGen' due to the extra pointer indirection.
 --
 -- @since 1.2
 newtype STGen g s = STGenI (STRef s g)
