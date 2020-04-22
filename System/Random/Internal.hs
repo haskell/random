@@ -420,27 +420,41 @@ instance RandomGen SM32.SMGen where
 mkStdGen :: Int -> StdGen
 mkStdGen s = SM.mkSMGen $ fromIntegral s
 
--- | Generates a value uniformly distributed over all possible values of that
--- datatype.
+-- | The class of types for which a uniformly distributed value can be drawn
+-- from all possible values of the type.
 --
 -- @since 1.2
 class Uniform a where
+  -- | Generates a value uniformly distributed over all possible values of that
+  -- type.
+  --
+  -- @since 1.2
   uniformM :: MonadRandom g s m => g s -> m a
 
--- | Generates a value uniformly distributed over the provided inclusive range.
---
--- For example, @uniformR (1,4)@ should generate values uniformly from the set
--- @[1,2,3,4]@.
---
--- The API uses an inclusive range so any range can be expressed, even when
--- using fixed-size ints, enumerations etc.
---
--- The following law should hold to make the function always defined:
---
--- > uniformRM (a,b) = uniformM (b,a)
+-- | The class of types for which a uniformly distributed value can be drawn
+-- from a range.
 --
 -- @since 1.2
 class UniformRange a where
+  -- | Generates a value uniformly distributed over the provided range.
+  --
+  -- *   For /integral types/, the range is interpreted as inclusive in the
+  --     lower and upper bound.
+  --
+  --     As an example, @uniformR (1 :: Int, 4 :: Int)@ should generate values
+  --     uniformly from the set \(\{1,2,3,4\}\).
+  --
+  -- *   For /non-integral types/, the range is interpreted as inclusive in the
+  --     lower bound and exclusive in the upper bound.
+  --
+  --     As an example, @uniformR (1 :: Float, 4 :: Float)@ should generate
+  --     values uniformly from the set \(\{x\;|\;1 \le x \lt 4\}\).
+  --
+  -- The following law should hold to make the function always defined:
+  --
+  -- > uniformRM (a, b) = uniformRM (b, a)
+  --
+  -- @since 1.2<Paste>
   uniformRM :: MonadRandom g s m => (a, a) -> g s -> m a
 
 instance UniformRange Integer where

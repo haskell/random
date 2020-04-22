@@ -96,16 +96,16 @@ import System.Random.Internal
 --     'RandomGen' instance into a 'MonadRandom' instance.
 --
 -- [Drawing from a range] 'UniformRange' is used to generate a value of a
---     datatype uniformly within an inclusive range.
+--     type uniformly within a range.
 --
 --     This library provides instances of 'UniformRange' for many common
---     numeric datatypes.
+--     numeric types.
 --
 -- [Drawing from the entire domain of a type] 'Uniform' is used to generate a
---     value of a datatype uniformly over all possible values of that datatype.
+--     value of a type uniformly over all possible values of that type.
 --
 --     This library provides instances of 'Uniform' for many common bounded
---     numeric datatypes.
+--     numeric types.
 --
 -- $usagemonadic
 --
@@ -386,12 +386,13 @@ runSTGen_ g action = fst $ runSTGen g action
 
 
 -- $uniform
+--
 -- This library provides two type classes to generate pseudo-random values:
 --
--- *   'UniformRange' is used to generate a value of a datatype uniformly
---     within an inclusive range.
--- *   'Uniform' is used to generate a value of a datatype uniformly over all
---     possible values of that datatype.
+-- *   'UniformRange' is used to generate a value of a type uniformly within a
+--     range.
+-- *   'Uniform' is used to generate a value of a type uniformly over all
+--     possible values of that type.
 --
 -- Types may have instances for both or just one of 'UniformRange' and
 -- 'Uniform'. A few examples illustrate this:
