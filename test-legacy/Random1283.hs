@@ -1,4 +1,4 @@
-module Legacy.Random1283 (main) where
+module Random1283 (main) where
 
 import Control.Concurrent
 import Control.Monad

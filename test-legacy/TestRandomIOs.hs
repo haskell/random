@@ -6,7 +6,7 @@
 -- $ cabal test TestRandomIOs --test-options="+RTS -M1M -RTS"
 -- TestRandomIOs: Heap exhausted;
 
-module Legacy.TestRandomIOs where
+module TestRandomIOs where
 
 import Control.Monad (replicateM)
 import System.Random (randomIO)

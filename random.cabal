@@ -28,9 +28,11 @@ custom-setup
         cabal-doctest >=1.0.6 && <1.1
 
 library
-    exposed-modules:  System.Random
-                    , System.Random.Internal
-                    , System.Random.Monad
+    exposed-modules:
+        System.Random
+        System.Random.Internal
+        System.Random.Monad
+
     c-sources:        cbits/CastFloatWord.cmm
     default-language: Haskell2010
     ghc-options:      -Wall
@@ -40,16 +42,16 @@ library
         mtl >=2.2 && <2.3,
         splitmix >=0.0.3 && <0.1
 
-test-suite legacy
+test-suite legacy-test
     type:             exitcode-stdio-1.0
     main-is:          Legacy.hs
-    hs-source-dirs:   tests
+    hs-source-dirs:   test-legacy
     other-modules:
-        Legacy.T7936
-        Legacy.TestRandomIOs
-        Legacy.TestRandomRs
-        Legacy.Random1283
-        Legacy.RangeTest
+        T7936
+        TestRandomIOs
+        TestRandomRs
+        Random1283
+        RangeTest
 
     default-language: Haskell2010
     ghc-options:      -with-rtsopts=-M4M -Wno-deprecations
@@ -61,7 +63,7 @@ test-suite legacy
 test-suite doctests
     type:             exitcode-stdio-1.0
     main-is:          doctests.hs
-    hs-source-dirs:   tests
+    hs-source-dirs:   test
     default-language: Haskell2010
     build-depends:
         base >=4.10 && <5,
@@ -74,7 +76,7 @@ test-suite doctests
 test-suite spec
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
-    hs-source-dirs:   tests
+    hs-source-dirs:   test
     other-modules:
         Spec.Range
         Spec.Run
