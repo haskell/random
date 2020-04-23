@@ -638,7 +638,7 @@ charToWord32 (C# c#) = W32# (int2Word# (ord# c#))
 {-# INLINE charToWord32 #-}
 
 instance Uniform Char where
-  uniformM g = word32ToChar <$> unsignedBitmaskWithRejectionM uniformM (charToWord32 maxBound) g
+  uniformM g = word32ToChar <$> unbiasedWordMult32 (charToWord32 maxBound) g
   {-# INLINE uniformM #-}
 instance UniformRange Char where
   uniformRM (l, h) g =
