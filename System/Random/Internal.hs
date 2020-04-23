@@ -492,22 +492,21 @@ instance Uniform Word8 where
   uniformM = uniformWord8
 instance UniformRange Word8 where
   {-# INLINE uniformRM #-}
-  uniformRM = unsignedBitmaskWithRejectionRM
+  uniformRM = unbiasedWordMult32RM
 
 instance Uniform Word16 where
   {-# INLINE uniformM #-}
   uniformM = uniformWord16
 instance UniformRange Word16 where
   {-# INLINE uniformRM #-}
-  uniformRM = unsignedBitmaskWithRejectionRM
+  uniformRM = unbiasedWordMult32RM
 
 instance Uniform Word32 where
   {-# INLINE uniformM #-}
   uniformM  = uniformWord32
 instance UniformRange Word32 where
   {-# INLINE uniformRM #-}
-  uniformRM (b, t) g | b > t     = (+t) <$> unbiasedWordMult32 (b - t) g
-                     | otherwise = (+b) <$> unbiasedWordMult32 (t - b) g
+  uniformRM = unbiasedWordMult32RM
 
 instance Uniform Word64 where
   {-# INLINE uniformM #-}
@@ -642,7 +641,7 @@ instance Uniform Char where
   {-# INLINE uniformM #-}
 instance UniformRange Char where
   uniformRM (l, h) g =
-    word32ToChar <$> unsignedBitmaskWithRejectionRM (charToWord32 l, charToWord32 h) g
+    word32ToChar <$> unbiasedWordMult32RM (charToWord32 l, charToWord32 h) g
   {-# INLINE uniformRM #-}
 
 instance Uniform Bool where
@@ -803,6 +802,15 @@ uniformIntegerWords n gen = go 0 n
         (w :: Word) <- uniformM gen
         go ((acc `shiftL` WORD_SIZE_IN_BITS) .|. (fromIntegral w)) (i - 1)
 {-# INLINE uniformIntegerWords #-}
+
+-- | Uniformly generate an 'Integral' in an inclusive-inclusive range.
+--
+-- Only use for integrals size less than or equal to that of 'Word32'.
+unbiasedWordMult32RM :: (MonadRandom g s m, Integral a) => (a, a) -> g s -> m a
+unbiasedWordMult32RM (b, t) g
+  | b <= t    = ((+b) . fromIntegral) <$> unbiasedWordMult32 (fromIntegral (t - b)) g
+  | otherwise = ((+t) . fromIntegral) <$> unbiasedWordMult32 (fromIntegral (b - t)) g
+{-# SPECIALIZE unbiasedWordMult32RM :: MonadRandom g s m => (Word8, Word8) -> g s -> m Word8 #-}
 
 -- | Uniformly generate Word32 in @[0, s]@.
 unbiasedWordMult32 :: MonadRandom g s m => Word32 -> g s -> m Word32
