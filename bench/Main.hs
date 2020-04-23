@@ -19,7 +19,7 @@ import System.Random
 
 main :: IO ()
 main = do
-  let !sz = 1048576
+  let !sz = 1000000
   defaultMain
     [ bgroup "baseline"
       [ let !stdGen = mkStdGen 1337 in bench "nextWord32" $ nf (genMany SM.nextWord32 stdGen) sz
