@@ -117,14 +117,12 @@ genByteString :: RandomGen g => Int -> g -> (ByteString, g)
 genByteString n g = runPureGenST g (uniformByteString n)
 {-# INLINE genByteString #-}
 
-
-{- |
-With a source of pseudo-random number supply in hand, the 'Random' class allows
-the programmer to extract pseudo-random values of a variety of types.
-
-Minimal complete definition: 'randomR' and 'random'.
-
--}
+-- | The class of types for which uniformly distributed values can be
+-- generated.
+--
+-- 'Random' exists primarily for backwards compatibility with version 1.1 of
+-- this library. In new code, use the better specified 'Uniform' and
+-- 'UniformRange' instead.
 {-# DEPRECATED randomRIO "In favor of `uniformRM`" #-}
 {-# DEPRECATED randomIO "In favor of `uniformRM`" #-}
 class Random a where
@@ -386,10 +384,10 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 --     implement word-based methods instead. See below for more information
 --     about how to write a 'RandomGen' instance.
 --
--- *   This library provides instances for 'Random' for some unbounded datatypes
---     for backwards compatibility. For an unbounded datatype, there is no way
+-- *   This library provides instances for 'Random' for some unbounded types
+--     for backwards compatibility. For an unbounded type, there is no way
 --     to generate a value with uniform probability out of its entire domain, so
---     the 'random' implementation for unbounded datatypes actually generates a
+--     the 'random' implementation for unbounded types actually generates a
 --     value based on some fixed range.
 --
 --     For 'Integer', 'random' generates a value in the 'Int' range. For 'Float'
@@ -397,7 +395,7 @@ getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
 --     1)@.
 --
 --     This library does not provide 'Uniform' instances for any unbounded
---     datatypes.
+--     types.
 --
 -- $reproducibility
 --
