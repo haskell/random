@@ -126,16 +126,16 @@ import System.Random.Internal
 -- probabilistic computation as follows:
 --
 -- >>> monadicGen <- MWC.create
--- >>> rolls 10 monadicGen :: IO [Word8]
--- [2,3,6,6,4,4,3,1,5,4]
+-- >>> rolls 12 monadicGen :: IO [Word8]
+-- [4,1,2,4,4,5,2,1,5,4,6,6]
 --
 -- Given a /pure/ pseudo-random number generator, you can run it in an 'IO' or
 -- 'ST' context by first applying a monadic adapter like 'AtomicGen', 'IOGen'
 -- or 'STGen' and then running it with 'runGenM'.
 --
--- >>> let pureGen = mkStdGen 42
+-- >>> let pureGen = mkStdGen 41
 -- >>> runGenM_ (IOGen pureGen) (rolls 10) :: IO [Word8]
--- [1,1,3,2,4,5,3,4,6,2]
+-- [6,4,5,1,1,3,2,4,5,5]
 --
 -- == How to generate pseudo-random values in pure code
 --
@@ -143,9 +143,9 @@ import System.Random.Internal
 -- pseudo-random value from a monadic computation based on a pure pseudo-random
 -- number generator.
 --
--- >>> let pureGen = mkStdGen 42
+-- >>> let pureGen = mkStdGen 41
 -- >>> runGenState_ pureGen (rolls 10) :: [Word8]
--- [1,1,3,2,4,5,3,4,6,2]
+-- [6,4,5,1,1,3,2,4,5,5]
 
 -------------------------------------------------------------------------------
 -- Pseudo-random number generator interfaces
