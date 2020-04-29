@@ -13,6 +13,7 @@ import Data.Word
 import Data.Int
 import System.Random
 import Test.Tasty
+import Test.Tasty.HUnit
 import Test.Tasty.SmallCheck as SC
 import Test.SmallCheck.Series as SC
 import Data.Typeable
@@ -71,7 +72,20 @@ main =
     -- , bitmaskSpec @Word64
     -- , bitmaskSpec @Word
     , runSpec
+    , floatTests
     ]
+
+floatTests :: TestTree
+floatTests = testGroup "(Float)"
+  [ -- Check that https://github.com/haskell/random/issues/53 does not regress
+
+    testCase "Subnormal generation not above upper bound" $
+    [] @?= (filter (>4.0e-45) $ take 100000 $ randomRs (0,(4.0e-45::Float)) $ mkStdGen 0)
+
+  , testCase "Subnormal generation includes upper bound" $
+    1.0e-45 `elem` (take 100 $ randomRs (0,(1.0e-45::Float)) $ mkStdGen 0) @?
+    "Does not contain 1.0e-45"
+  ]
 
 showsType :: forall t . Typeable t => ShowS
 showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
