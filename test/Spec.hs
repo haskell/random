@@ -72,14 +72,14 @@ main =
     -- , bitmaskSpec @Word64
     -- , bitmaskSpec @Word
     , runSpec
-    , unitTests
+    , floatTests
     ]
 
-unitTests :: TestTree
-unitTests = testGroup "Unit tests"
+floatTests :: TestTree
+floatTests = testGroup "(Float)"
   [ -- Check that https://github.com/haskell/random/issues/53 does not regress
 
-    testCase "Subnormal generation respects upper bound" $
+    testCase "Subnormal generation not above upper bound" $
     [] @?= (filter (>4.0e-45) $ take 100000 $ randomRs (0,(4.0e-45::Float)) $ mkStdGen 0)
 
   , testCase "Subnormal generation includes upper bound" $
