@@ -469,16 +469,19 @@ instance Uniform Int16 where
   uniformM = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
 instance UniformRange Int16 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int16 -> Word16) fromIntegral
+  {-# INLINE uniformRM #-}
 
 instance Uniform Int32 where
   uniformM = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
 instance UniformRange Int32 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int32 -> Word32) fromIntegral
+  {-# INLINE uniformRM #-}
 
 instance Uniform Int64 where
   uniformM = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
 instance UniformRange Int64 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int64 -> Word64) fromIntegral
+  {-# INLINE uniformRM #-}
 
 instance Uniform Int where
 #if WORD_SIZE_IN_BITS < 64
@@ -533,107 +536,129 @@ instance Uniform CBool where
   uniformM = fmap CBool . uniformM
 instance UniformRange CBool where
   uniformRM (CBool b, CBool t) = fmap CBool . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CChar where
   uniformM = fmap CChar . uniformM
 instance UniformRange CChar where
   uniformRM (CChar b, CChar t) = fmap CChar . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CSChar where
   uniformM = fmap CSChar . uniformM
 instance UniformRange CSChar where
   uniformRM (CSChar b, CSChar t) = fmap CSChar . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CUChar where
   uniformM = fmap CUChar . uniformM
 instance UniformRange CUChar where
   uniformRM (CUChar b, CUChar t) = fmap CUChar . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CShort where
   uniformM = fmap CShort . uniformM
 instance UniformRange CShort where
   uniformRM (CShort b, CShort t) = fmap CShort . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CUShort where
   uniformM = fmap CUShort . uniformM
 instance UniformRange CUShort where
   uniformRM (CUShort b, CUShort t) = fmap CUShort . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CInt where
   uniformM = fmap CInt . uniformM
 instance UniformRange CInt where
   uniformRM (CInt b, CInt t) = fmap CInt . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CUInt where
   uniformM = fmap CUInt . uniformM
 instance UniformRange CUInt where
   uniformRM (CUInt b, CUInt t) = fmap CUInt . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CLong where
   uniformM = fmap CLong . uniformM
 instance UniformRange CLong where
   uniformRM (CLong b, CLong t) = fmap CLong . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CULong where
   uniformM = fmap CULong . uniformM
 instance UniformRange CULong where
   uniformRM (CULong b, CULong t) = fmap CULong . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CPtrdiff where
   uniformM = fmap CPtrdiff . uniformM
 instance UniformRange CPtrdiff where
   uniformRM (CPtrdiff b, CPtrdiff t) = fmap CPtrdiff . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CSize where
   uniformM = fmap CSize . uniformM
 instance UniformRange CSize where
   uniformRM (CSize b, CSize t) = fmap CSize . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CWchar where
   uniformM = fmap CWchar . uniformM
 instance UniformRange CWchar where
   uniformRM (CWchar b, CWchar t) = fmap CWchar . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CSigAtomic where
   uniformM = fmap CSigAtomic . uniformM
 instance UniformRange CSigAtomic where
   uniformRM (CSigAtomic b, CSigAtomic t) = fmap CSigAtomic . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CLLong where
   uniformM = fmap CLLong . uniformM
 instance UniformRange CLLong where
   uniformRM (CLLong b, CLLong t) = fmap CLLong . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CULLong where
   uniformM = fmap CULLong . uniformM
 instance UniformRange CULLong where
   uniformRM (CULLong b, CULLong t) = fmap CULLong . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CIntPtr where
   uniformM                         = fmap CIntPtr . uniformM
 instance UniformRange CIntPtr where
   uniformRM (CIntPtr b, CIntPtr t) = fmap CIntPtr . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CUIntPtr where
   uniformM = fmap CUIntPtr . uniformM
 instance UniformRange CUIntPtr where
   uniformRM (CUIntPtr b, CUIntPtr t) = fmap CUIntPtr . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CIntMax where
   uniformM = fmap CIntMax . uniformM
 instance UniformRange CIntMax where
   uniformRM (CIntMax b, CIntMax t) = fmap CIntMax . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance Uniform CUIntMax where
   uniformM = fmap CUIntMax . uniformM
 instance UniformRange CUIntMax where
   uniformRM (CUIntMax b, CUIntMax t) = fmap CUIntMax . uniformRM (b, t)
+  {-# INLINE uniformRM #-}
 
 instance UniformRange CFloat where
   uniformRM (CFloat l, CFloat h) = fmap CFloat . uniformRM (l, h)
+  {-# INLINE uniformRM #-}
 
 instance UniformRange CDouble where
   uniformRM (CDouble l, CDouble h) = fmap CDouble . uniformRM (l, h)
+  {-# INLINE uniformRM #-}
 
 
 -- The `chr#` and `ord#` are the prim functions that will be called, regardless of which
@@ -859,11 +884,10 @@ unsignedBitmaskWithRejectionRM ::
   -> g s
   -> m a
 unsignedBitmaskWithRejectionRM (bottom, top) gen
-  | bottom > top = unsignedBitmaskWithRejectionRM (top, bottom) gen
   | bottom == top = pure top
-  | otherwise = (bottom +) <$> unsignedBitmaskWithRejectionM uniformM range gen
+  | otherwise = (b +) <$> unsignedBitmaskWithRejectionM uniformM r gen
   where
-    range = top - bottom
+    (b, r) = if bottom > top then (top, bottom - top) else (bottom, top - bottom)
 {-# INLINE unsignedBitmaskWithRejectionRM #-}
 
 -- | This works for signed integrals by explicit conversion to unsigned and abusing overflow
@@ -875,13 +899,15 @@ signedBitmaskWithRejectionRM ::
   -> g s
   -> f b
 signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
-  | bottom > top = signedBitmaskWithRejectionRM toUnsigned fromUnsigned (top, bottom) gen
   | bottom == top = pure top
-  | otherwise = (bottom +) . fromUnsigned <$>
-    unsignedBitmaskWithRejectionM uniformM range gen
-    where
-      -- This works in all cases, see Appendix 1 at the end of the file.
-      range = toUnsigned top - toUnsigned bottom
+  | otherwise =
+    (b +) . fromUnsigned <$> unsignedBitmaskWithRejectionM uniformM r gen
+    -- This works in all cases, see Appendix 1 at the end of the file.
+  where
+    (b, r) =
+      if bottom > top
+        then (top, toUnsigned bottom - toUnsigned top)
+        else (bottom, toUnsigned top - toUnsigned bottom)
 {-# INLINE signedBitmaskWithRejectionRM #-}
 
 unsignedBitmaskWithRejectionM :: (Ord a, FiniteBits a, Num a, MonadRandom g s m) => (g s -> m a) -> a -> g s -> m a
