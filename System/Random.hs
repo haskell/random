@@ -33,6 +33,8 @@ module System.Random
   , getStdGen
   , setStdGen
   , newStdGen
+  , randomIO
+  , randomRIO
 
   -- * Compatibility and reproducibility
   -- ** Backwards compatibility and deprecations
@@ -50,6 +52,7 @@ module System.Random
   ) where
 
 import Control.Arrow
+import Control.Monad.IO.Class
 import Data.ByteString (ByteString)
 import Data.Int
 import Data.IORef
@@ -123,8 +126,6 @@ genByteString n g = runPureGenST g (uniformByteString n)
 -- 'Random' exists primarily for backwards compatibility with version 1.1 of
 -- this library. In new code, use the better specified 'Uniform' and
 -- 'UniformRange' instead.
-{-# DEPRECATED randomRIO "In favor of `uniformRM`" #-}
-{-# DEPRECATED randomIO "In favor of `uniformRM`" #-}
 class Random a where
 
   -- | Takes a range /(lo,hi)/ and a pseudo-random number generator
@@ -164,15 +165,6 @@ class Random a where
   randoms  :: RandomGen g => g -> [a]
   randoms  g      = build (\cons _nil -> buildRandoms cons random g)
 
-  -- | A variant of 'randomR' that uses the global pseudo-random number
-  -- generator.
-  randomRIO :: (a,a) -> IO a
-  randomRIO range  = getStdRandom (randomR range)
-
-  -- | A variant of 'random' that uses the global pseudo-random number
-  -- generator.
-  randomIO  :: IO a
-  randomIO   = getStdRandom random
 
 -- | Produce an infinite list-equivalent of pseudo-random values.
 {-# INLINE buildRandoms #-}
@@ -250,21 +242,21 @@ instance Random Float where
 -- 'IO' context.
 
 -- |Sets the global pseudo-random number generator.
-setStdGen :: StdGen -> IO ()
-setStdGen sgen = writeIORef theStdGen sgen
+setStdGen :: MonadIO m => StdGen -> m ()
+setStdGen = liftIO . writeIORef theStdGen
 
 -- |Gets the global pseudo-random number generator.
-getStdGen :: IO StdGen
-getStdGen  = readIORef theStdGen
+getStdGen :: MonadIO m => m StdGen
+getStdGen = liftIO $ readIORef theStdGen
 
 theStdGen :: IORef StdGen
-theStdGen  = unsafePerformIO $ SM.initSMGen >>= newIORef
+theStdGen = unsafePerformIO $ SM.initSMGen >>= newIORef
 {-# NOINLINE theStdGen #-}
 
 -- |Applies 'split' to the current global pseudo-random generator,
 -- updates it with one of the results, and returns the other.
-newStdGen :: IO StdGen
-newStdGen = atomicModifyIORef' theStdGen split
+newStdGen :: MonadIO m => m StdGen
+newStdGen = liftIO $ atomicModifyIORef' theStdGen split
 
 {- |Uses the supplied function to get a value from the current global
 random generator, and updates the global generator with the new generator
@@ -275,9 +267,20 @@ between 1 and 6:
 >  rollDice = getStdRandom (randomR (1,6))
 
 -}
-getStdRandom :: (StdGen -> (a,StdGen)) -> IO a
-getStdRandom f = atomicModifyIORef' theStdGen (swap . f)
-  where swap (v,g) = (g,v)
+getStdRandom :: MonadIO m => (StdGen -> (a, StdGen)) -> m a
+getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
+  where swap (v, g) = (g, v)
+
+
+-- | A variant of 'randomR' that uses the global pseudo-random number
+-- generator.
+randomRIO :: (Random a, MonadIO m) => (a, a) -> m a
+randomRIO range = liftIO $ getStdRandom (randomR range)
+
+-- | A variant of 'random' that uses the global pseudo-random number
+-- generator.
+randomIO :: (Random a, MonadIO m) => m a
+randomIO = liftIO $ getStdRandom random
 
 -------------------------------------------------------------------------------
 -- Notes
