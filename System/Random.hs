@@ -312,6 +312,7 @@ randomIO = liftIO $ getStdRandom random
 --
 -- It produces a full 'Word32' of randomness per iteration.
 --
+-- >>> import Data.Bits
 -- >>> :{
 -- let stepGen :: PCGen -> (Word32, PCGen)
 --     stepGen (PCGen state inc) = let
