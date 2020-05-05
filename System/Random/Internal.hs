@@ -436,25 +436,20 @@ class Uniform a where
 --
 -- @since 1.2
 class UniformRange a where
-  -- | Generates a value uniformly distributed over the provided range.
+  -- | Generates a value uniformly distributed over the provided range, which
+  -- is interpreted as inclusive in the lower and upper bound.
   --
-  -- *   For /integral types/, the range is interpreted as inclusive in the
-  --     lower and upper bound.
+  -- *   @uniformR (1 :: Int, 4 :: Int)@ should generate values uniformly from
+  --     the set \(\{1,2,3,4\}\)
   --
-  --     As an example, @uniformR (1 :: Int, 4 :: Int)@ should generate values
-  --     uniformly from the set \(\{1,2,3,4\}\).
-  --
-  -- *   For /non-integral types/, the range is interpreted as inclusive in the
-  --     lower bound and exclusive in the upper bound.
-  --
-  --     As an example, @uniformR (1 :: Float, 4 :: Float)@ should generate
-  --     values uniformly from the set \(\{x\;|\;1 \le x \lt 4\}\).
+  -- *   @uniformR (1 :: Float, 4 :: Float)@ should generate values uniformly
+  --     from the set \(\{x\;|\;1 \le x \le 4\}\)
   --
   -- The following law should hold to make the function always defined:
   --
   -- > uniformRM (a, b) = uniformRM (b, a)
   --
-  -- @since 1.2<Paste>
+  -- @since 1.2
   uniformRM :: MonadRandom g s m => (a, a) -> g s -> m a
 
 instance UniformRange Integer where
@@ -698,34 +693,13 @@ instance UniformRange Double where
     return $ (h - l) * x + l
 
 -- | Turns a given uniformly distributed 'Word64' value into a uniformly
--- distributed 'Double' value in the range [0, 1).
+-- distributed 'Double' value in the range [0, 1].
 word64ToDoubleInUnitInterval :: Word64 -> Double
-word64ToDoubleInUnitInterval w64 = between1and2 - 1.0
+word64ToDoubleInUnitInterval w64 = d / m
   where
-    between1and2 = castWord64ToDouble $ (w64 `unsafeShiftR` 12) .|. 0x3ff0000000000000
+    d = fromIntegral w64 :: Double
+    m = fromIntegral (maxBound :: Word64) :: Double
 {-# INLINE word64ToDoubleInUnitInterval #-}
-
--- | These are now in 'GHC.Float' but unpatched in some versions so
--- for now we roll our own. See
--- https://gitlab.haskell.org/ghc/ghc/-/blob/6d172e63f3dd3590b0a57371efb8f924f1fcdf05/libraries/base/GHC/Float.hs
-{-# INLINE castWord32ToFloat #-}
-castWord32ToFloat :: Word32 -> Float
-castWord32ToFloat (W32# w#) = F# (stgWord32ToFloat w#)
-
-foreign import prim "stg_word32ToFloatyg"
-    stgWord32ToFloat :: Word# -> Float#
-
-{-# INLINE castWord64ToDouble #-}
-castWord64ToDouble :: Word64 -> Double
-castWord64ToDouble (W64# w) = D# (stgWord64ToDouble w)
-
-foreign import prim "stg_word64ToDoubleyg"
-#if WORD_SIZE_IN_BITS == 64
-    stgWord64ToDouble :: Word# -> Double#
-#else
-    stgWord64ToDouble :: Word64# -> Double#
-#endif
-
 
 instance UniformRange Float where
   uniformRM (l, h) g = do
@@ -734,11 +708,12 @@ instance UniformRange Float where
     return $ (h - l) * x + l
 
 -- | Turns a given uniformly distributed 'Word32' value into a uniformly
--- distributed 'Float' value in the range [0,1).
+-- distributed 'Float' value in the range [0,1].
 word32ToFloatInUnitInterval :: Word32 -> Float
-word32ToFloatInUnitInterval w32 = between1and2 - 1.0
+word32ToFloatInUnitInterval w32 = f / m
   where
-    between1and2 = castWord32ToFloat $ (w32 `unsafeShiftR` 9) .|. 0x3f800000
+    f = fromIntegral w32 :: Float
+    m = fromIntegral (maxBound :: Word32) :: Float
 {-# INLINE word32ToFloatInUnitInterval #-}
 
 -- The two integer functions below take an [inclusive,inclusive] range.

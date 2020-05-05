@@ -70,8 +70,8 @@ main =
     checkBounds "Word16"  boundedRange   (approxBounds random trials (undefined::Word16))
     checkBounds "Word32"  boundedRange   (approxBounds random trials (undefined::Word32))
     checkBounds "Word64"  boundedRange   (approxBounds random trials (undefined::Word64))
-    checkBounds "Double"  (True,0.0,1.0) (approxBounds random trials (undefined::Double))
-    checkBounds "Float"   (True,0.0,1.0) (approxBounds random trials (undefined::Float))
+    checkBounds "Double"  (False,0.0,1.0) (approxBounds random trials (undefined::Double))
+    checkBounds "Float"   (False,0.0,1.0) (approxBounds random trials (undefined::Float))
 
     checkBounds "CChar"      boundedRange (approxBounds random trials (undefined:: CChar))
     checkBounds "CSChar"     boundedRange (approxBounds random trials (undefined:: CSChar))
@@ -111,8 +111,8 @@ main =
     checkBounds "Word16 R"  (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined::Word16))
     checkBounds "Word32 R"  (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined::Word32))
     checkBounds "Word64 R"  (False,0,200)     (approxBounds (randomR (0,200))    trials (undefined::Word64))
-    checkBounds "Double R" (True,10.0,77.0)   (approxBounds (randomR (10,77)) trials (undefined::Double))
-    checkBounds "Float R"  (True,10.0,77.0)   (approxBounds (randomR (10,77)) trials (undefined::Float))
+    checkBounds "Double R" (False,10.0,77.0)  (approxBounds (randomR (10,77)) trials (undefined::Double))
+    checkBounds "Float R"  (False,10.0,77.0)  (approxBounds (randomR (10,77)) trials (undefined::Float))
 
     checkBounds "CChar R"   (False,0,100)        (approxBounds (randomR (0,100))    trials (undefined:: CChar))
     checkBounds "CSChar R"  (False,-100,100)     (approxBounds (randomR (-100,100)) trials (undefined:: CSChar))
