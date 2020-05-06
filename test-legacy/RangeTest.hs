@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module RangeTest (main) where
 
 import Control.Monad
