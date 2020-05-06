@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, ScopedTypeVariables, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, ForeignFunctionInterface #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 -- | A simple script to do some very basic timing of the RNGs.
