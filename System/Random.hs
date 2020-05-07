@@ -14,6 +14,9 @@ module System.Random
   -- * Introduction
   -- $introduction
 
+  -- * Usage
+  -- $usagepure
+
   -- * Pure number generator interface
   -- $interfaces
     RandomGen(..)
@@ -76,6 +79,31 @@ import qualified System.Random.SplitMix as SM
 --     <https://hackage.haskell.org/package/splitmix splitmix> package.
 --     Programmers may, of course, supply their own instances of 'RandomGen'.
 --
+-- $usagepure
+--
+-- In pure code, use 'uniform' and 'uniformR' to generate pseudo-random values
+-- with a pure pseudo-random number generator like 'StdGen'.
+--
+-- >>> :{
+-- let rolls :: RandomGen g => Int -> g -> [Word8]
+--     rolls n = take n . unfoldr (Just . uniformR (1, 6))
+--     pureGen = mkStdGen 137
+-- in
+--     rolls 10 pureGen :: [Word8]
+-- :}
+-- [1,2,6,6,5,1,4,6,5,4]
+--
+-- To run use a /monadic/ pseudo-random computation in pure code with a pure
+-- pseudo-random number generator, use 'runGenState' and its variants.
+--
+-- >>> :{
+-- let rollsM :: MonadRandom g s m => Int -> g s -> m [Word8]
+--     rollsM n = replicateM n . uniformRM (1, 6)
+--     pureGen = mkStdGen 137
+-- in
+--     runGenState_ pureGen (rollsM 10) :: [Word8]
+-- :}
+-- [1,2,6,6,5,1,4,6,5,4]
 
 -------------------------------------------------------------------------------
 -- Pseudo-random number generator interfaces
@@ -99,14 +127,29 @@ import qualified System.Random.SplitMix as SM
 --     See "System.Random.Monad" module
 --
 
--- | Pure version of `uniformM` that works with instances of `RandomGen`
+-- | Generates a value uniformly distributed over all possible values of that
+-- type.
+--
+-- This is a pure version of 'System.Random.Monad.uniformM'.
 --
 -- @since 1.2
 uniform :: (RandomGen g, Uniform a) => g -> (a, g)
 uniform g = runGenState g uniformM
 
-
--- | Pure version of `uniformRM` that works with instances of `RandomGen`
+-- | Generates a value uniformly distributed over the provided range, which
+-- is interpreted as inclusive in the lower and upper bound.
+--
+-- *   @uniformR (1 :: Int, 4 :: Int)@ generates values uniformly from the set
+--     \(\{1,2,3,4\}\)
+--
+-- *   @uniformR (1 :: Float, 4 :: Float)@ generates values uniformly from the
+--     set \(\{x\;|\;1 \le x \le 4\}\)
+--
+-- The following law should hold to make the function always defined:
+--
+-- > uniformR (a, b) = uniformR (b, a)
+--
+-- This is a pure version of 'System.Random.Monad.uniformRM'.
 --
 -- @since 1.2
 uniformR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
@@ -417,3 +460,8 @@ randomIO = liftIO $ getStdRandom random
 -- International Conference on Object Oriented Programming Systems Languages &
 -- Applications (OOPSLA '14). ACM, New York, NY, USA, 453-472. DOI:
 -- <https://doi.org/10.1145/2660193.2660195>
+
+-- $setup
+--
+-- >>> import Control.Monad (replicateM)
+-- >>> import Data.List (unfoldr)
