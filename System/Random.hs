@@ -79,7 +79,7 @@ import qualified System.Random.SplitMix as SM
 --     <https://hackage.haskell.org/package/splitmix splitmix> package.
 --     Programmers may, of course, supply their own instances of 'RandomGen'.
 --
--- $ usagepure
+-- $usagepure
 --
 -- In pure code, use 'uniform' and 'uniformR' to generate pseudo-random values
 -- with a pure pseudo-random number generator like 'StdGen'.
