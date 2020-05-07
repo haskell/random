@@ -11,6 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnliftedFFITypes #-}
@@ -29,7 +30,6 @@ module System.Random.Internal
   (-- * Pure and monadic pseudo-random number generator interfaces
     RandomGen(..)
   , MonadRandom(..)
-  , Frozen(..)
 
   -- ** Standard pseudo-random number generator
   , StdGen
@@ -37,13 +37,14 @@ module System.Random.Internal
 
   -- * Monadic adapters for pure pseudo-random number generators
   -- ** Pure adapter
-  , PureGen
+  , StateGen(..)
+  , StateGenM(..)
   , splitGen
-  , runGenState
-  , runGenState_
-  , runGenStateT
-  , runGenStateT_
-  , runPureGenST
+  , runStateGen
+  , runStateGen_
+  , runStateGenT
+  , runStateGenT_
+  , runStateGenST
 
   -- * Pseudo-random values of various types
   , Uniform(..)
@@ -92,7 +93,7 @@ class RandomGen g where
   -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks) for
   -- more details. It is thus deprecated.
   next :: g -> (Int, g)
-  next g = runGenState g (uniformRM (genRange g))
+  next g = runStateGen g (uniformRM (genRange g))
 
   -- | Returns a 'Word8' that is uniformly distributed over the entire 'Word8'
   -- range.
@@ -134,14 +135,14 @@ class RandomGen g where
   --
   -- @since 1.2
   genWord32R :: Word32 -> g -> (Word32, g)
-  genWord32R m g = runGenState g (unbiasedWordMult32 m)
+  genWord32R m g = runStateGen g (unbiasedWordMult32 m)
 
   -- | @genWord64R upperBound g@ returns a 'Word64' that is uniformly
   -- distributed over the range @[0, upperBound]@.
   --
   -- @since 1.2
   genWord64R :: Word64 -> g -> (Word64, g)
-  genWord64R m g = runGenState g (unsignedBitmaskWithRejectionM uniformWord64 m)
+  genWord64R m g = runStateGen g (unsignedBitmaskWithRejectionM uniformWord64 m)
 
   -- | @genShortByteString n g@ returns a 'ShortByteString' of length @n@
   -- filled with pseudo-random bytes.
@@ -149,7 +150,7 @@ class RandomGen g where
   -- @since 1.2
   genShortByteString :: Int -> g -> (ShortByteString, g)
   genShortByteString n g =
-    unsafePerformIO $ runGenStateT g (genShortByteStringIO n . uniformWord64)
+    unsafePerformIO $ runStateGenT g (genShortByteStringIO n . uniformWord64)
   {-# INLINE genShortByteString #-}
 
   -- | Yields the range of values returned by 'next'.
@@ -179,7 +180,7 @@ class Monad m => MonadRandom g s m | g m -> s where
   -- 'thawGen' and 'freezeGen'.
   --
   -- @since 1.2
-  data Frozen g :: *
+  type Frozen g = (f :: *) | f -> g
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
   -- | Restores the pseudo-random number generator from its 'Frozen'
@@ -339,12 +340,13 @@ uniformByteString n g = do
 -- generator.
 --
 -- @since 1.2
-data PureGen g s = PureGenI
+data StateGenM g s = StateGenM
+newtype StateGen g = StateGen g
 
-instance (RandomGen g, MonadState g m) => MonadRandom (PureGen g) g m where
-  newtype Frozen (PureGen g) = PureGen g
-  thawGen (PureGen g) = PureGenI <$ put g
-  freezeGen _ = fmap PureGen get
+instance (RandomGen g, MonadState g m) => MonadRandom (StateGenM g) g m where
+  type Frozen (StateGenM g) = StateGen g
+  thawGen (StateGen g) = StateGenM <$ put g
+  freezeGen _ = fmap StateGen get
   uniformWord32R r _ = state (genWord32R r)
   uniformWord64R r _ = state (genWord64R r)
   uniformWord8 _ = state genWord8
@@ -366,39 +368,39 @@ splitGen = state split
 -- pseudo-random number generator.
 --
 -- @since 1.2
-runGenState :: RandomGen g => g -> (PureGen g g -> State g a) -> (a, g)
-runGenState g f = runState (f PureGenI) g
+runStateGen :: RandomGen g => g -> (StateGenM g g -> State g a) -> (a, g)
+runStateGen g f = runState (f StateGenM) g
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator. Returns only the resulting pseudo-random
 -- value.
 --
 -- @since 1.2
-runGenState_ :: RandomGen g => g -> (PureGen g g -> State g a) -> a
-runGenState_ g = fst . runGenState g
+runStateGen_ :: RandomGen g => g -> (StateGenM g g -> State g a) -> a
+runStateGen_ g = fst . runStateGen g
 
 -- | Runs a monadic generating action in the `StateT` monad using a pure
 -- pseudo-random number generator.
 --
 -- @since 1.2
-runGenStateT :: RandomGen g => g -> (PureGen g g -> StateT g m a) -> m (a, g)
-runGenStateT g f = runStateT (f PureGenI) g
+runStateGenT :: RandomGen g => g -> (StateGenM g g -> StateT g m a) -> m (a, g)
+runStateGenT g f = runStateT (f StateGenM) g
 
 -- | Runs a monadic generating action in the `StateT` monad using a pure
 -- pseudo-random number generator. Returns only the resulting pseudo-random
 -- value.
 --
 -- @since 1.2
-runGenStateT_ :: (RandomGen g, Functor f) => g -> (PureGen g g -> StateT g f a) -> f a
-runGenStateT_ g = fmap fst . runGenStateT g
+runStateGenT_ :: (RandomGen g, Functor f) => g -> (StateGenM g g -> StateT g f a) -> f a
+runStateGenT_ g = fmap fst . runStateGenT g
 
 -- | Runs a monadic generating action in the `ST` monad using a pure
 -- pseudo-random number generator.
 --
 -- @since 1.2
-runPureGenST :: RandomGen g => g -> (forall s . PureGen g g -> StateT g (ST s) a) -> (a, g)
-runPureGenST g action = runST $ runGenStateT g $ action
-{-# INLINE runPureGenST #-}
+runStateGenST :: RandomGen g => g -> (forall s . StateGenM g g -> StateT g (ST s) a) -> (a, g)
+runStateGenST g action = runST $ runStateGenT g action
+{-# INLINE runStateGenST #-}
 
 
 -- | The standard pseudo-random number generator.
