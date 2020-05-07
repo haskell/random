@@ -30,7 +30,7 @@ bumped version for float/double range bugfix
 2. Support for monadic generators e.g. [mwc-random](https://hackage.haskell.org/package/mwc-random).
 3. Monadic adapters for pure generators (providing a uniform monadic
    interface to pure and monadic generators).
-4. Faster by more x10 (depending on the type) - see below for benchmarks.
+4. Faster by more x1000 (depending on the type) - see below for benchmarks.
 5. Passes a large number of random number test suites:
   * [dieharder](http://webhome.phy.duke.edu/~rgb/General/dieharder.php "venerable")
   * [TestU01 (SmallCrush, Crush, BigCrush)](http://simul.iro.umontreal.ca/testu01/tu01.html "venerable")
@@ -49,46 +49,47 @@ bumped version for float/double range bugfix
 
 ## Benchmarks
 
-### Notes
+Here are some benchmarks run on a 3.1 GHz Intel Core i7. The full
+benchmarks can be run using e.g. `stack bench`. The benchmarks are
+measured in milliseconds per 100,000 generations. In some cases, the
+performance is over x1000 times better.
 
-1. These are **not** percentage (%) increases. Random `Int`s are produced 48.9 times faster!
-2. The only type for which generation is slower is for `Integer`s (on
-   ranges); in the version 1.1 the generation for `Integer` was
-   biased.
-
-### Without Specifying Ranges
-
-    |----------|----------------|----------------|----------------------|
-	| Type     | Cycles/Int 1.1 | Cycles/Int 1.2 | Performance Increase |
-	|----------|----------------|----------------|----------------------|
-	| Ints     |           1508 |          30.84 |                 48.9 |
-	| Word16   |            495 |          30.88 |                 16.0 |
-	| Floats   |           1036 |          35.11 |                 29.5 |
-	| CFloats  |           1054 |          33.75 |                 31.2 |
-	| Doubles  |           1875 |          35.77 |                 52.4 |
-	| CDoubles |            908 |          33.31 |                 27.3 |
-	| Integers |           1578 |          33.09 |                 47.7 |
-	| Bools    |            698 |          36.15 |                 19.3 |
-	| Chars    |            693 |           57.6 |                 12.0 |
-	|----------|----------------|----------------|----------------------|
-
-### Specifying Ranges
-
-	|--------------|----------------|----------------|----------------------|
-	| Type         | Cycles/Int 1.1 | Cycles/Int 1.2 | Performance Increase |
-	|--------------|----------------|----------------|----------------------|
-	| Ints         |            734 |            102 |                  7.2 |
-	| Word16s      |            748 |            115 |                  6.5 |
-	| Floats       |           2055 |          35.88 |                 57.3 |
-	| CFloats      |           1071 |          34.96 |                 30.6 |
-	| Doubles      |           3050 |          35.89 |                 85.0 |
-	| CDoubles     |           1112 |          34.87 |                 31.9 |
-	| Integers     |            534 |            868 |                  0.6 |
-	| Bools        |            739 |          35.22 |                 21.0 |
-	| Chars        |            790 |            133 |                  5.9 |
-	| BIG Integers |         199848 |         103056 |                  1.9 |
-	|--------------|----------------|----------------|----------------------|
-
-
-
+	|------------|----------|----------|
+	| Name       | 1.1 Mean | 1.2 Mean |
+	|------------|----------|----------|
+	| Float      |   27.819 |    0.305 |
+	| Double     |   50.644 |    0.328 |
+	| Integer    |   42.332 |    0.332 |
+	| Word8      |   12.591 |    0.028 |
+	| Word16     |   12.726 |    0.028 |
+	| Word32     |   20.429 |    0.027 |
+	| Word64     |   42.299 |    0.028 |
+	| Word       |   40.739 |    0.027 |
+	| Int8       |   13.479 |    0.027 |
+	| Int16      |   13.218 |    0.027 |
+	| Int32      |   20.562 |    0.027 |
+	| Int64      |   46.513 |    0.029 |
+	| Int        |   43.847 |    0.028 |
+	| Char       |   17.009 |    0.462 |
+	| Bool       |   17.542 |    0.027 |
+	| CChar      |   13.276 |    0.027 |
+	| CSChar     |   13.287 |    0.027 |
+	| CUChar     |   13.409 |    0.027 |
+	| CShort     |   13.158 |    0.027 |
+	| CUShort    |   12.865 |    0.027 |
+	| CInt       |   20.705 |    0.028 |
+	| CUInt      |   19.895 |    0.027 |
+	| CLong      |   41.679 |    0.027 |
+	| CULong     |   40.806 |    0.027 |
+	| CPtrdiff   |   41.878 |    0.027 |
+	| CSize      |   40.739 |    0.027 |
+	| CWchar     |   20.718 |    0.027 |
+	| CSigAtomic |   20.768 |    0.029 |
+	| CLLong     |   42.011 |    0.028 |
+	| CULLong    |   41.428 |    0.027 |
+	| CIntPtr    |   45.385 |    0.027 |
+	| CUIntPtr   |   40.797 |    0.027 |
+	| CIntMax    |   41.778 |    0.027 |
+	| CUIntMax   |   40.467 |    0.027 |
+	|------------|----------|----------|
 
