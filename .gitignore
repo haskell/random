@@ -7,6 +7,10 @@ GNUmakefile
 dist-install/
 ghc.mk
 
-dist
-.cabal-sandbox
+.cabal-sandbox/
+.stack-work/
+cabal.project.local
 cabal.sandbox.config
+dist-newstyle/
+dist/
+stack.yaml.lock
