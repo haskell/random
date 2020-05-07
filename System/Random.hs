@@ -127,14 +127,29 @@ import qualified System.Random.SplitMix as SM
 --     See "System.Random.Monad" module
 --
 
--- | Pure version of `uniformM` that works with instances of `RandomGen`
+-- | Generates a value uniformly distributed over all possible values of that
+-- type.
+--
+-- This is a pure version of 'System.Random.Monad.uniformM'.
 --
 -- @since 1.2
 uniform :: (RandomGen g, Uniform a) => g -> (a, g)
 uniform g = runGenState g uniformM
 
-
--- | Pure version of `uniformRM` that works with instances of `RandomGen`
+-- | Generates a value uniformly distributed over the provided range, which
+-- is interpreted as inclusive in the lower and upper bound.
+--
+-- *   @uniformR (1 :: Int, 4 :: Int)@ generates values uniformly from the set
+--     \(\{1,2,3,4\}\)
+--
+-- *   @uniformR (1 :: Float, 4 :: Float)@ generates values uniformly from the
+--     set \(\{x\;|\;1 \le x \le 4\}\)
+--
+-- The following law should hold to make the function always defined:
+--
+-- > uniformR (a, b) = uniformR (b, a)
+--
+-- This is a pure version of 'System.Random.Monad.uniformRM'.
 --
 -- @since 1.2
 uniformR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)

@@ -439,11 +439,11 @@ class UniformRange a where
   -- | Generates a value uniformly distributed over the provided range, which
   -- is interpreted as inclusive in the lower and upper bound.
   --
-  -- *   @uniformR (1 :: Int, 4 :: Int)@ should generate values uniformly from
-  --     the set \(\{1,2,3,4\}\)
+  -- *   @uniformRM (1 :: Int, 4 :: Int)@ generates values uniformly from the
+  --     set \(\{1,2,3,4\}\)
   --
-  -- *   @uniformR (1 :: Float, 4 :: Float)@ should generate values uniformly
-  --     from the set \(\{x\;|\;1 \le x \le 4\}\)
+  -- *   @uniformRM (1 :: Float, 4 :: Float)@ generates values uniformly from
+  --     the set \(\{x\;|\;1 \le x \le 4\}\)
   --
   -- The following law should hold to make the function always defined:
   --
