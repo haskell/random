@@ -109,43 +109,35 @@ import System.Random.Internal
 --
 -- $usagemonadic
 --
--- == How to generate pseudo-random values in monadic code
---
 -- In monadic code, use the relevant 'Uniform' and 'UniformRange' instances to
 -- generate pseudo-random values via 'uniformM' and 'uniformRM', respectively.
 --
--- As an example, @rolls@ generates @n@ pseudo-random values of @Word8@ in the
--- range @[1, 6]@.
+-- As an example, @rollsM@ generates @n@ pseudo-random values of @Word8@ in the
+-- range @[1, 6]@ in a 'MonadRandom' context; given a /monadic/ pseudo-random
+-- number generator, you can run this probabilistic computation as follows:
 --
 -- >>> :{
--- let rolls :: MonadRandom g s m => Int -> g s -> m [Word8]
---     rolls n = replicateM n . uniformRM (1, 6)
+-- let rollsM :: MonadRandom g s m => Int -> g s -> m [Word8]
+--     rollsM n = replicateM n . uniformRM (1, 6)
+-- in do
+--     monadicGen <- MWC.create
+--     rollsM 10 monadicGen :: IO [Word8]
 -- :}
+-- [4,1,2,4,4,5,2,1,5,4]
 --
--- Given a /monadic/ pseudo-random number generator, you can run this
--- probabilistic computation as follows:
+-- Given a /pure/ pseudo-random number generator, you can run the monadic
+-- pseudo-random number computation @rollsM@ in an 'IO' or 'ST' context by
+-- first applying a monadic adapter like 'AtomicGen', 'IOGen' or 'STGen' to the
+-- pure pseudo-random number generator and then running it with 'runGenM'.
 --
--- >>> monadicGen <- MWC.create
--- >>> rolls 12 monadicGen :: IO [Word8]
--- [4,1,2,4,4,5,2,1,5,4,6,6]
---
--- Given a /pure/ pseudo-random number generator, you can run it in an 'IO' or
--- 'ST' context by first applying a monadic adapter like 'AtomicGen', 'IOGen'
--- or 'STGen' and then running it with 'runGenM'.
---
--- >>> let pureGen = mkStdGen 41
--- >>> runGenM_ (IOGen pureGen) (rolls 10) :: IO [Word8]
--- [6,4,5,1,1,3,2,4,5,5]
---
--- == How to generate pseudo-random values in pure code
---
--- In pure code, use 'runGenState' and its variants to extract the pure
--- pseudo-random value from a monadic computation based on a pure pseudo-random
--- number generator.
---
--- >>> let pureGen = mkStdGen 41
--- >>> runGenState_ pureGen (rolls 10) :: [Word8]
--- [6,4,5,1,1,3,2,4,5,5]
+-- >>> :{
+-- let rollsM :: MonadRandom g s m => Int -> g s -> m [Word8]
+--     rollsM n = replicateM n . uniformRM (1, 6)
+--     pureGen = mkStdGen 42
+-- in
+--     runGenM_ (IOGen pureGen) (rollsM 10) :: IO [Word8]
+-- :}
+-- [5,1,4,3,3,2,5,2,2,4]
 
 -------------------------------------------------------------------------------
 -- Pseudo-random number generator interfaces

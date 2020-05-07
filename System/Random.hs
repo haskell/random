@@ -14,6 +14,9 @@ module System.Random
   -- * Introduction
   -- $introduction
 
+  -- * Usage
+  -- $usagepure
+
   -- * Pure number generator interface
   -- $interfaces
     RandomGen(..)
@@ -76,6 +79,31 @@ import qualified System.Random.SplitMix as SM
 --     <https://hackage.haskell.org/package/splitmix splitmix> package.
 --     Programmers may, of course, supply their own instances of 'RandomGen'.
 --
+-- $ usagepure
+--
+-- In pure code, use 'uniform' and 'uniformR' to generate pseudo-random values
+-- with a pure pseudo-random number generator like 'StdGen'.
+--
+-- >>> :{
+-- let rolls :: RandomGen g => Int -> g -> [Word8]
+--     rolls n = take n . unfoldr (Just . uniformR (1, 6))
+--     pureGen = mkStdGen 137
+-- in
+--     rolls 10 pureGen :: [Word8]
+-- :}
+-- [1,2,6,6,5,1,4,6,5,4]
+--
+-- To run use a /monadic/ pseudo-random computation in pure code with a pure
+-- pseudo-random number generator, use 'runGenState' and its variants.
+--
+-- >>> :{
+-- let rollsM :: MonadRandom g s m => Int -> g s -> m [Word8]
+--     rollsM n = replicateM n . uniformRM (1, 6)
+--     pureGen = mkStdGen 137
+-- in
+--     runGenState_ pureGen (rollsM 10) :: [Word8]
+-- :}
+-- [1,2,6,6,5,1,4,6,5,4]
 
 -------------------------------------------------------------------------------
 -- Pseudo-random number generator interfaces
@@ -417,3 +445,8 @@ randomIO = liftIO $ getStdRandom random
 -- International Conference on Object Oriented Programming Systems Languages &
 -- Applications (OOPSLA '14). ACM, New York, NY, USA, 453-472. DOI:
 -- <https://doi.org/10.1145/2660193.2660195>
+
+-- $setup
+--
+-- >>> import Control.Monad (replicateM)
+-- >>> import Data.List (unfoldr)
