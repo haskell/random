@@ -101,7 +101,7 @@ import qualified System.Random.SplitMix as SM
 --     rollsM n = replicateM n . uniformRM (1, 6)
 --     pureGen = mkStdGen 137
 -- in
---     runGenState_ pureGen (rollsM 10) :: [Word8]
+--     runStateGen_ pureGen (rollsM 10) :: [Word8]
 -- :}
 -- [1,2,6,6,5,1,4,6,5,4]
 
@@ -134,7 +134,7 @@ import qualified System.Random.SplitMix as SM
 --
 -- @since 1.2
 uniform :: (RandomGen g, Uniform a) => g -> (a, g)
-uniform g = runGenState g uniformM
+uniform g = runStateGen g uniformM
 
 -- | Generates a value uniformly distributed over the provided range, which
 -- is interpreted as inclusive in the lower and upper bound.
@@ -153,14 +153,14 @@ uniform g = runGenState g uniformM
 --
 -- @since 1.2
 uniformR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
-uniformR r g = runGenState g (uniformRM r)
+uniformR r g = runStateGen g (uniformRM r)
 
 -- | Generates a 'ByteString' of the specified size using a pure pseudo-random
 -- number generator. See 'uniformByteString' for the monadic version.
 --
 -- @since 1.2
 genByteString :: RandomGen g => Int -> g -> (ByteString, g)
-genByteString n g = runPureGenST g (uniformByteString n)
+genByteString n g = runStateGenST g (uniformByteString n)
 {-# INLINE genByteString #-}
 
 -- | The class of types for which uniformly distributed values can be
@@ -180,7 +180,7 @@ class Random a where
   {-# INLINE randomR #-}
   randomR :: RandomGen g => (a, a) -> g -> (a, g)
   default randomR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
-  randomR r g = runGenState g (uniformRM r)
+  randomR r g = runStateGen g (uniformRM r)
 
   -- | The same as 'randomR', but using a default range determined by the type:
   --
@@ -194,7 +194,7 @@ class Random a where
   {-# INLINE random #-}
   random  :: RandomGen g => g -> (a, g)
   default random :: (RandomGen g, Uniform a) => g -> (a, g)
-  random g = runGenState g uniformM
+  random g = runStateGen g uniformM
 
   -- | Plural variant of 'randomR', producing an infinite list of
   -- pseudo-random values instead of returning a new generator.
@@ -264,11 +264,11 @@ instance Random CDouble where
 instance Random Char
 instance Random Bool
 instance Random Double where
-  randomR r g = runGenState g (uniformRM r)
-  random g = runGenState g (uniformRM (0, 1))
+  randomR r g = runStateGen g (uniformRM r)
+  random g = runStateGen g (uniformRM (0, 1))
 instance Random Float where
-  randomR r g = runGenState g (uniformRM r)
-  random g = runGenState g (uniformRM (0, 1))
+  randomR r g = runStateGen g (uniformRM r)
+  random g = runStateGen g (uniformRM (0, 1))
 
 -------------------------------------------------------------------------------
 -- Global pseudo-random number generator

@@ -27,32 +27,35 @@ module System.Random.Monad
   -- * Pure and monadic pseudo-random number generator interfaces
   -- $interfaces
   , MonadRandom(..)
-  , Frozen(..)
   , runGenM
   , runGenM_
   , RandomGenM(..)
-  , splitRandomGenM
+  , randomM
+  , randomRM
+  , splitGenM
 
   -- * Monadic adapters for pure pseudo-random number generators
   -- $monadicadapters
 
   -- ** Pure adapter
-  , PureGen
-  , splitGen
-  , genRandom
-  , runGenState
-  , runGenState_
-  , runGenStateT
-  , runGenStateT_
-  , runPureGenST
+  , StateGen(..)
+  , StateGenM(..)
+  , runStateGen
+  , runStateGen_
+  , runStateGenT
+  , runStateGenT_
+  , runStateGenST
   -- ** Mutable adapter with atomic operations
-  , AtomicGen
+  , AtomicGen(..)
+  , AtomicGenM(..)
   , applyAtomicGen
   -- ** Mutable adapter in 'IO'
-  , IOGen
+  , IOGen(..)
+  , IOGenM(..)
   , applyIOGen
   -- ** Mutable adapter in 'ST'
-  , STGen
+  , STGen(..)
+  , STGenM(..)
   , applySTGen
   , runSTGen
   , runSTGen_
@@ -92,7 +95,7 @@ import System.Random.Internal
 -- [Monadic pseudo-random number generators] 'MonadRandom' is an interface to
 --     monadic pseudo-random number generators.
 --
--- [Monadic adapters] 'PureGen', 'AtomicGen', 'IOGen' and 'STGen' turn a
+-- [Monadic adapters] 'StateGenM', 'AtomicGenM', 'IOGenM' and 'STGenM' turn a
 --     'RandomGen' instance into a 'MonadRandom' instance.
 --
 -- [Drawing from a range] 'UniformRange' is used to generate a value of a
@@ -163,23 +166,23 @@ import System.Random.Internal
 -- $monadicadapters
 --
 -- Pure pseudo-random number generators can be used in monadic code via the
--- adapters 'PureGen', 'AtomicGen', 'IOGen' and 'STGen'.
+-- adapters 'StateGenM', 'AtomicGenM', 'IOGenM' and 'STGenM'.
 --
--- *   'PureGen' can be used in any state monad. With strict 'StateT' there is
+-- *   'StateGenM' can be used in any state monad. With strict 'StateT' there is
 --     no performance overhead compared to using the 'RandomGen' instance
---     directly. 'PureGen' is /not/ safe to use in the presence of exceptions
+--     directly. 'StateGenM' is /not/ safe to use in the presence of exceptions
 --     and concurrency.
 --
--- *   'AtomicGen' is safe in the presence of exceptions and concurrency since
+-- *   'AtomicGenM' is safe in the presence of exceptions and concurrency since
 --     it performs all actions atomically.
 --
--- *   'IOGen' is a wrapper around an 'IORef' that holds a pure generator.
---     'IOGen' is safe in the presence of exceptions, but not concurrency.
+-- *   'IOGenM' is a wrapper around an 'IORef' that holds a pure generator.
+--     'IOGenM' is safe in the presence of exceptions, but not concurrency.
 --
--- *   'STGen' is a wrapper around an 'STRef' that holds a pure generator.
---     'STGen' is safe in the presence of exceptions, but not concurrency.
+-- *   'STGenM' is a wrapper around an 'STRef' that holds a pure generator.
+--     'STGenM' is safe in the presence of exceptions, but not concurrency.
 
--- | Interface to operations on 'RandomGen' wrappers like 'IOGen' and 'PureGen'.
+-- | Interface to operations on 'RandomGen' wrappers like 'IOGenM' and 'StateGenM'.
 --
 -- @since 1.2
 class (RandomGen r, MonadRandom (g r) s m) => RandomGenM g r s m where
@@ -189,25 +192,25 @@ class (RandomGen r, MonadRandom (g r) s m) => RandomGenM g r s m where
 -- wrapper with one of the resulting generators and returns the other.
 --
 -- @since 1.2
-splitRandomGenM :: RandomGenM g r s m => g r s -> m r
-splitRandomGenM = applyRandomGenM split
+splitGenM :: RandomGenM g r s m => g r s -> m r
+splitGenM = applyRandomGenM split
 
-instance (RandomGen r, MonadIO m) => RandomGenM IOGen r RealWorld m where
+instance (RandomGen r, MonadIO m) => RandomGenM IOGenM r RealWorld m where
   applyRandomGenM = applyIOGen
 
-instance (RandomGen r, MonadIO m) => RandomGenM AtomicGen r RealWorld m where
+instance (RandomGen r, MonadIO m) => RandomGenM AtomicGenM r RealWorld m where
   applyRandomGenM = applyAtomicGen
 
-instance (RandomGen r, MonadState r m) => RandomGenM PureGen r r m where
+instance (RandomGen r, MonadState r m) => RandomGenM StateGenM r r m where
   applyRandomGenM f _ = state f
 
-instance RandomGen r => RandomGenM STGen r s (ST s) where
+instance RandomGen r => RandomGenM STGenM r s (ST s) where
   applyRandomGenM = applySTGen
 
 -- | Runs a mutable pseudo-random number generator from its 'Frozen' state.
 --
 -- >>> import Data.Int (Int8)
--- >>> runGenM (IOGen (mkStdGen 217)) (`uniformListM` 5) :: IO ([Int8], Frozen (IOGen StdGen))
+-- >>> runGenM (IOGen (mkStdGen 217)) (`uniformListM` 5) :: IO ([Int8], IOGen StdGen)
 -- ([-74,37,-50,-2,3],IOGen {unIOGen = SMGen 4273268533320920145 15251669095119325999})
 --
 -- @since 1.2
@@ -230,27 +233,35 @@ runGenM_ fg action = fst <$> runGenM fg action
 uniformListM :: (MonadRandom g s m, Uniform a) => g s -> Int -> m [a]
 uniformListM gen n = replicateM n (uniformM gen)
 
--- | Generates a pseudo-random value in a state monad.
+-- | Generates a pseudo-random value using monadic interface and `Random` instance.
 --
 -- @since 1.2
-genRandom :: (RandomGen g, Random a, MonadState g m) => PureGen g g -> m a
-genRandom _ = state random
+randomM :: (RandomGenM g r s m, Random a) => g r s -> m a
+randomM = applyRandomGenM random
+
+-- | Generates a pseudo-random value using monadic interface and `Random` instance.
+--
+-- @since 1.2
+randomRM :: (RandomGenM g r s m, Random a) => (a, a) -> g r s -> m a
+randomRM r = applyRandomGenM (randomR r)
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
 -- operations are performed atomically.
 --
--- *   'AtomicGen' is safe in the presence of exceptions and concurrency.
--- *   'AtomicGen' is the slowest of the monadic adapters due to the overhead
+-- *   'AtomicGenM' is safe in the presence of exceptions and concurrency.
+-- *   'AtomicGenM' is the slowest of the monadic adapters due to the overhead
 --     of its atomic operations.
 --
 -- @since 1.2
-newtype AtomicGen g s = AtomicGenI (IORef g)
+newtype AtomicGenM g s = AtomicGenM { unAtomicGenM :: IORef g}
 
-instance (RandomGen g, MonadIO m) => MonadRandom (AtomicGen g) RealWorld m where
-  newtype Frozen (AtomicGen g) = AtomicGen { unAtomicGen :: g }
+newtype AtomicGen g = AtomicGen { unAtomicGen :: g }
     deriving (Eq, Show, Read)
-  thawGen (AtomicGen g) = fmap AtomicGenI (liftIO $ newIORef g)
-  freezeGen (AtomicGenI gVar) = fmap AtomicGen (liftIO $ readIORef gVar)
+
+instance (RandomGen g, MonadIO m) => MonadRandom (AtomicGenM g) RealWorld m where
+  type Frozen (AtomicGenM g) = AtomicGen g
+  thawGen (AtomicGen g) = fmap AtomicGenM (liftIO $ newIORef g)
+  freezeGen (AtomicGenM gVar) = fmap AtomicGen (liftIO $ readIORef gVar)
   uniformWord32R r = applyAtomicGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
   uniformWord64R r = applyAtomicGen (genWord64R r)
@@ -269,8 +280,8 @@ instance (RandomGen g, MonadIO m) => MonadRandom (AtomicGen g) RealWorld m where
 -- generator.
 --
 -- @since 1.2
-applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGen g RealWorld -> m a
-applyAtomicGen op (AtomicGenI gVar) =
+applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGenM g RealWorld -> m a
+applyAtomicGen op (AtomicGenM gVar) =
   liftIO $ atomicModifyIORef' gVar $ \g ->
     case op g of
       (a, g') -> (g', a)
@@ -278,10 +289,10 @@ applyAtomicGen op (AtomicGenI gVar) =
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator.
 --
--- *   'IOGen' is safe in the presence of exceptions, but not concurrency.
--- *   'IOGen' is slower than 'PureGen' due to the extra pointer indirection.
--- *   'IOGen' is faster than 'AtomicGen' since the 'IORef' operations used by
---     'IOGen' are not atomic.
+-- *   'IOGenM' is safe in the presence of exceptions, but not concurrency.
+-- *   'IOGenM' is slower than 'StateGenM' due to the extra pointer indirection.
+-- *   'IOGenM' is faster than 'AtomicGenM' since the 'IORef' operations used by
+--     'IOGenM' are not atomic.
 --
 -- An example use case is writing pseudo-random bytes into a file:
 --
@@ -294,13 +305,15 @@ applyAtomicGen op (AtomicGenI gVar) =
 -- >>> runGenM_ (IOGen (mkStdGen 1729)) ioGen
 --
 -- @since 1.2
-newtype IOGen g s = IOGenI (IORef g)
+newtype IOGenM g s = IOGenM { unIOGenM :: IORef g }
 
-instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) RealWorld m where
-  newtype Frozen (IOGen g) = IOGen { unIOGen :: g }
+newtype IOGen g = IOGen { unIOGen :: g }
     deriving (Eq, Show, Read)
-  thawGen (IOGen g) = fmap IOGenI (liftIO $ newIORef g)
-  freezeGen (IOGenI gVar) = fmap IOGen (liftIO $ readIORef gVar)
+
+instance (RandomGen g, MonadIO m) => MonadRandom (IOGenM g) RealWorld m where
+  type Frozen (IOGenM g) = IOGen g
+  thawGen (IOGen g) = fmap IOGenM (liftIO $ newIORef g)
+  freezeGen (IOGenM gVar) = fmap IOGen (liftIO $ readIORef gVar)
   uniformWord32R r = applyIOGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
   uniformWord64R r = applyIOGen (genWord64R r)
@@ -318,8 +331,8 @@ instance (RandomGen g, MonadIO m) => MonadRandom (IOGen g) RealWorld m where
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
 -- @since 1.2
-applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGen g RealWorld -> m a
-applyIOGen f (IOGenI ref) = liftIO $ do
+applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGenM g RealWorld -> m a
+applyIOGen f (IOGenM ref) = liftIO $ do
   g <- readIORef ref
   case f g of
     (!a, !g') -> a <$ writeIORef ref g'
@@ -327,17 +340,19 @@ applyIOGen f (IOGenI ref) = liftIO $ do
 
 -- | Wraps an 'STRef' that holds a pure pseudo-random number generator.
 --
--- *   'STGen' is safe in the presence of exceptions, but not concurrency.
--- *   'STGen' is slower than 'PureGen' due to the extra pointer indirection.
+-- *   'STGenM' is safe in the presence of exceptions, but not concurrency.
+-- *   'STGenM' is slower than 'StateGenM' due to the extra pointer indirection.
 --
 -- @since 1.2
-newtype STGen g s = STGenI (STRef s g)
+newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
 
-instance RandomGen g => MonadRandom (STGen g) s (ST s) where
-  newtype Frozen (STGen g) = STGen { unSTGen :: g }
+newtype STGen g = STGen { unSTGen :: g }
     deriving (Eq, Show, Read)
-  thawGen (STGen g) = fmap STGenI (newSTRef g)
-  freezeGen (STGenI gVar) = fmap STGen (readSTRef gVar)
+
+instance RandomGen g => MonadRandom (STGenM g) s (ST s) where
+  type Frozen (STGenM g) = STGen g
+  thawGen (STGen g) = fmap STGenM (newSTRef g)
+  freezeGen (STGenM gVar) = fmap STGen (readSTRef gVar)
   uniformWord32R r = applySTGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
   uniformWord64R r = applySTGen (genWord64R r)
@@ -355,8 +370,8 @@ instance RandomGen g => MonadRandom (STGen g) s (ST s) where
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
 -- @since 1.2
-applySTGen :: (g -> (a, g)) -> STGen g s -> ST s a
-applySTGen f (STGenI ref) = do
+applySTGen :: (g -> (a, g)) -> STGenM g s -> ST s a
+applySTGen f (STGenM ref) = do
   g <- readSTRef ref
   case f g of
     (!a, !g') -> a <$ writeSTRef ref g'
@@ -366,7 +381,7 @@ applySTGen f (STGenI ref) = do
 -- pseudo-random number generator.
 --
 -- @since 1.2
-runSTGen :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> (a, g)
+runSTGen :: RandomGen g => g -> (forall s . STGenM g s -> ST s a) -> (a, g)
 runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 
 -- | Runs a monadic generating action in the `ST` monad using a pure
@@ -374,7 +389,7 @@ runSTGen g action = unSTGen <$> runST (runGenM (STGen g) action)
 -- value.
 --
 -- @since 1.2
-runSTGen_ :: RandomGen g => g -> (forall s . STGen g s -> ST s a) -> a
+runSTGen_ :: RandomGen g => g -> (forall s . STGenM g s -> ST s a) -> a
 runSTGen_ g action = fst $ runSTGen g action
 
 
@@ -420,9 +435,9 @@ runSTGen_ g action = fst $ runSTGen g action
 -- from the @mwc-random@ package:
 --
 -- > instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
--- >   newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
--- >   thawGen = fmap MWC.restore unFrozen
--- >   freezeGen = fmap Frozen . MWC.save
+-- >   type Frozen MWC.Gen = MWC.Seed
+-- >   thawGen = MWC.restore
+-- >   freezeGen = MWC.save
 -- >   uniformWord8 = MWC.uniform
 -- >   uniformWord16 = MWC.uniform
 -- >   uniformWord32 = MWC.uniform
@@ -456,9 +471,9 @@ runSTGen_ g action = fst $ runSTGen g action
 --
 -- >>> :{
 -- instance (s ~ PrimState m, PrimMonad m) => MonadRandom MWC.Gen s m where
---   newtype Frozen MWC.Gen = Frozen { unFrozen :: MWC.Seed }
---   thawGen = fmap MWC.restore unFrozen
---   freezeGen = fmap Frozen . MWC.save
+--   type Frozen MWC.Gen = MWC.Seed
+--   thawGen = MWC.restore
+--   freezeGen = MWC.save
 --   uniformWord8 = MWC.uniform
 --   uniformWord16 = MWC.uniform
 --   uniformWord32 = MWC.uniform
