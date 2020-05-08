@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
@@ -32,7 +33,7 @@ module System.Random.Internal
   , MonadRandom(..)
 
   -- ** Standard pseudo-random number generator
-  , StdGen
+  , StdGen(..)
   , mkStdGen
 
   -- * Monadic adapters for pure pseudo-random number generators
@@ -404,9 +405,10 @@ runStateGenST g action = runST $ runStateGenT g action
 
 
 -- | The standard pseudo-random number generator.
-type StdGen = SM.SMGen
+newtype StdGen = StdGen { unStdGen :: SM.SMGen }
+  deriving (RandomGen, Show)
 
-instance RandomGen StdGen where
+instance RandomGen SM.SMGen where
   next = SM.nextInt
   genWord32 = SM.nextWord32
   genWord64 = SM.nextWord64
@@ -420,7 +422,7 @@ instance RandomGen SM32.SMGen where
 
 -- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen
-mkStdGen s = SM.mkSMGen $ fromIntegral s
+mkStdGen = StdGen . SM.mkSMGen . fromIntegral
 
 -- | The class of types for which a uniformly distributed value can be drawn
 -- from all possible values of the type.

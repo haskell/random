@@ -211,7 +211,7 @@ instance RandomGen r => RandomGenM STGenM r s (ST s) where
 --
 -- >>> import Data.Int (Int8)
 -- >>> runGenM (IOGen (mkStdGen 217)) (`uniformListM` 5) :: IO ([Int8], IOGen StdGen)
--- ([-74,37,-50,-2,3],IOGen {unIOGen = SMGen 4273268533320920145 15251669095119325999})
+-- ([-74,37,-50,-2,3],IOGen {unIOGen = StdGen {unStdGen = SMGen 4273268533320920145 15251669095119325999}})
 --
 -- @since 1.2
 runGenM :: MonadRandom g s m => Frozen g -> (g s -> m a) -> m (a, Frozen g)

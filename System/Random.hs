@@ -293,7 +293,7 @@ getStdGen :: MonadIO m => m StdGen
 getStdGen = liftIO $ readIORef theStdGen
 
 theStdGen :: IORef StdGen
-theStdGen = unsafePerformIO $ SM.initSMGen >>= newIORef
+theStdGen = unsafePerformIO $ SM.initSMGen >>= newIORef . StdGen
 {-# NOINLINE theStdGen #-}
 
 -- |Applies 'split' to the current global pseudo-random generator,

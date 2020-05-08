@@ -22,10 +22,10 @@ main = do
   let !sz = 100000
   defaultMain
     [ bgroup "baseline"
-      [ let !stdGen = mkStdGen 1337 in bench "nextWord32" $ nf (genMany SM.nextWord32 stdGen) sz
-      , let !stdGen = mkStdGen 1337 in bench "nextWord64" $ nf (genMany SM.nextWord64 stdGen) sz
-      , let !stdGen = mkStdGen 1337 in bench "nextInt" $ nf (genMany SM.nextInt stdGen) sz
-      , let !stdGen = mkStdGen 1337 in bench "split" $ nf (genMany SM.splitSMGen stdGen) sz
+      [ let !smGen = SM.mkSMGen 1337 in bench "nextWord32" $ nf (genMany SM.nextWord32 smGen) sz
+      , let !smGen = SM.mkSMGen 1337 in bench "nextWord64" $ nf (genMany SM.nextWord64 smGen) sz
+      , let !smGen = SM.mkSMGen 1337 in bench "nextInt" $ nf (genMany SM.nextInt smGen) sz
+      , let !smGen = SM.mkSMGen 1337 in bench "split" $ nf (genMany SM.splitSMGen smGen) sz
       ]
     , bgroup "pure"
       [ bgroup "random"
