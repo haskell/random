@@ -30,7 +30,9 @@ bumped version for float/double range bugfix
 2. Support for monadic generators e.g. [mwc-random](https://hackage.haskell.org/package/mwc-random).
 3. Monadic adapters for pure generators (providing a uniform monadic
    interface to pure and monadic generators).
-4. Faster by more x1000 (depending on the type) - see below for benchmarks.
+4. Faster in all cases bar one by more than x18 (N.B. x18 not 18%) and
+   some cases (depending on the type) faster by more than x1000 - see
+   below for benchmarks.
 5. Passes a large number of random number test suites:
   * [dieharder](http://webhome.phy.duke.edu/~rgb/General/dieharder.php "venerable")
   * [TestU01 (SmallCrush, Crush, BigCrush)](http://simul.iro.umontreal.ca/testu01/tu01.html "venerable")
@@ -52,11 +54,12 @@ bumped version for float/double range bugfix
 Here are some benchmarks run on a 3.1 GHz Intel Core i7. The full
 benchmarks can be run using e.g. `stack bench`. The benchmarks are
 measured in milliseconds per 100,000 generations. In some cases, the
-performance is over x1000 times better.
+performance is over x1000 times better; the minimum performance
+increase for the types listed below is more than x36.
 
-	|------------|----------|----------|
+	|------------+----------+----------|
 	| Name       | 1.1 Mean | 1.2 Mean |
-	|------------|----------|----------|
+	|------------+----------+----------|
 	| Float      |   27.819 |    0.305 |
 	| Double     |   50.644 |    0.328 |
 	| Integer    |   42.332 |    0.332 |
@@ -91,5 +94,5 @@ performance is over x1000 times better.
 	| CUIntPtr   |   40.797 |    0.027 |
 	| CIntMax    |   41.778 |    0.027 |
 	| CUIntMax   |   40.467 |    0.027 |
-	|------------|----------|----------|
+	|------------+----------+----------|
 
