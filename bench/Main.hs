@@ -13,6 +13,7 @@ import Data.Typeable
 import Data.Word
 import Foreign.C.Types
 import Gauge.Main
+import Numeric.Natural (Natural)
 import System.Random.SplitMix as SM
 
 import System.Random
@@ -176,6 +177,9 @@ main = do
           , let !i = (10 :: Integer) ^ (100 :: Integer)
                 !range = (-i - 1, i + 1)
             in pureUniformRBench @Integer range sz
+          , let !n = (10 :: Natural) ^ (100 :: Natural)
+                !range = (1, n - 1)
+            in pureUniformRBench @Natural range sz
           ]
         ]
       ]

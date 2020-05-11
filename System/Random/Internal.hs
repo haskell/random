@@ -75,11 +75,12 @@ import Foreign.Ptr (plusPtr)
 import Foreign.Storable (peekByteOff, pokeByteOff)
 import GHC.Exts
 import GHC.ForeignPtr
+import GHC.IO (IO(..))
+import GHC.Word
+import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
-import GHC.Word
-import GHC.IO (IO(..))
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
@@ -457,7 +458,10 @@ class UniformRange a where
   uniformRM :: MonadRandom g s m => (a, a) -> g s -> m a
 
 instance UniformRange Integer where
-  uniformRM = uniformIntegerM
+  uniformRM = uniformIntegralM
+
+instance UniformRange Natural where
+  uniformRM = uniformIntegralM
 
 instance Uniform Int8 where
   uniformM = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
@@ -751,25 +755,25 @@ randomIvalInteger (l,h) rng
                         (x,g') = next g
                         v' = (v * b + (fromIntegral x - fromIntegral genlo))
 
--- | Generate an 'Integer' in the range @[l, h]@ if @l <= h@ and @[h, l]@
+-- | Generate an integral in the range @[l, h]@ if @l <= h@ and @[h, l]@
 -- otherwise.
-uniformIntegerM :: (MonadRandom g s m) => (Integer, Integer) -> g s -> m Integer
-uniformIntegerM (l, h) gen = case l `compare` h of
+uniformIntegralM :: (Bits a, Integral a, MonadRandom g s m) => (a, a) -> g s -> m a
+uniformIntegralM (l, h) gen = case l `compare` h of
   LT -> do
     let limit = h - l
     let limitAsWord64 :: Word64 = fromIntegral limit
     bounded <-
-      if (toInteger limitAsWord64) == limit
+      if (fromIntegral limitAsWord64) == limit
         -- Optimisation: if 'limit' fits into 'Word64', generate a bounded
         -- 'Word64' and then convert to 'Integer'
-        then toInteger <$> unsignedBitmaskWithRejectionM uniformWord64 limitAsWord64 gen
-        else boundedExclusiveIntegerM (limit + 1) gen
+        then fromIntegral <$> unsignedBitmaskWithRejectionM uniformWord64 limitAsWord64 gen
+        else boundedExclusiveIntegralM (limit + 1) gen
     return $ l + bounded
-  GT -> uniformIntegerM (h, l) gen
+  GT -> uniformIntegralM (h, l) gen
   EQ -> pure l
-{-# INLINE uniformIntegerM #-}
+{-# INLINEABLE uniformIntegralM #-}
 
--- | Generate an 'Integer' in the range @[0, s)@ using a variant of Lemire's
+-- | Generate an integral in the range @[0, s)@ using a variant of Lemire's
 -- multiplication method.
 --
 -- Daniel Lemire. 2019. Fast Random Integer Generation in an Interval. In ACM
@@ -777,19 +781,19 @@ uniformIntegerM (l, h) gen = case l `compare` h of
 -- https://doi.org/10.1145/3230636
 --
 -- PRECONDITION (unchecked): s > 0
-boundedExclusiveIntegerM :: (MonadRandom g s m) => Integer -> g s -> m Integer
-boundedExclusiveIntegerM s gen = go
+boundedExclusiveIntegralM :: (Bits a, Integral a, Ord a, MonadRandom g s m) => a -> g s -> m a
+boundedExclusiveIntegralM (s :: a) gen = go
   where
-    n = integerWordSize s
+    n = integralWordSize s
     -- We renamed 'L' from the paper to 'k' here because 'L' is not a valid
     -- variable name in Haskell and 'l' is already used in the algorithm.
     k = WORD_SIZE_IN_BITS * n
-    twoToK = (1::Integer) `shiftL` k
+    twoToK = (1::a) `shiftL` k
     modTwoToKMask = twoToK - 1
 
     t = (twoToK - s) `mod` s
     go = do
-      x <- uniformIntegerWords n gen
+      x <- uniformIntegralWords n gen
       let m = x * s
       -- m .&. modTwoToKMask == m `mod` twoToK
       let l = m .&. modTwoToKMask
@@ -797,29 +801,29 @@ boundedExclusiveIntegerM s gen = go
         then go
         -- m `shiftR` k == m `quot` twoToK
         else return $ m `shiftR` k
-{-# INLINE boundedExclusiveIntegerM #-}
+{-# INLINE boundedExclusiveIntegralM #-}
 
--- | @integerWordSize i@ returns that least @w@ such that
+-- | @integralWordSize i@ returns that least @w@ such that
 -- @i <= WORD_SIZE_IN_BITS^w@.
-integerWordSize :: Integer -> Int
-integerWordSize = go 0
+integralWordSize :: (Bits a, Num a) => a -> Int
+integralWordSize = go 0
   where
     go !acc i
       | i == 0 = acc
       | otherwise = go (acc + 1) (i `shiftR` WORD_SIZE_IN_BITS)
-{-# INLINE integerWordSize #-}
+{-# INLINE integralWordSize #-}
 
--- | @uniformIntegerWords n@ is a uniformly pseudo-random 'Integer' in the range
+-- | @uniformIntegralWords n@ is a uniformly pseudo-random integral in the range
 -- @[0, WORD_SIZE_IN_BITS^n)@.
-uniformIntegerWords :: (MonadRandom g s m) => Int -> g s -> m Integer
-uniformIntegerWords n gen = go 0 n
+uniformIntegralWords :: (Bits a, Integral a, MonadRandom g s m) => Int -> g s -> m a
+uniformIntegralWords n gen = go 0 n
   where
     go !acc i
       | i == 0 = return acc
       | otherwise = do
         (w :: Word) <- uniformM gen
         go ((acc `shiftL` WORD_SIZE_IN_BITS) .|. (fromIntegral w)) (i - 1)
-{-# INLINE uniformIntegerWords #-}
+{-# INLINE uniformIntegralWords #-}
 
 -- | Uniformly generate an 'Integral' in an inclusive-inclusive range.
 --

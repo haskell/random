@@ -8,20 +8,20 @@ module Spec.Range
 
 import System.Random.Monad
 
-symmetric :: (RandomGen g, Random a, Eq a) => g -> (a, a) -> Bool
-symmetric g (l, r) = fst (randomR (l, r) g) == fst (randomR (r, l) g)
+symmetric :: (RandomGen g, UniformRange a, Eq a) => g -> (a, a) -> Bool
+symmetric g (l, r) = fst (uniformR (l, r) g) == fst (uniformR (r, l) g)
 
-bounded :: (RandomGen g, Random a, Ord a) => g -> (a, a) -> Bool
+bounded :: (RandomGen g, UniformRange a, Ord a) => g -> (a, a) -> Bool
 bounded g (l, r) = bottom <= result && result <= top
   where
     bottom = min l r
     top = max l r
-    result = fst (randomR (l, r) g)
+    result = fst (uniformR (l, r) g)
 
-singleton :: (RandomGen g, Random a, Eq a) => g -> a -> Bool
+singleton :: (RandomGen g, UniformRange a, Eq a) => g -> a -> Bool
 singleton g x = result == x
   where
-    result = fst (randomR (x, x) g)
+    result = fst (uniformR (x, x) g)
 
 uniformRangeWithin :: (RandomGen g, UniformRange a, Ord a) => g -> (a, a) -> Bool
 uniformRangeWithin gen (l, r) =

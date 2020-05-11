@@ -9,15 +9,16 @@
 module Main (main) where
 
 import Data.Coerce
-import Data.Word
 import Data.Int
+import Data.Typeable
+import Data.Word
+import Foreign.C.Types
+import Numeric.Natural (Natural)
 import System.Random
+import Test.SmallCheck.Series as SC
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.SmallCheck as SC
-import Test.SmallCheck.Series as SC
-import Data.Typeable
-import Foreign.C.Types
 
 #include "HsBaseConfig.h"
 
@@ -66,6 +67,7 @@ main =
     , integralSpec @CIntMax
     , integralSpec @CUIntMax
     , integralSpec @Integer
+    , integralSpec @Natural
     -- , bitmaskSpec @Word8
     -- , bitmaskSpec @Word16
     -- , bitmaskSpec @Word32
@@ -103,7 +105,7 @@ showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
 
 rangeSpec ::
      forall a.
-     (SC.Serial IO a, Typeable a, Ord a, Random a, UniformRange a, Show a)
+     (SC.Serial IO a, Typeable a, Ord a, UniformRange a, Show a)
   => TestTree
 rangeSpec =
   testGroup ("Range (" ++ showsType @a ")")
@@ -112,7 +114,7 @@ rangeSpec =
 
 integralSpec ::
      forall a.
-     (SC.Serial IO a, Typeable a, Ord a, Random a, UniformRange a, Show a)
+     (SC.Serial IO a, Typeable a, Ord a, UniformRange a, Show a)
   => TestTree
 integralSpec  =
   testGroup ("(" ++ showsType @a ")")
