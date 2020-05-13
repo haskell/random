@@ -58,6 +58,7 @@ module System.Random.Internal
   ) where
 
 import Control.Arrow
+import Control.DeepSeq (NFData)
 import Control.Monad.IO.Class
 import Control.Monad.ST
 import Control.Monad.ST.Unsafe
@@ -70,9 +71,8 @@ import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
 import Data.Int
 import Data.Word
 import Foreign.C.Types
-import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (plusPtr)
-import Foreign.Storable (peekByteOff, pokeByteOff)
+import Foreign.Storable (pokeByteOff)
 import GHC.Exts
 import GHC.ForeignPtr
 import GHC.IO (IO(..))
@@ -295,12 +295,12 @@ genShortByteStringIO n0 gen64 = do
     -- It is tempting to simply generate as many bytes as we still need using
     -- smaller generators (eg. uniformWord8), but that would result in
     -- inconsistent tail when total length is slightly varied.
-    liftIO $
-      alloca $ \w64ptr -> do
-        runF word64LE w64 w64ptr
-        forM_ [0 .. nrem64 - 1] $ \i -> do
-          w8 :: Word8 <- peekByteOff w64ptr i
-          pokeByteOff ptr i w8
+    liftIO $ do
+      let goRem64 z i =
+            when (i < nrem64) $ do
+              pokeByteOff ptr i (fromIntegral z :: Word8)
+              goRem64 (z `unsafeShiftR` 8) (i + 1)
+      goRem64 w64 0
   liftIO $
     IO $ \s# ->
       case unsafeFreezeByteArray# mba# s# of
@@ -407,7 +407,10 @@ runStateGenST g action = runST $ runStateGenT g action
 
 -- | The standard pseudo-random number generator.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
-  deriving (RandomGen, Show)
+  deriving (RandomGen, NFData, Show)
+
+instance Eq StdGen where
+  StdGen x1 == StdGen x2 = SM.unseedSMGen x1 == SM.unseedSMGen x2
 
 instance RandomGen SM.SMGen where
   next = SM.nextInt

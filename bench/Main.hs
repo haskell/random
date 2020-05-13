@@ -7,6 +7,7 @@
 
 module Main (main) where
 
+import Control.Monad
 import Data.Int
 import Data.Proxy
 import Data.Typeable
@@ -16,11 +17,14 @@ import Gauge.Main
 import Numeric.Natural (Natural)
 import System.Random.SplitMix as SM
 
-import System.Random
+import System.Random.Monad
 
 main :: IO ()
 main = do
   let !sz = 100000
+      genLengths =
+        -- create 5000 small lengths that are needed for ShortByteString generation
+        runStateGen (mkStdGen 2020) $ \g -> replicateM 5000 (uniformRM (16 + 1, 16 + 7) g)
   defaultMain
     [ bgroup "baseline"
       [ let !smGen = SM.mkSMGen 1337 in bench "nextWord32" $ nf (genMany SM.nextWord32 smGen) sz
@@ -180,6 +184,11 @@ main = do
           , let !n = (10 :: Natural) ^ (100 :: Natural)
                 !range = (1, n - 1)
             in pureUniformRBench @Natural range sz
+          ]
+        , bgroup "ShortByteString"
+          [ env (pure genLengths) $ \ ~(ns, gen) ->
+              bench "genShortByteString" $
+              nfIO $ runStateGenT_ gen $ \g -> mapM (`uniformShortByteString` g) ns
           ]
         ]
       ]

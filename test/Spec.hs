@@ -8,6 +8,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Main (main) where
 
+import Control.Arrow (first)
+import Data.ByteString.Short as SBS
 import Data.Coerce
 import Data.Int
 import Data.Typeable
@@ -75,6 +77,7 @@ main =
     -- , bitmaskSpec @Word
     , runSpec
     , floatTests
+    , byteStringSpec
     ]
 
 floatTests :: TestTree
@@ -102,6 +105,20 @@ showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
 --   , SC.testProperty "bounded" $ seeded $ Bitmask.bounded @_ @a
 --   , SC.testProperty "singleton" $ seeded $ Bitmask.singleton @_ @a
 --   ]
+
+byteStringSpec :: TestTree
+byteStringSpec =
+  testGroup
+    "ByteString"
+    [ SC.testProperty "genShortByteString" $ \(seed, n8) ->
+        let n = fromIntegral (n8 :: Word8) -- no need to generate huge collection of bytes
+         in SBS.length (fst (seeded (genShortByteString n) seed)) == n
+    , SC.testProperty "genByteString" $ \(seed, n8) ->
+        let n = fromIntegral (n8 :: Word8)
+         in SBS.toShort (fst (seeded (genByteString n) seed)) ==
+            fst (seeded (genShortByteString n) seed)
+    ]
+
 
 rangeSpec ::
      forall a.

@@ -85,6 +85,7 @@ library
     build-depends:
         base >=4.10 && <5,
         bytestring >=0.10 && <0.11,
+        deepseq >=1.1 && <2,
         mtl >=2.2 && <2.3,
         splitmix >=0.0.3 && <0.1
 
@@ -131,6 +132,7 @@ test-suite spec
     ghc-options:      -Wall
     build-depends:
         base >=4.10 && <5,
+        bytestring >=0.10 && <0.11,
         random -any,
         smallcheck >=1.1 && <1.2,
         tasty >=1.0 && <1.3,
