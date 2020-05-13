@@ -6,7 +6,7 @@
 
 | Language | Travis | Coveralls |
 |:--------:|:------:|:---------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/idontgetoutmuch/random.svg) | [![Build Status](https://secure.travis-ci.org/idontgetoutmuch/random.svg?branch=interface-to-performance)](http://travis-ci.org/idontgetoutmuch/random) | [![Coverage Status](https://coveralls.io/repos/github/idontgetoutmuch/random/badge.svg?branch=interface-to-performance)](https://coveralls.io/github/idontgetoutmuch/random?branch=interface-to-performance)
+| ![GitHub top language](https://img.shields.io/github/languages/top/idontgetoutmuch/random.svg) | [![Build Status](https://secure.travis-ci.org/idontgetoutmuch/random.svg?v1.2-proposal)](http://travis-ci.org/idontgetoutmuch/random) | [![Coverage Status](https://coveralls.io/repos/github/idontgetoutmuch/random/badge.svg?branch=v1.2-proposal)](https://coveralls.io/github/idontgetoutmuch/random?branch=v1.2-proposal)
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
