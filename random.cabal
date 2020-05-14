@@ -81,7 +81,11 @@ library
         System.Random.Monad
 
     default-language: Haskell2010
-    ghc-options:      -Wall
+    ghc-options:
+        -Weverything -Wno-implicit-prelude -Wno-missing-import-lists
+        -Wno-missing-local-signatures -Wno-redundant-constraints
+        -Wno-unsafe
+
     build-depends:
         base >=4.10 && <5,
         bytestring >=0.10 && <0.11,

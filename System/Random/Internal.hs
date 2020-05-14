@@ -1,17 +1,16 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -69,6 +68,7 @@ import Data.ByteString.Builder.Prim.Internal (runF)
 import Data.ByteString.Internal (ByteString(PS))
 import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
 import Data.Int
+import Data.Kind (Type)
 import Data.Word
 import Foreign.C.Types
 import Foreign.Ptr (plusPtr)
@@ -182,7 +182,7 @@ class Monad m => MonadRandom g s m | g m -> s where
   -- 'thawGen' and 'freezeGen'.
   --
   -- @since 1.2
-  type Frozen g = (f :: *) | f -> g
+  type Frozen g = (f :: Type) | f -> g
   {-# MINIMAL freezeGen,thawGen,(uniformWord32|uniformWord64) #-}
 
   -- | Restores the pseudo-random number generator from its 'Frozen'
@@ -407,7 +407,8 @@ runStateGenST g action = runST $ runStateGenT g action
 
 -- | The standard pseudo-random number generator.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
-  deriving (RandomGen, NFData, Show)
+  deriving newtype (RandomGen, NFData)
+  deriving stock   (Show)
 
 instance Eq StdGen where
   StdGen x1 == StdGen x2 = SM.unseedSMGen x1 == SM.unseedSMGen x2
@@ -737,7 +738,7 @@ randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l,h) rng
  | l > h     = randomIvalInteger (h,l) rng
- | otherwise = case (f 1 0 rng) of (v, rng') -> (fromInteger (l + v `mod` k), rng')
+ | otherwise = case f 1 0 rng of (v, rng') -> (fromInteger (l + v `mod` k), rng')
      where
        (genlo, genhi) = genRange rng
        b = fromIntegral genhi - fromIntegral genlo + 1
@@ -748,7 +749,7 @@ randomIvalInteger (l,h) rng
 
        -- On average, log q / log b more pseudo-random values will be generated
        -- than the minimum
-       q = 1000
+       q = 1000 :: Integer
        k = h - l + 1
        magtgt = k * q
 
@@ -756,7 +757,7 @@ randomIvalInteger (l,h) rng
        f mag v g | mag >= magtgt = (v, g)
                  | otherwise = v' `seq`f (mag*b) v' g' where
                         (x,g') = next g
-                        v' = (v * b + (fromIntegral x - fromIntegral genlo))
+                        v' = v * b + (fromIntegral x - fromIntegral genlo)
 
 -- | Generate an integral in the range @[l, h]@ if @l <= h@ and @[h, l]@
 -- otherwise.
@@ -766,7 +767,7 @@ uniformIntegralM (l, h) gen = case l `compare` h of
     let limit = h - l
     let limitAsWord64 :: Word64 = fromIntegral limit
     bounded <-
-      if (fromIntegral limitAsWord64) == limit
+      if fromIntegral limitAsWord64 == limit
         -- Optimisation: if 'limit' fits into 'Word64', generate a bounded
         -- 'Word64' and then convert to 'Integer'
         then fromIntegral <$> unsignedBitmaskWithRejectionM uniformWord64 limitAsWord64 gen
@@ -784,7 +785,7 @@ uniformIntegralM (l, h) gen = case l `compare` h of
 -- https://doi.org/10.1145/3230636
 --
 -- PRECONDITION (unchecked): s > 0
-boundedExclusiveIntegralM :: (Bits a, Integral a, Ord a, MonadRandom g s m) => a -> g s -> m a
+boundedExclusiveIntegralM :: (Bits a, Integral a, MonadRandom g s m) => a -> g s -> m a
 boundedExclusiveIntegralM (s :: a) gen = go
   where
     n = integralWordSize s
@@ -825,7 +826,7 @@ uniformIntegralWords n gen = go 0 n
       | i == 0 = return acc
       | otherwise = do
         (w :: Word) <- uniformM gen
-        go ((acc `shiftL` WORD_SIZE_IN_BITS) .|. (fromIntegral w)) (i - 1)
+        go ((acc `shiftL` WORD_SIZE_IN_BITS) .|. fromIntegral w) (i - 1)
 {-# INLINE uniformIntegralWords #-}
 
 -- | Uniformly generate an 'Integral' in an inclusive-inclusive range.
@@ -833,8 +834,8 @@ uniformIntegralWords n gen = go 0 n
 -- Only use for integrals size less than or equal to that of 'Word32'.
 unbiasedWordMult32RM :: (MonadRandom g s m, Integral a) => (a, a) -> g s -> m a
 unbiasedWordMult32RM (b, t) g
-  | b <= t    = ((+b) . fromIntegral) <$> unbiasedWordMult32 (fromIntegral (t - b)) g
-  | otherwise = ((+t) . fromIntegral) <$> unbiasedWordMult32 (fromIntegral (b - t)) g
+  | b <= t    = (+b) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (t - b)) g
+  | otherwise = (+t) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (b - t)) g
 {-# SPECIALIZE unbiasedWordMult32RM :: MonadRandom g s m => (Word8, Word8) -> g s -> m Word8 #-}
 
 -- | Uniformly generate Word32 in @[0, s]@.
@@ -858,10 +859,10 @@ unbiasedWordMult32Exclusive r g = go
     go = do
       x <- uniformWord32 g
       let m :: Word64
-          m = (fromIntegral x) * (fromIntegral r)
+          m = fromIntegral x * fromIntegral r
           l :: Word32
           l = fromIntegral m
-      if (l >= t) then return (fromIntegral $ m `shiftR` 32) else go
+      if l >= t then return (fromIntegral $ m `shiftR` 32) else go
 
 -- | This only works for unsigned integrals
 unsignedBitmaskWithRejectionRM ::

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
@@ -256,7 +257,7 @@ randomRM r = applyRandomGenM (randomR r)
 newtype AtomicGenM g s = AtomicGenM { unAtomicGenM :: IORef g}
 
 newtype AtomicGen g = AtomicGen { unAtomicGen :: g }
-    deriving (Eq, Show, Read)
+    deriving stock (Eq, Show, Read)
 
 instance (RandomGen g, MonadIO m) => MonadRandom (AtomicGenM g) RealWorld m where
   type Frozen (AtomicGenM g) = AtomicGen g
@@ -308,7 +309,7 @@ applyAtomicGen op (AtomicGenM gVar) =
 newtype IOGenM g s = IOGenM { unIOGenM :: IORef g }
 
 newtype IOGen g = IOGen { unIOGen :: g }
-    deriving (Eq, Show, Read)
+    deriving stock (Eq, Show, Read)
 
 instance (RandomGen g, MonadIO m) => MonadRandom (IOGenM g) RealWorld m where
   type Frozen (IOGenM g) = IOGen g
@@ -347,7 +348,7 @@ applyIOGen f (IOGenM ref) = liftIO $ do
 newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
 
 newtype STGen g = STGen { unSTGen :: g }
-    deriving (Eq, Show, Read)
+    deriving stock (Eq, Show, Read)
 
 instance RandomGen g => MonadRandom (STGenM g) s (ST s) where
   type Frozen (STGenM g) = STGen g
