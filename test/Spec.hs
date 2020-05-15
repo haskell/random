@@ -94,17 +94,6 @@ floatTests = testGroup "(Float)"
 showsType :: forall t . Typeable t => ShowS
 showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
 
--- bitmaskSpec ::
---      forall a.
---      (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, FiniteBits a, Show a)
---   => TestTree
--- bitmaskSpec =
---   testGroup ("bitmaskWithRejection (" ++ showsType @a ")")
---   [ SC.testProperty "symmetric" $ seeded $ Bitmask.symmetric @_ @a
---   , SC.testProperty "bounded" $ seeded $ Bitmask.bounded @_ @a
---   , SC.testProperty "singleton" $ seeded $ Bitmask.singleton @_ @a
---   ]
-
 byteStringSpec :: TestTree
 byteStringSpec =
   testGroup
