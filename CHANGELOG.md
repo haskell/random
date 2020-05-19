@@ -8,12 +8,12 @@
    some cases (depending on the type) faster by more than x1000 - see
    below for benchmarks.
 5. Passes a large number of random number test suites:
-  * [dieharder](http://webhome.phy.duke.edu/~rgb/General/dieharder.php "venerable")
-  * [TestU01 (SmallCrush, Crush, BigCrush)](http://simul.iro.umontreal.ca/testu01/tu01.html "venerable")
-  * [PractRand](http://pracrand.sourceforge.net/ "active")
-  * [gjrand](http://gjrand.sourceforge.net/ "active")
-  * See [random-quality](https://github.com/tweag/random-quality)
-		 for details on how to do this yourself.
+   * [dieharder](http://webhome.phy.duke.edu/~rgb/General/dieharder.php "venerable")
+   * [TestU01 (SmallCrush, Crush, BigCrush)](http://simul.iro.umontreal.ca/testu01/tu01.html "venerable")
+   * [PractRand](http://pracrand.sourceforge.net/ "active")
+   * [gjrand](http://gjrand.sourceforge.net/ "active")
+   * See [random-quality](https://github.com/tweag/random-quality)
+     for details on how to do this yourself.
 6. Better quality split as judged by these
 	[tests](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/evaluation-of-splittable-pseudorandom-generators/3EBAA9F14939C5BB5560E32D1A132637). Again
 	see [random-quality](https://github.com/tweag/random-quality) for
