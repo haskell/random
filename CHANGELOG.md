@@ -1,6 +1,7 @@
 # 1.2
 
-1. Breaking change which mostly maintains backwards compatibility.
+1. Breaking change which mostly maintains backwards compatibility, see
+   "Breaking Changes" below.
 2. Support for monadic generators e.g. [mwc-random](https://hackage.haskell.org/package/mwc-random).
 3. Monadic adapters for pure generators (providing a uniform monadic
    interface to pure and monadic generators).
@@ -22,6 +23,24 @@
 8. Updated tests and benchmarks.
 9. [Continuous integration](https://travis-ci.org/github/idontgetoutmuch/random).
 10. Fully documented - for more details see the [haddock](https://htmlpreview.github.io/?https://github.com/idontgetoutmuch/random/blob/release-notes/docs/System-Random.html).
+
+### Breaking Changes
+
+Version 1.2 introduces these breaking changes:
+
+* requires `base >= 4.10` (GHC-8.2)
+* `StdGen` is no longer an instance of `Read`
+* `randomIO` and `randomRIO` where extracted from the `Random` class into
+  separate functions
+
+In addition, there may be import clashes with new functions, e.g. `uniform` and
+`uniformR`.
+
+### Deprecations
+
+Version 1.2 introduces `genWord64`, `genWord32` and similar methods to the
+`RandomGen` class. The significantly slower method `next` and its companion
+`genRange` are now deprecated.
 
 ### Issues Addressed
 
