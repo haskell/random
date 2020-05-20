@@ -72,10 +72,13 @@ module System.Random.Monad
   , genShortByteStringST
   , uniformByteString
 
-  -- * Notes for pseudo-random number generator implementors
+  -- * Appendix
 
   -- ** How to implement 'MonadRandom'
   -- $implementmonadrandom
+
+  -- ** Floating point number caveats
+  -- $floating
 
   -- * References
   -- $references
@@ -421,11 +424,79 @@ runSTGen_ g action = fst $ runSTGen g action
 --     @UniformRange (a, b)@ instance based on just @UniformRange a@ and
 --     @UniformRange b@.
 
-
 -------------------------------------------------------------------------------
 -- Notes
 -------------------------------------------------------------------------------
 
+-- $floating
+--
+-- The 'UniformRange' instances for 'Float' and 'Double' use the following
+-- procedure to generate a random value in a range for @uniformRM (a, b) g@:
+--
+-- 1.  Generate \(x\) uniformly such that \(0 \leq x \leq 1\).
+--
+--     The method by which \(x\) is sampled does not cover all representable
+--     floating point numbers in the unit interval. The method never generates
+--     denormal floating point numbers, for example.
+--
+-- 2.  Return \((b - a) * x + a\).
+--
+--     Due to rounding errors, floating point operations are neither
+--     commutative, nor associative, nor distributive the way the corresponding
+--     operations on real numbers are. Additionally, floating point numbers
+--     admit special values @NaN@ as well as negative and positive infinity.
+--
+-- For pathological values, step 2 can yield surprising results.
+--
+-- *   The result may be greater than @max a b@.
+--
+--     >>> :{
+--     let (a, b, x) = (-4.7021254e-38, -1.481e-42, 1.0)
+--         result = (b - a) * x + a :: Float
+--     in (result, result > max a b)
+--     :}
+--     (-1.48e-42,True)
+--
+-- *   The result may be @NaN@ even if \(a\) and \(b\) are not.
+--
+--     >>> :{
+--     let (a, b, x) = (-1.7159568e38, 1.7159568e38, 0.0)
+--     in (b - a) * x + a :: Float
+--     :}
+--     NaN
+--
+-- What happens when @NaN@ or @Infinity@ are given to 'uniformRM'? We first
+-- define them as constants:
+--
+-- >>> nan = read "NaN" :: Float
+-- >>> inf = read "Infinity" :: Float
+--
+-- *   If at least one of \(a\) or \(b\) is @NaN@, the result is @NaN@.
+--
+--     >>> let (a, b, x) = (nan, 1, 0.5) in (b - a) * x + a
+--     NaN
+--     >>> let (a, b, x) = (-1, nan, 0.5) in (b - a) * x + a
+--     NaN
+--
+-- *   Otherwise, if \(a\) is @Infinity@ or @-Infinity@, the result is @NaN@.
+--
+--     >>> let (a, b, x) = (inf, 1, 0.5) in (b - a) * x + a
+--     NaN
+--     >>> let (a, b, x) = (-inf, 1, 0.5) in (b - a) * x + a
+--     NaN
+--
+-- *   Otherwise, if \(b\) is @Infinity@ or @-Infinity@, the result is \(b\).
+--
+--     >>> let (a, b, x) = (1, inf, 0.5) in (b - a) * x + a
+--     Infinity
+--     >>> let (a, b, x) = (1, -inf, 0.5) in (b - a) * x + a
+--     -Infinity
+--
+-- Note that the [GCC 10.1.0 C++ standard library](https://gcc.gnu.org/git/?p=gcc.git;a=blob;f=libstdc%2B%2B-v3/include/bits/random.h;h=19307fbc3ca401976ef6823e8fda893e4a263751;hb=63fa67847628e5f358e7e2e7edb8314f0ee31f30#l1859),
+-- the [Java 10 standard library](https://docs.oracle.com/javase/10/docs/api/java/util/Random.html#doubles%28double,double%29)
+-- and [CPython 3.8](https://github.com/python/cpython/blob/3.8/Lib/random.py#L417)
+-- use the same procedure to generate floating point values in a range.
+--
 -- $implementmonadrandom
 --
 -- Typically, a monadic pseudo-random number generator has facilities to save

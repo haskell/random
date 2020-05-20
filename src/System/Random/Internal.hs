@@ -698,6 +698,7 @@ instance UniformRange Bool where
   uniformRM (True, True)   _g = return True
   uniformRM _               g = uniformM g
 
+-- | See /Floating point number caveats/ in "System.Random.Monad".
 instance UniformRange Double where
   uniformRM (l, h) g = do
     w64 <- uniformWord64 g
@@ -713,6 +714,7 @@ word64ToDoubleInUnitInterval w64 = d / m
     m = fromIntegral (maxBound :: Word64) :: Double
 {-# INLINE word64ToDoubleInUnitInterval #-}
 
+-- | See /Floating point number caveats/ in "System.Random.Monad".
 instance UniformRange Float where
   uniformRM (l, h) g = do
     w32 <- uniformWord32 g
