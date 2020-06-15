@@ -68,3 +68,13 @@ Test-Suite TestRandomIOs
     hs-source-dirs: tests
     build-depends:  base >= 3 && < 5, random
     ghc-options:    -rtsopts -O2
+
+benchmark bench
+    type:           exitcode-stdio-1.0
+    main-is:        Main.hs
+    hs-source-dirs: bench
+    ghc-options:    -Wall -O2
+    build-depends:
+        base >=4.10 && <5,
+        gauge >=0.2.3 && <0.3,
+        random -any
