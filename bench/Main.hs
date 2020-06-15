@@ -3,71 +3,58 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
-import Control.Monad
 import Data.Int
 import Data.Proxy
 import Data.Typeable
 import Data.Word
 import Foreign.C.Types
 import Gauge.Main
-import Numeric.Natural (Natural)
-import System.Random.SplitMix as SM
 
-import System.Random.Stateful
+import System.Random
 
 main :: IO ()
 main = do
   let !sz = 100000
-      genLengths =
-        -- create 5000 small lengths that are needed for ShortByteString generation
-        runStateGen (mkStdGen 2020) $ \g -> replicateM 5000 (uniformRM (16 + 1, 16 + 7) g)
   defaultMain
-    [ bgroup "baseline"
-      [ let !smGen = SM.mkSMGen 1337 in bench "nextWord32" $ nf (genMany SM.nextWord32 smGen) sz
-      , let !smGen = SM.mkSMGen 1337 in bench "nextWord64" $ nf (genMany SM.nextWord64 smGen) sz
-      , let !smGen = SM.mkSMGen 1337 in bench "nextInt" $ nf (genMany SM.nextInt smGen) sz
-      , let !smGen = SM.mkSMGen 1337 in bench "split" $ nf (genMany SM.splitSMGen smGen) sz
-      ]
-    , bgroup "pure"
+    [ bgroup "pure"
       [ bgroup "random"
         [ pureRandomBench (Proxy :: Proxy Float) sz
         , pureRandomBench (Proxy :: Proxy Double) sz
         , pureRandomBench (Proxy :: Proxy Integer) sz
+        , pureRandomBench (Proxy :: Proxy Word8) sz
+        , pureRandomBench (Proxy :: Proxy Word16) sz
+        , pureRandomBench (Proxy :: Proxy Word32) sz
+        , pureRandomBench (Proxy :: Proxy Word64) sz
+        , pureRandomBench (Proxy :: Proxy Word) sz
+        , pureRandomBench (Proxy :: Proxy Int8) sz
+        , pureRandomBench (Proxy :: Proxy Int16) sz
+        , pureRandomBench (Proxy :: Proxy Int32) sz
+        , pureRandomBench (Proxy :: Proxy Int64) sz
+        , pureRandomBench (Proxy :: Proxy Int) sz
+        , pureRandomBench (Proxy :: Proxy Char) sz
+        , pureRandomBench (Proxy :: Proxy Bool) sz
+        -- , pureRandomBench (Proxy :: Proxy CBool) sz
+        , pureRandomBench (Proxy :: Proxy CChar) sz
+        , pureRandomBench (Proxy :: Proxy CSChar) sz
+        , pureRandomBench (Proxy :: Proxy CUChar) sz
+        , pureRandomBench (Proxy :: Proxy CShort) sz
+        , pureRandomBench (Proxy :: Proxy CUShort) sz
+        , pureRandomBench (Proxy :: Proxy CInt) sz
+        , pureRandomBench (Proxy :: Proxy CUInt) sz
+        , pureRandomBench (Proxy :: Proxy CLong) sz
+        , pureRandomBench (Proxy :: Proxy CULong) sz
+        , pureRandomBench (Proxy :: Proxy CPtrdiff) sz
+        , pureRandomBench (Proxy :: Proxy CSize) sz
+        , pureRandomBench (Proxy :: Proxy CWchar) sz
+        , pureRandomBench (Proxy :: Proxy CSigAtomic) sz
+        , pureRandomBench (Proxy :: Proxy CLLong) sz
+        , pureRandomBench (Proxy :: Proxy CULLong) sz
+        , pureRandomBench (Proxy :: Proxy CIntPtr) sz
+        , pureRandomBench (Proxy :: Proxy CUIntPtr) sz
+        , pureRandomBench (Proxy :: Proxy CIntMax) sz
+        , pureRandomBench (Proxy :: Proxy CUIntMax) sz
         ]
-      , bgroup "uniform"
-        [ pureUniformBench (Proxy :: Proxy Word8) sz
-        , pureUniformBench (Proxy :: Proxy Word16) sz
-        , pureUniformBench (Proxy :: Proxy Word32) sz
-        , pureUniformBench (Proxy :: Proxy Word64) sz
-        , pureUniformBench (Proxy :: Proxy Word) sz
-        , pureUniformBench (Proxy :: Proxy Int8) sz
-        , pureUniformBench (Proxy :: Proxy Int16) sz
-        , pureUniformBench (Proxy :: Proxy Int32) sz
-        , pureUniformBench (Proxy :: Proxy Int64) sz
-        , pureUniformBench (Proxy :: Proxy Int) sz
-        , pureUniformBench (Proxy :: Proxy Char) sz
-        , pureUniformBench (Proxy :: Proxy Bool) sz
-        , pureUniformBench (Proxy :: Proxy CChar) sz
-        , pureUniformBench (Proxy :: Proxy CSChar) sz
-        , pureUniformBench (Proxy :: Proxy CUChar) sz
-        , pureUniformBench (Proxy :: Proxy CShort) sz
-        , pureUniformBench (Proxy :: Proxy CUShort) sz
-        , pureUniformBench (Proxy :: Proxy CInt) sz
-        , pureUniformBench (Proxy :: Proxy CUInt) sz
-        , pureUniformBench (Proxy :: Proxy CLong) sz
-        , pureUniformBench (Proxy :: Proxy CULong) sz
-        , pureUniformBench (Proxy :: Proxy CPtrdiff) sz
-        , pureUniformBench (Proxy :: Proxy CSize) sz
-        , pureUniformBench (Proxy :: Proxy CWchar) sz
-        , pureUniformBench (Proxy :: Proxy CSigAtomic) sz
-        , pureUniformBench (Proxy :: Proxy CLLong) sz
-        , pureUniformBench (Proxy :: Proxy CULLong) sz
-        , pureUniformBench (Proxy :: Proxy CIntPtr) sz
-        , pureUniformBench (Proxy :: Proxy CUIntPtr) sz
-        , pureUniformBench (Proxy :: Proxy CIntMax) sz
-        , pureUniformBench (Proxy :: Proxy CUIntMax) sz
-        ]
-      , bgroup "uniformR"
+      , bgroup "randomR"
         [ bgroup "full"
           [ pureUniformRFullBench (Proxy :: Proxy Word8) sz
           , pureUniformRFullBench (Proxy :: Proxy Word16) sz
@@ -81,6 +68,7 @@ main = do
           , pureUniformRFullBench (Proxy :: Proxy Int) sz
           , pureUniformRFullBench (Proxy :: Proxy Char) sz
           , pureUniformRFullBench (Proxy :: Proxy Bool) sz
+          -- , pureUniformRFullBench (Proxy :: Proxy CBool) sz
           , pureUniformRFullBench (Proxy :: Proxy CChar) sz
           , pureUniformRFullBench (Proxy :: Proxy CSChar) sz
           , pureUniformRFullBench (Proxy :: Proxy CUChar) sz
@@ -113,6 +101,7 @@ main = do
           , pureUniformRExcludeMaxBench (Proxy :: Proxy Int64) sz
           , pureUniformRExcludeMaxBench (Proxy :: Proxy Int) sz
           , pureUniformRExcludeMaxBench (Proxy :: Proxy Char) sz
+          -- , pureUniformRExcludeMaxBench (Proxy :: Proxy CBool) sz
           , pureUniformRExcludeMaxBench (Proxy :: Proxy Bool) sz
           , pureUniformRExcludeMaxBench (Proxy :: Proxy CChar) sz
           , pureUniformRExcludeMaxBench (Proxy :: Proxy CSChar) sz
@@ -146,6 +135,7 @@ main = do
           , pureUniformRIncludeHalfBench (Proxy :: Proxy Int64) sz
           , pureUniformRIncludeHalfBench (Proxy :: Proxy Int) sz
           , pureUniformRIncludeHalfEnumBench (Proxy :: Proxy Char) sz
+          -- , pureUniformRIncludeHalfEnumBench (Proxy :: Proxy CBool) sz
           , pureUniformRIncludeHalfEnumBench (Proxy :: Proxy Bool) sz
           , pureUniformRIncludeHalfBench (Proxy :: Proxy CChar) sz
           , pureUniformRIncludeHalfBench (Proxy :: Proxy CSChar) sz
@@ -173,14 +163,9 @@ main = do
           , let !i = (10 :: Integer) ^ (100 :: Integer)
                 !range = (-i - 1, i + 1)
             in pureUniformRBench (Proxy :: Proxy Integer) range sz
-          , let !n = (10 :: Natural) ^ (100 :: Natural)
-                !range = (1, n - 1)
-            in pureUniformRBench (Proxy :: Proxy Natural) range sz
-          ]
-        , bgroup "ShortByteString"
-          [ env (pure genLengths) $ \ ~(ns, gen) ->
-              bench "genShortByteString" $
-              nfIO $ runStateGenT_ gen $ \g -> mapM (`uniformShortByteString` g) ns
+          -- , let !n = (10 :: Natural) ^ (100 :: Natural)
+          --       !range = (1, n - 1)
+          --   in pureUniformRBench (Proxy :: Proxy Natural) range sz
           ]
         ]
       ]
@@ -191,13 +176,8 @@ pureRandomBench px =
   let !stdGen = mkStdGen 1337
    in pureBench px (genMany (random :: StdGen -> (a, StdGen)) stdGen)
 
-pureUniformBench :: forall a. (Typeable a, Uniform a) => Proxy a -> Int -> Benchmark
-pureUniformBench px =
-  let !stdGen = mkStdGen 1337
-   in pureBench px (genMany (uniform :: StdGen -> (a, StdGen)) stdGen)
-
 pureUniformRFullBench ::
-     forall a. (Typeable a, UniformRange a, Bounded a)
+     forall a. (Typeable a, Random a, Bounded a)
   => Proxy a
   -> Int
   -> Benchmark
@@ -206,7 +186,7 @@ pureUniformRFullBench px =
    in pureUniformRBench px range
 
 pureUniformRExcludeMaxBench ::
-     forall a. (Typeable a, UniformRange a, Bounded a, Enum a)
+     forall a. (Typeable a, Random a, Bounded a, Enum a)
   => Proxy a
   -> Int
   -> Benchmark
@@ -215,7 +195,7 @@ pureUniformRExcludeMaxBench px =
    in pureUniformRBench px range
 
 pureUniformRIncludeHalfBench ::
-     forall a. (Typeable a, UniformRange a, Bounded a, Integral a)
+     forall a. (Typeable a, Random a, Bounded a, Integral a)
   => Proxy a
   -> Int
   -> Benchmark
@@ -224,7 +204,7 @@ pureUniformRIncludeHalfBench px =
   in pureUniformRBench px range
 
 pureUniformRIncludeHalfEnumBench ::
-     forall a. (Typeable a, UniformRange a, Bounded a, Enum a)
+     forall a. (Typeable a, Random a, Bounded a, Enum a)
   => Proxy a
   -> Int
   -> Benchmark
@@ -233,14 +213,14 @@ pureUniformRIncludeHalfEnumBench px =
   in pureUniformRBench px range
 
 pureUniformRBench ::
-     forall a. (Typeable a, UniformRange a)
+     forall a. (Typeable a, Random a)
   => Proxy a
   -> (a, a)
   -> Int
   -> Benchmark
 pureUniformRBench px range@(!_, !_) =
   let !stdGen = mkStdGen 1337
-  in pureBench px (genMany (uniformR range) stdGen)
+  in pureBench px (genMany (randomR range) stdGen)
 
 pureBench :: forall a. (Typeable a) => Proxy a -> (Int -> ()) -> Int -> Benchmark
 pureBench px f sz = bench (showsTypeRep (typeRep px) "") $ nf f sz
