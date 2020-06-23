@@ -6,7 +6,7 @@
 
 | Language | Travis | Coveralls |
 |:--------:|:------:|:---------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://secure.travis-ci.org/haskell/random.svg?v1.2-proposal)](http://travis-ci.org/haskell/random) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=v1.2-proposal)](https://coveralls.io/github/haskell/random?branch=v1.2-proposal)
+| ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://secure.travis-ci.org/haskell/random.svg?master)](http://travis-ci.org/haskell/random) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=master)](https://coveralls.io/github/haskell/random?branch=master)
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
