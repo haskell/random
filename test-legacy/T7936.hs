@@ -6,9 +6,10 @@
 -- $ cabal test T7936 --test-options="+RTS -M1M -RTS"
 -- T7936: Heap exhausted;
 
-module Main where
+module T7936 where
 
 import System.Random (newStdGen)
 import Control.Monad (replicateM_)
 
+main :: IO ()
 main = replicateM_ 100000 newStdGen

@@ -1,19 +1,25 @@
+module Random1283 (main) where
+
 import Control.Concurrent
-import Control.Monad hiding (empty)
-import Data.Sequence (ViewL(..), empty, fromList, viewl, (<|), (|>), (><))
+import Control.Monad
+import Data.Sequence (Seq, ViewL(..), empty, fromList, viewl, (<|), (|>), (><))
 import System.Random
 
 -- This test
 
+threads, samples :: Int
 threads = 4
 samples = 5000
 
+main :: IO ()
 main = loopTest threads samples
 
+loopTest :: Int -> Int -> IO ()
 loopTest t s = do
   isClean <- testRace t s
-  when (not isClean) $ putStrLn "race condition!"
+  unless isClean $ putStrLn "race condition!"
 
+testRace :: Int -> Int -> IO Bool
 testRace t s = do
   ref <- liftM (take (t*s) . randoms) getStdGen
   iss <- threadRandoms t s
@@ -23,11 +29,12 @@ threadRandoms :: Random a => Int -> Int -> IO [[a]]
 threadRandoms t s = do
   vs <- sequence $ replicate t $ do
     v <- newEmptyMVar
-    forkIO (sequence (replicate s randomIO) >>= putMVar v)
+    _ <- forkIO (sequence (replicate s randomIO) >>= putMVar v)
     return v
   mapM takeMVar vs
 
-isInterleavingOf xs yss = iio xs (viewl $ fromList yss) EmptyL where
+isInterleavingOf :: Eq a => [a] -> [[a]] -> Bool
+isInterleavingOf xs' yss' = iio xs' (viewl $ fromList yss') EmptyL where
   iio (x:xs) ((y:ys) :< yss) zss
     | x /= y = iio (x:xs) (viewl yss) (viewl (fromViewL zss |> (y:ys)))
     | x == y = iio xs (viewl ((ys <| yss) >< fromViewL zss)) EmptyL
@@ -35,6 +42,7 @@ isInterleavingOf xs yss = iio xs (viewl $ fromList yss) EmptyL where
   iio [] EmptyL EmptyL = True
   iio _ _ _ = False
 
-fromViewL (EmptyL) = empty
+fromViewL :: ViewL a -> Seq a
+fromViewL EmptyL = empty
 fromViewL (x :< xs) = x <| xs
 
