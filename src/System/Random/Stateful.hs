@@ -606,6 +606,7 @@ runSTGen_ g action = fst $ runSTGen g action
 --     NaN
 --
 -- *   If \(a\) is @-Infinity@ and \(b\) is @Infinity@, the result is @NaN@.
+--
 --     >>> let (a, b, x) = (-inf, inf, 0.5) in x * a + (1 - x) * b
 --     NaN
 --
