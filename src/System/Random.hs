@@ -301,10 +301,10 @@ instance Random Char
 instance Random Bool
 instance Random Double where
   randomR r g = runStateGen g (uniformRM r)
-  random g = runStateGen g (uniformRM (0, 1))
+  random g = runStateGen g uniformDouble01M
 instance Random Float where
   randomR r g = runStateGen g (uniformRM r)
-  random g = runStateGen g (uniformRM (0, 1))
+  random g = runStateGen g uniformFloat01M
 
 -------------------------------------------------------------------------------
 -- Global pseudo-random number generator

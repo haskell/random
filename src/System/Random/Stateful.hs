@@ -277,7 +277,7 @@ uniformListM n gen = replicateM n (uniformM gen)
 -- >>> let pureGen = mkStdGen 137
 -- >>> g <- newIOGenM pureGen
 -- >>> randomM g :: IO Double
--- 0.5728354935654512
+-- 0.42716450643454884
 --
 -- @since 1.2.0
 randomM :: (RandomGenM g r m, Random a) => g -> m a
