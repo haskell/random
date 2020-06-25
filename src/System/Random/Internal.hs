@@ -430,7 +430,7 @@ runStateGen g f = runState (f StateGenM) g
 --
 -- >>> import System.Random.Stateful
 -- >>> let pureGen = mkStdGen 137
--- >>> runStateGen_ pureGen  randomM :: Int
+-- >>> runStateGen_ pureGen randomM :: Int
 -- 7879794327570578227
 --
 -- @since 1.2.0
@@ -855,6 +855,9 @@ instance UniformRange Bool where
 instance UniformRange Double where
   uniformRM (l, h) g
     | l == h = return l
+    | isInfinite l && isInfinite h = return (0/0) -- NaN
+    | isInfinite l = return l
+    | isInfinite h = return h
     | otherwise = do
       x <- uniformDouble01M g
       return $ x * l + (1 -x) * h
@@ -889,6 +892,9 @@ uniformDoublePositive01M g = (+ d) <$> uniformDouble01M g
 instance UniformRange Float where
   uniformRM (l, h) g
     | l == h = return l
+    | isInfinite l && isInfinite h = return (0/0) -- NaN
+    | isInfinite l = return l
+    | isInfinite h = return h
     | otherwise = do
       x <- uniformFloat01M g
       return $ x * l + (1 - x) * h
