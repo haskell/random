@@ -1,5 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -9,8 +11,10 @@ module Main (main) where
 import Data.ByteString.Short as SBS
 import Data.Int
 import Data.Typeable
+import Data.Void
 import Data.Word
 import Foreign.C.Types
+import GHC.Generics
 import Numeric.Natural (Natural)
 import System.Random
 import Test.SmallCheck.Series as SC
@@ -42,7 +46,7 @@ main =
     , integralSpec (Proxy :: Proxy Int)
     , integralSpec (Proxy :: Proxy Char)
     , integralSpec (Proxy :: Proxy Bool)
-#if __GLASGOW_HASKELL >= 802
+#if __GLASGOW_HASKELL__ >= 802
     , integralSpec (Proxy :: Proxy CBool)
 #endif
     , integralSpec (Proxy :: Proxy CChar)
@@ -66,6 +70,11 @@ main =
     , integralSpec (Proxy :: Proxy CUIntMax)
     , integralSpec (Proxy :: Proxy Integer)
     , integralSpec (Proxy :: Proxy Natural)
+#if __GLASGOW_HASKELL__ >= 802
+    , integralSpec (Proxy :: Proxy MyBool)
+    , integralSpec (Proxy :: Proxy MyAction)
+    , integralSpec (Proxy :: Proxy Foo)
+#endif
     , runSpec
     , floatTests
     , byteStringSpec
@@ -141,3 +150,26 @@ runSpec = testGroup "runGenState_ and runPrimGenIO_"
 -- | Create a StdGen instance from an Int and pass it to the given function.
 seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
+
+#if __GLASGOW_HASKELL__ >= 802
+
+data MyBool = MyTrue | MyFalse
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform, UniformRange)
+instance Monad m => Serial m MyBool
+
+data MyAction = Code (Maybe MyBool) | Never Void | Eat (Bool, Bool) | Sleep ()
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform, UniformRange)
+instance Monad m => Serial m MyAction
+
+data Foo
+  = Quux Char
+  | Bar   Int   | Baz Word
+  | Bar8  Int8  | Baz8 Word8
+  | Bar16 Int16 | Baz16 Word16
+  | Bar32 Int32 | Baz32 Word32
+  | Bar64 Int64 | Baz64 Word64
+  | Final ()
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform, UniformRange)
+instance Monad m => Serial m Foo
+
+#endif
