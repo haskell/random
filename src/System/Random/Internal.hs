@@ -1045,6 +1045,18 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) => U
 instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Uniform g) => Uniform (a, b, c, d, e, f, g) where
   uniformM g = (,,,,,,) <$> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g
 
+-------------------------------------------------------------------------------
+-- DerivingVia 'Uniform' and 'UniformRange' instances for Enums
+-------------------------------------------------------------------------------
+
+newtype UniformEnum a = UniformEnum a
+
+instance Enum a => UniformRange (UniformEnum a) where
+  uniformM = error "Unimplemented"
+
+instance (Bounded a, Enum a) => Uniform (UniformEnum a) where
+  uniformRM = error "Unimplemented"
+
 -- Appendix 1.
 --
 -- @top@ and @bottom@ are signed integers of bit width @n@. @toUnsigned@
