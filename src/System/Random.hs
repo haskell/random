@@ -27,6 +27,7 @@ module System.Random
   , Random(..)
   , Uniform
   , UniformRange
+  , UniformEnum
   -- ** Standard pseudo-random number generator
   , StdGen
   , mkStdGen

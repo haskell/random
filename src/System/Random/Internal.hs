@@ -58,6 +58,7 @@ module System.Random.Internal
   , uniformDoublePositive01M
   , uniformFloat01M
   , uniformFloatPositive01M
+  , UniformEnum
 
   -- * Generators for sequences of pseudo-random bytes
   , genShortByteStringIO
