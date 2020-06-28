@@ -1052,10 +1052,12 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Unif
 newtype UniformEnum a = UniformEnum a
 
 instance Enum a => UniformRange (UniformEnum a) where
-  uniformM = error "Unimplemented"
+  uniformRM (UniformEnum l, UniformEnum h) g =
+    pure . UniformEnum . toEnum =<< uniformIntegralM (fromEnum l, fromEnum h) g
 
 instance (Bounded a, Enum a) => Uniform (UniformEnum a) where
-  uniformRM = error "Unimplemented"
+  uniformM g = pure . UniformEnum . toEnum
+    =<< uniformIntegralM (fromEnum (minBound :: a), fromEnum (maxBound :: a)) g
 
 -- Appendix 1.
 --
