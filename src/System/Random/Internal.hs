@@ -1049,6 +1049,16 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Unif
 -- DerivingVia 'Uniform' and 'UniformRange' instances for Enums
 -------------------------------------------------------------------------------
 
+-- | Newtype for use with @DerivingVia@. Enables deriving instances of
+-- @UniformRange@ for types with @Enum@ instances, and @Uniform@ for
+-- types with @Bounded@ and @Enum@ instances.
+--
+-- ====__Example__
+--
+--     data RGB = R | G | B
+--       deriving (Enum, Bounded)
+--       deriving Uniform via UniformEnum RGB
+--
 newtype UniformEnum a = UniformEnum a
 
 instance Enum a => UniformRange (UniformEnum a) where
