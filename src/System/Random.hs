@@ -63,6 +63,7 @@ import Data.IORef
 import Data.Word
 import Foreign.C.Types
 import GHC.Exts
+import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
@@ -260,11 +261,16 @@ instance Random Int16
 instance Random Int32
 instance Random Int64
 instance Random Int
-instance Random Word
+
+-- | /Note/ - `random` generates values in the `Word` range
+instance Random Natural where
+  random = first (fromIntegral :: Word -> Natural) . random
 instance Random Word8
 instance Random Word16
 instance Random Word32
 instance Random Word64
+instance Random Word
+
 #if __GLASGOW_HASKELL__ >= 802
 instance Random CBool
 #endif
