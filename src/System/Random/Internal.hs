@@ -68,10 +68,13 @@ module System.Random.Internal
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
-import Control.Monad.IO.Class
+import Control.Monad (when)
+import Control.Monad.Cont (ContT, runContT)
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.ST
 import Control.Monad.ST.Unsafe
-import Control.Monad.State.Strict
+import Control.Monad.State.Strict (StateT(..), State, MonadState(..), runState)
+import Control.Monad.Trans (lift)
 import Data.Bits
 import Data.ByteString.Builder.Prim (word64LE)
 import Data.ByteString.Builder.Prim.Internal (runF)
@@ -503,7 +506,7 @@ class Uniform a where
   -- | Generates a value uniformly distributed over all possible values of that
   -- type.
   --
-  -- There is also a default implementation for finitely-inhabited types.
+  -- There is a default implementation via 'Generic':
   --
   -- >>> :set -XDeriveGeneric -XDeriveAnyClass
   -- >>> import GHC.Generics (Generic)
@@ -518,17 +521,17 @@ class Uniform a where
   uniformM :: StatefulGen g m => g -> m a
 
   default uniformM :: (StatefulGen g m, Generic a, GUniform (Rep a)) => g -> m a
-  uniformM = fmap to . guniformM
+  uniformM = fmap to . (`runContT` pure) . guniformM
 
 class GUniform f where
-  guniformM :: StatefulGen g m => g -> m (f a)
+  guniformM :: StatefulGen g m => g -> ContT r m (f a)
 
 instance GUniform f => GUniform (M1 i c f) where
   guniformM = fmap M1 . guniformM
   {-# INLINE guniformM #-}
 
 instance Uniform a => GUniform (K1 i a) where
-  guniformM = fmap K1 . uniformM
+  guniformM = fmap K1 . lift . uniformM
   {-# INLINE guniformM #-}
 
 instance GUniform U1 where
@@ -540,7 +543,7 @@ instance (GUniform f, GUniform g) => GUniform (f :*: g) where
   {-# INLINE guniformM #-}
 
 instance (GFinite f, GFinite g) => GUniform (f :+: g) where
-  guniformM = finiteUniformM
+  guniformM = lift . finiteUniformM
   {-# INLINE guniformM #-}
 
 finiteUniformM :: forall g m f a. (StatefulGen g m, GFinite f) => g -> m (f a)
@@ -554,7 +557,8 @@ finiteUniformM = fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
 {-# INLINE finiteUniformM #-}
 
 -- | A definition of 'Uniform' for 'Finite' types.
--- It is often more efficient than one, derived via 'Generic' and 'GUniform'.
+-- If your data has several fields of sub-'Word' cardinality,
+-- this instance may be more efficient than one, derived via 'Generic' and 'GUniform'.
 --
 -- >>> :set -XDeriveGeneric -XDeriveAnyClass
 -- >>> import GHC.Generics (Generic)
@@ -587,7 +591,7 @@ class UniformRange a where
   --
   -- > uniformRM (a, b) = uniformRM (b, a)
   --
-  -- There is also a default implementation for finitely-inhabited types.
+  -- There is a default implementation for finitely-inhabited types.
   --
   -- >>> :set -XDeriveGeneric -XDeriveAnyClass
   -- >>> import GHC.Generics (Generic)
