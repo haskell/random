@@ -60,6 +60,7 @@ module System.Random
 
 import Control.Arrow
 import Control.Monad.IO.Class
+import Control.Monad.State.Strict
 import Data.ByteString (ByteString)
 import Data.Int
 import Data.IORef
@@ -304,12 +305,12 @@ instance Random CUIntPtr
 instance Random CIntMax
 instance Random CUIntMax
 instance Random CFloat where
-  randomR (CFloat l, CFloat h) = first CFloat . randomR (l, h)
+  randomR r = coerce . randomR (coerce r :: (Float, Float))
   {-# INLINE randomR #-}
   random = first CFloat . random
   {-# INLINE random #-}
 instance Random CDouble where
-  randomR (CDouble l, CDouble h) = first CDouble . randomR (l, h)
+  randomR r = coerce . randomR (coerce r :: (Double, Double))
   {-# INLINE randomR #-}
   random = first CDouble . random
   {-# INLINE random #-}
@@ -342,6 +343,85 @@ instance Random Float where
 initStdGen :: MonadIO m => m StdGen
 initStdGen = liftIO (StdGen <$> SM.initSMGen)
 
+
+instance (Random a, Random b) => Random (a, b) where
+  randomR ((al, bl), (ah, bh)) = runState $
+    (,) <$> state (randomR (al, ah)) <*> state (randomR (bl, bh))
+  {-# INLINE randomR #-}
+  random = runState $ (,) <$> state random <*> state random
+  {-# INLINE random #-}
+
+instance (Random a, Random b, Random c) => Random (a, b, c) where
+  randomR ((al, bl, cl), (ah, bh, ch)) = runState $
+    (,,) <$> state (randomR (al, ah))
+         <*> state (randomR (bl, bh))
+         <*> state (randomR (cl, ch))
+  {-# INLINE randomR #-}
+  random = runState $ (,,) <$> state random <*> state random <*> state random
+  {-# INLINE random #-}
+
+instance (Random a, Random b, Random c, Random d) => Random (a, b, c, d) where
+  randomR ((al, bl, cl, dl), (ah, bh, ch, dh)) = runState $
+    (,,,) <$> state (randomR (al, ah))
+          <*> state (randomR (bl, bh))
+          <*> state (randomR (cl, ch))
+          <*> state (randomR (dl, dh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,) <$> state random <*> state random <*> state random <*> state random
+  {-# INLINE random #-}
+
+instance (Random a, Random b, Random c, Random d, Random e) => Random (a, b, c, d, e) where
+  randomR ((al, bl, cl, dl, el), (ah, bh, ch, dh, eh)) = runState $
+    (,,,,) <$> state (randomR (al, ah))
+           <*> state (randomR (bl, bh))
+           <*> state (randomR (cl, ch))
+           <*> state (randomR (dl, dh))
+           <*> state (randomR (el, eh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,,) <$> state random <*> state random <*> state random <*> state random <*> state random
+  {-# INLINE random #-}
+
+instance (Random a, Random b, Random c, Random d, Random e, Random f) =>
+  Random (a, b, c, d, e, f) where
+  randomR ((al, bl, cl, dl, el, fl), (ah, bh, ch, dh, eh, fh)) = runState $
+    (,,,,,) <$> state (randomR (al, ah))
+            <*> state (randomR (bl, bh))
+            <*> state (randomR (cl, ch))
+            <*> state (randomR (dl, dh))
+            <*> state (randomR (el, eh))
+            <*> state (randomR (fl, fh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,,,) <$> state random
+            <*> state random
+            <*> state random
+            <*> state random
+            <*> state random
+            <*> state random
+  {-# INLINE random #-}
+
+instance (Random a, Random b, Random c, Random d, Random e, Random f, Random g) =>
+  Random (a, b, c, d, e, f, g) where
+  randomR ((al, bl, cl, dl, el, fl, gl), (ah, bh, ch, dh, eh, fh, gh)) = runState $
+    (,,,,,,) <$> state (randomR (al, ah))
+             <*> state (randomR (bl, bh))
+             <*> state (randomR (cl, ch))
+             <*> state (randomR (dl, dh))
+             <*> state (randomR (el, eh))
+             <*> state (randomR (fl, fh))
+             <*> state (randomR (gl, gh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,,,,) <$> state random
+             <*> state random
+             <*> state random
+             <*> state random
+             <*> state random
+             <*> state random
+             <*> state random
+  {-# INLINE random #-}
 
 -------------------------------------------------------------------------------
 -- Global pseudo-random number generator
