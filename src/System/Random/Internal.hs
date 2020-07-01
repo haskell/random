@@ -523,6 +523,11 @@ class Uniform a where
   default uniformM :: (StatefulGen g m, Generic a, GUniform (Rep a)) => g -> m a
   uniformM = fmap to . (`runContT` pure) . guniformM
 
+-- | Default implementation of Uniform type class in terms
+-- generics. Note use of ContT. Without it uses of fmap and bind are
+-- fully polymorphic and GHC can't inline or specialize it. ContT
+-- makes fmap and binds used in @gniformM@ monomorphic so GHC able to
+-- specialize code instance reasonably close to handwritten one
 class GUniform f where
   guniformM :: StatefulGen g m => g -> ContT r m (f a)
 
