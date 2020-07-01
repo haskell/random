@@ -42,7 +42,7 @@ main =
     , integralSpec (Proxy :: Proxy Int)
     , integralSpec (Proxy :: Proxy Char)
     , integralSpec (Proxy :: Proxy Bool)
-#if __GLASGOW_HASKELL >= 802
+#if __GLASGOW_HASKELL__ >= 802
     , integralSpec (Proxy :: Proxy CBool)
 #endif
     , integralSpec (Proxy :: Proxy CChar)
