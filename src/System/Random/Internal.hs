@@ -603,10 +603,13 @@ class UniformRange a where
   -- >>> import GHC.Generics (Generic)
   -- >>> import Data.Word (Word8)
   -- >>> import System.Random.Stateful
-  -- >>> data Foo = Bar Word8 | Quux Word8 deriving (Show, Generic, Finite, UniformRange)
   -- >>> gen <- newIOGenM (mkStdGen 42)
+  -- >>> data Foo = Bar Word8 | Quux Word8 deriving (Show, Generic, Finite, UniformRange)
   -- >>> Control.Monad.replicateM 10 (uniformRM (Bar 100, Quux 150) gen)
   -- [Bar 148,Bar 251,Bar 195,Quux 115,Quux 52,Bar 123,Bar 239,Bar 195,Quux 150,Quux 31]
+  -- >>> data Tuple = Tuple Bool Word8 deriving (Show, Generic, Finite, UniformRange)
+  -- >>> Control.Monad.replicateM 10 (uniformRM (Tuple False 100, Tuple True 150) gen)
+  -- [Tuple True 141,Tuple True 92,Tuple False 194,Tuple False 191,Tuple True 81,Tuple False 227,Tuple False 166,Tuple False 109,Tuple False 255,Tuple False 222]
   --
   -- @since 1.2.0
   uniformRM :: StatefulGen g m => (a, a) -> g -> m a

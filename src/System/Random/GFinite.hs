@@ -171,7 +171,7 @@ instance (GFinite a, GFinite b) => GFinite (a :*: b) where
   {-# INLINE toGFinite #-}
 
   fromGFinite (q :*: r) =
-    toInteger (gcardinality (proxy# :: Proxy# a) * Card (fromGFinite q)) + fromGFinite r
+    toInteger (gcardinality (proxy# :: Proxy# b) * Card (fromGFinite q)) + fromGFinite r
   {-# INLINE fromGFinite #-}
 
 instance Finite Void
