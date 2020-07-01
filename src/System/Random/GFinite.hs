@@ -31,9 +31,16 @@ data Cardinality
   | Card  !Integer
   deriving (Eq, Ord, Show)
 
+-- | This is needed only as a superclass of 'Integral'.
 instance Enum Cardinality where
   toEnum = fromIntegral
   fromEnum = fromIntegral
+  succ = (+ 1)
+  pred = subtract 1
+  enumFrom x           = map fromInteger (enumFrom (toInteger x))
+  enumFromThen x y     = map fromInteger (enumFromThen (toInteger x) (toInteger y))
+  enumFromTo x y       = map fromInteger (enumFromTo (toInteger x) (toInteger y))
+  enumFromThenTo x y z = map fromInteger (enumFromThenTo (toInteger x) (toInteger y) (toInteger z))
 
 instance Num Cardinality where
   fromInteger 1 = Shift 0  -- ()
@@ -54,6 +61,7 @@ instance Num Cardinality where
   signum = Card . signum . toInteger
   negate = Card . negate . toInteger
 
+-- | This is needed only as a superclass of 'Integral'.
 instance Real Cardinality where
   toRational = fromIntegral
 
