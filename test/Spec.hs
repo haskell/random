@@ -6,13 +6,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
+import Control.Monad
 import Data.ByteString.Short as SBS
 import Data.Int
 import Data.Typeable
 import Data.Word
 import Foreign.C.Types
 import Numeric.Natural (Natural)
-import System.Random
+import System.Random.Stateful
 import Test.SmallCheck.Series as SC
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -71,6 +72,18 @@ main =
     , byteStringSpec
     , SC.testProperty "uniformRangeWithinExcludedF" $ seeded Range.uniformRangeWithinExcludedF
     , SC.testProperty "uniformRangeWithinExcludedD" $ seeded Range.uniformRangeWithinExcludedD
+    , randomSpec (Proxy :: Proxy (CFloat, CDouble))
+    , randomSpec (Proxy :: Proxy (Int8, Int16, Int32))
+    , randomSpec (Proxy :: Proxy (Int8, Int16, Int32, Int64))
+    , randomSpec (Proxy :: Proxy (Word8, Word16, Word32, Word64, Word))
+    , randomSpec (Proxy :: Proxy (Int8, Word8, Word16, Word32, Word64, Word))
+    , randomSpec (Proxy :: Proxy (Int8, Int16, Word8, Word16, Word32, Word64, Word))
+    , uniformSpec (Proxy :: Proxy (Int, Bool))
+    , uniformSpec (Proxy :: Proxy (Int8, Int16, Int32))
+    , uniformSpec (Proxy :: Proxy (Int8, Int16, Int32, Int64))
+    , uniformSpec (Proxy :: Proxy (Word8, Word16, Word32, Word64, Word))
+    , uniformSpec (Proxy :: Proxy (Int8, Word8, Word16, Word32, Word64, Word))
+    , uniformSpec (Proxy :: Proxy (Int8, Int16, Word8, Word16, Word32, Word64, Word))
     ]
 
 floatTests :: TestTree
@@ -92,13 +105,11 @@ byteStringSpec :: TestTree
 byteStringSpec =
   testGroup
     "ByteString"
-    [ SC.testProperty "genShortByteString" $ \(seed, n8) ->
-        let n = fromIntegral (n8 :: Word8) -- no need to generate huge collection of bytes
-         in SBS.length (fst (seeded (genShortByteString n) seed)) == n
-    , SC.testProperty "genByteString" $ \(seed, n8) ->
-        let n = fromIntegral (n8 :: Word8)
-         in SBS.toShort (fst (seeded (genByteString n) seed)) ==
-            fst (seeded (genShortByteString n) seed)
+    [ SC.testProperty "genShortByteString" $
+      seededWithLen $ \n g -> SBS.length (fst (genShortByteString n g)) == n
+    , SC.testProperty "genByteString" $
+      seededWithLen $ \n g ->
+        SBS.toShort (fst (genByteString n g)) == fst (genShortByteString n g)
     ]
 
 
@@ -134,6 +145,38 @@ floatingSpec px =
   -- TODO: Add more tests
   ]
 
+randomSpec ::
+     forall a.
+     (Typeable a, Eq a, Random a, Show a)
+  => Proxy a -> TestTree
+randomSpec px =
+  testGroup
+    ("Random " ++ showsType px ")")
+    [ SC.testProperty "randoms" $
+      seededWithLen $ \len g ->
+        take len (randoms g :: [a]) == runStateGen_ g (replicateM len . randomM)
+    , SC.testProperty "randomRs" $
+      seededWithLen $ \len g ->
+        case random g of
+          (l, g') ->
+            case random g' of
+              (h, g'') ->
+                take len (randomRs (l, h) g'' :: [a]) ==
+                runStateGen_ g'' (replicateM len . randomRM (l, h))
+    ]
+
+uniformSpec ::
+     forall a.
+     (Typeable a, Eq a, Random a, Uniform a, Show a)
+  => Proxy a -> TestTree
+uniformSpec px =
+  testGroup
+    ("Uniform " ++ showsType px ")")
+    [ SC.testProperty "uniformListM" $
+      seededWithLen $ \len g ->
+        take len (randoms g :: [a]) == runStateGen_ g (uniformListM len)
+    ]
+
 runSpec :: TestTree
 runSpec = testGroup "runGenState_ and runPrimGenIO_"
     [ SC.testProperty "equal outputs" $ seeded $ \g -> monadic $ Run.runsEqual g ]
@@ -141,3 +184,8 @@ runSpec = testGroup "runGenState_ and runPrimGenIO_"
 -- | Create a StdGen instance from an Int and pass it to the given function.
 seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
+
+-- | Saem as `seeded`, but also produces a length in range 0-255 suitable for generating
+-- lists and such
+seededWithLen :: (Int -> StdGen -> a) -> Word8 -> Int -> a
+seededWithLen f w8 = seeded (f (fromIntegral w8))
