@@ -70,11 +70,6 @@ main =
     , integralSpec (Proxy :: Proxy CUIntMax)
     , integralSpec (Proxy :: Proxy Integer)
     , integralSpec (Proxy :: Proxy Natural)
-#if __GLASGOW_HASKELL__ >= 802
-    , integralSpec (Proxy :: Proxy MyBool)
-    , integralSpec (Proxy :: Proxy MyAction)
-    , integralSpec (Proxy :: Proxy Foo)
-#endif
     , runSpec
     , floatTests
     , byteStringSpec
@@ -154,11 +149,11 @@ seeded f = f . mkStdGen
 #if __GLASGOW_HASKELL__ >= 802
 
 data MyBool = MyTrue | MyFalse
-  deriving (Eq, Ord, Show, Generic, Finite, Uniform, UniformRange)
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
 instance Monad m => Serial m MyBool
 
 data MyAction = Code (Maybe MyBool) | Never Void | Eat (Bool, Bool) | Sleep ()
-  deriving (Eq, Ord, Show, Generic, Finite, Uniform, UniformRange)
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
 instance Monad m => Serial m MyAction
 
 data Foo
@@ -169,7 +164,7 @@ data Foo
   | Bar32 Int32 | Baz32 Word32
   | Bar64 Int64 | Baz64 Word64
   | Final ()
-  deriving (Eq, Ord, Show, Generic, Finite, Uniform, UniformRange)
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
 instance Monad m => Serial m Foo
 
 #endif
