@@ -838,6 +838,11 @@ instance UniformRange Char where
     word32ToChar <$> unbiasedWordMult32RM (charToWord32 l, charToWord32 h) g
   {-# INLINE uniformRM #-}
 
+instance Uniform () where
+  uniformM = const $ pure ()
+instance UniformRange () where
+  uniformRM = const $ const $ pure ()
+
 instance Uniform Bool where
   uniformM = fmap wordToBool . uniformWord8
     where wordToBool w = (w .&. 1) /= 0

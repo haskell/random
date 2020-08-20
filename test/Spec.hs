@@ -146,15 +146,14 @@ runSpec = testGroup "runGenState_ and runPrimGenIO_"
 seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
 
-#if __GLASGOW_HASKELL__ >= 802
-
 data MyBool = MyTrue | MyFalse
   deriving (Eq, Ord, Show, Generic, Finite, Uniform)
 instance Monad m => Serial m MyBool
 
 data MyAction = Code (Maybe MyBool) | Never Void | Eat (Bool, Bool) | Sleep ()
-  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
+  deriving (Eq, Ord, Show, Generic, Finite)
 instance Monad m => Serial m MyAction
+instance Uniform MyAction
 
 data Foo
   = Quux Char
@@ -166,5 +165,3 @@ data Foo
   | Final ()
   deriving (Eq, Ord, Show, Generic, Finite, Uniform)
 instance Monad m => Serial m Foo
-
-#endif
