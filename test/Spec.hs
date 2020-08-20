@@ -1,5 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -9,8 +11,10 @@ module Main (main) where
 import Data.ByteString.Short as SBS
 import Data.Int
 import Data.Typeable
+import Data.Void
 import Data.Word
 import Foreign.C.Types
+import GHC.Generics
 import Numeric.Natural (Natural)
 import System.Random
 import Test.SmallCheck.Series as SC
@@ -141,3 +145,23 @@ runSpec = testGroup "runGenState_ and runPrimGenIO_"
 -- | Create a StdGen instance from an Int and pass it to the given function.
 seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
+
+data MyBool = MyTrue | MyFalse
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
+instance Monad m => Serial m MyBool
+
+data MyAction = Code (Maybe MyBool) | Never Void | Eat (Bool, Bool) | Sleep ()
+  deriving (Eq, Ord, Show, Generic, Finite)
+instance Monad m => Serial m MyAction
+instance Uniform MyAction
+
+data Foo
+  = Quux Char
+  | Bar   Int   | Baz Word
+  | Bar8  Int8  | Baz8 Word8
+  | Bar16 Int16 | Baz16 Word16
+  | Bar32 Int32 | Baz32 Word32
+  | Bar64 Int64 | Baz64 Word64
+  | Final ()
+  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
+instance Monad m => Serial m Foo

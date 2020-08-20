@@ -10,6 +10,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnliftedFFITypes #-}
@@ -52,6 +53,7 @@ module System.Random.Internal
 
   -- * Pseudo-random values of various types
   , Uniform(..)
+  , uniformViaFiniteM
   , UniformRange(..)
   , uniformByteStringM
   , uniformDouble01M
@@ -66,10 +68,13 @@ module System.Random.Internal
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
-import Control.Monad.IO.Class
+import Control.Monad (when)
+import Control.Monad.Cont (ContT, runContT)
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.ST
 import Control.Monad.ST.Unsafe
-import Control.Monad.State.Strict
+import Control.Monad.State.Strict (StateT(..), State, MonadState(..), runState)
+import Control.Monad.Trans (lift)
 import Data.Bits
 import Data.ByteString.Builder.Prim (word64LE)
 import Data.ByteString.Builder.Prim.Internal (runF)
@@ -80,10 +85,12 @@ import Foreign.C.Types
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(pokeByteOff))
 import GHC.Exts
+import GHC.Generics
 import GHC.IO (IO(..))
 import GHC.Word
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
+import System.Random.GFinite (Cardinality(..), GFinite(..))
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
 #if __GLASGOW_HASKELL__ >= 800
@@ -499,8 +506,78 @@ class Uniform a where
   -- | Generates a value uniformly distributed over all possible values of that
   -- type.
   --
+  -- There is a default implementation via 'Generic':
+  --
+  -- >>> :set -XDeriveGeneric -XDeriveAnyClass
+  -- >>> import GHC.Generics (Generic)
+  -- >>> import System.Random.Stateful
+  -- >>> data MyBool = MyTrue | MyFalse deriving (Show, Generic, Finite, Uniform)
+  -- >>> data Action = Code MyBool | Eat (Maybe Bool) | Sleep deriving (Show, Generic, Finite, Uniform)
+  -- >>> gen <- newIOGenM (mkStdGen 42)
+  -- >>> uniformListM 10 gen :: IO [Action]
+  -- [Code MyTrue,Code MyTrue,Eat Nothing,Code MyFalse,Eat (Just False),Eat (Just True),Eat Nothing,Eat (Just False),Sleep,Code MyFalse]
+  --
   -- @since 1.2.0
   uniformM :: StatefulGen g m => g -> m a
+
+  default uniformM :: (StatefulGen g m, Generic a, GUniform (Rep a)) => g -> m a
+  uniformM = fmap to . (`runContT` pure) . guniformM
+
+-- | Default implementation of 'Uniform' type class for 'Generic' data.
+-- It's important to use 'ContT', because without it 'fmap' and '>>=' remain
+-- polymorphic too long and GHC fails to inline or specialize it, ending up
+-- building full 'Rep' a structure in memory. 'ContT'
+-- makes 'fmap' and '>>=' used in 'guniformM' monomorphic, so GHC is able to
+-- specialize 'Generic' instance reasonably close to a handwritten one.
+class GUniform f where
+  guniformM :: StatefulGen g m => g -> ContT r m (f a)
+
+instance GUniform f => GUniform (M1 i c f) where
+  guniformM = fmap M1 . guniformM
+  {-# INLINE guniformM #-}
+
+instance Uniform a => GUniform (K1 i a) where
+  guniformM = fmap K1 . lift . uniformM
+  {-# INLINE guniformM #-}
+
+instance GUniform U1 where
+  guniformM = const $ return U1
+  {-# INLINE guniformM #-}
+
+instance (GUniform f, GUniform g) => GUniform (f :*: g) where
+  guniformM g = (:*:) <$> guniformM g <*> guniformM g
+  {-# INLINE guniformM #-}
+
+instance (GFinite f, GFinite g) => GUniform (f :+: g) where
+  guniformM = lift . finiteUniformM
+  {-# INLINE guniformM #-}
+
+finiteUniformM :: forall g m f a. (StatefulGen g m, GFinite f) => g -> m (f a)
+finiteUniformM = fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
+  Shift n
+    | n <= 64 -> fmap toInteger . unsignedBitmaskWithRejectionM uniformWord64 (bit n - 1)
+    | otherwise -> boundedByPowerOf2ExclusiveIntegralM n
+  Card n
+    | n <= bit 64 -> fmap toInteger . unsignedBitmaskWithRejectionM uniformWord64 (fromInteger n - 1)
+    | otherwise -> boundedExclusiveIntegralM n
+{-# INLINE finiteUniformM #-}
+
+-- | A definition of 'Uniform' for 'Finite' types.
+-- If your data has several fields of sub-'Word' cardinality,
+-- this instance may be more efficient than one, derived via 'Generic' and 'GUniform'.
+--
+-- >>> :set -XDeriveGeneric -XDeriveAnyClass
+-- >>> import GHC.Generics (Generic)
+-- >>> import System.Random.Stateful
+-- >>> data Triple = Triple Word8 Word8 Word8 deriving (Show, Generic, Finite)
+-- >>> instance Uniform Triple where uniformM = uniformViaFiniteM
+-- >>> gen <- newIOGenM (mkStdGen 42)
+-- >>> uniformListM 5 gen :: IO [Triple]
+-- [Triple 60 226 48,Triple 234 194 151,Triple 112 96 95,Triple 51 251 15,Triple 6 0 208]
+--
+uniformViaFiniteM :: (StatefulGen g m, Generic a, GFinite (Rep a)) => g -> m a
+uniformViaFiniteM = fmap to . finiteUniformM
+{-# INLINE uniformViaFiniteM #-}
 
 -- | The class of types for which a uniformly distributed value can be drawn
 -- from a range.
@@ -572,6 +649,7 @@ instance Uniform Word where
       fmap (fromIntegral :: Word64 -> Word) . uniformWord64
     | otherwise =
       fmap (fromIntegral :: Word32 -> Word) . uniformWord32
+  {-# INLINE uniformM #-}
 
 instance UniformRange Word where
   {-# INLINE uniformRM #-}
@@ -760,6 +838,11 @@ instance UniformRange Char where
     word32ToChar <$> unbiasedWordMult32RM (charToWord32 l, charToWord32 h) g
   {-# INLINE uniformRM #-}
 
+instance Uniform () where
+  uniformM = const $ pure ()
+instance UniformRange () where
+  uniformRM = const $ const $ pure ()
+
 instance Uniform Bool where
   uniformM = fmap wordToBool . uniformWord8
     where wordToBool w = (w .&. 1) /= 0
@@ -881,6 +964,8 @@ uniformIntegralM (l, h) gen = case l `compare` h of
   GT -> uniformIntegralM (h, l) gen
   EQ -> pure l
 {-# INLINEABLE uniformIntegralM #-}
+{-# SPECIALIZE uniformIntegralM :: StatefulGen g m => (Integer, Integer) -> g -> m Integer #-}
+{-# SPECIALIZE uniformIntegralM :: StatefulGen g m => (Natural, Natural) -> g -> m Natural #-}
 
 -- | Generate an integral in the range @[0, s)@ using a variant of Lemire's
 -- multiplication method.
@@ -912,6 +997,14 @@ boundedExclusiveIntegralM s gen = go
         -- m `shiftR` k == m `quot` twoToK
         else return $ m `shiftR` k
 {-# INLINE boundedExclusiveIntegralM #-}
+
+-- | boundedByPowerOf2ExclusiveIntegralM s ~ boundedExclusiveIntegralM (bit s)
+boundedByPowerOf2ExclusiveIntegralM :: (Bits a, Integral a, StatefulGen g m) => Int -> g -> m a
+boundedByPowerOf2ExclusiveIntegralM s gen = do
+  let n = (s + wordSizeInBits - 1) `quot` wordSizeInBits
+  x <- uniformIntegralWords n gen
+  return $ x .&. (bit s - 1)
+{-# INLINE boundedByPowerOf2ExclusiveIntegralM #-}
 
 -- | @integralWordSize i@ returns that least @w@ such that
 -- @i <= WORD_SIZE_IN_BITS^w@.

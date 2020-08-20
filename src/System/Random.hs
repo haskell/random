@@ -27,6 +27,8 @@ module System.Random
   , Random(..)
   , Uniform
   , UniformRange
+  , Finite
+
   -- ** Standard pseudo-random number generator
   , StdGen
   , mkStdGen
@@ -64,6 +66,7 @@ import Data.Word
 import Foreign.C.Types
 import GHC.Exts
 import System.IO.Unsafe (unsafePerformIO)
+import System.Random.GFinite (Finite)
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 

@@ -70,6 +70,7 @@ module System.Random.Stateful
   -- $uniform
   , Uniform(..)
   , uniformListM
+  , uniformViaFiniteM
   , UniformRange(..)
 
   -- * Generators for sequences of pseudo-random bytes
