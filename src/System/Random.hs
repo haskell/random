@@ -174,7 +174,7 @@ uniformR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
 uniformR r g = runStateGen g (uniformRM r)
 
 -- | Generates a 'ByteString' of the specified size using a pure pseudo-random
--- number generator. See 'uniformByteString' for the monadic version.
+-- number generator. See 'uniformByteStringM' for the monadic version.
 --
 -- ====__Examples__
 --
