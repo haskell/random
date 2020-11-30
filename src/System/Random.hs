@@ -98,7 +98,7 @@ import qualified System.Random.SplitMix as SM
 -- [4,2,6,1,6,6,5,1,1,5]
 --
 -- To run use a /monadic/ pseudo-random computation in pure code with a pure
--- pseudo-random number generator, use 'runGenState' and its variants.
+-- pseudo-random number generator, use 'runStateGen' and its variants.
 --
 -- >>> :{
 -- let rollsM :: StatefulGen g m => Int -> g -> m [Word]
