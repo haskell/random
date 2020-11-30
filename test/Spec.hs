@@ -139,7 +139,7 @@ floatingSpec px =
   ]
 
 runSpec :: TestTree
-runSpec = testGroup "runGenState_ and runPrimGenIO_"
+runSpec = testGroup "runStateGen_ and runPrimGenIO_"
     [ SC.testProperty "equal outputs" $ seeded $ \g -> monadic $ Run.runsEqual g ]
 
 -- | Create a StdGen instance from an Int and pass it to the given function.

@@ -42,7 +42,7 @@ description:
     >>> runStateGen_ pureGen (replicateM 10 . rollM) :: [Word]
     [1,1,3,2,4,5,3,4,6,2]
     .
-    The monadic adapter 'System.Random.Stateful.runGenState_' is used here to lift
+    The monadic adapter 'System.Random.Stateful.runStateGen_' is used here to lift
     the pure pseudo-random number generator @pureGen@ into the
     'System.Random.Stateful.StatefulGen' context.
     .
