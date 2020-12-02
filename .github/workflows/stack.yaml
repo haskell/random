@@ -59,12 +59,14 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    # Binary exe cache becomes incompatible after restoring on MacOS it from a previous
-    # build, so it needs to be cleaned up:
+    # Executable files somehow become incompatible after restoring on MacOS from a
+    # previous build, so it needs to be cleaned up. This is very inconvenient and will
+    # need to be fixed.
     - name: MacOS workaround for failure due to setup-exe-cache
       if: steps.cache.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
       run: |
         rm -r ~/.stack/setup-exe-cache
+        rm -r .stack-work
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v2
