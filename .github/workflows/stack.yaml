@@ -9,14 +9,38 @@ on:
 defaults: { run: { shell: bash } }
 
 jobs:
-  build:
-    name: CI
+  build-cabal:
+    name: CI-cabal
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-haskell@v1
+      id: setup-haskell-cabal
+      with:
+        ghc-version: 'latest'
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v2
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}
+    - name: Build and test
+      run: |
+        cabal sdist -z -o .
+        cabal get random-*.tar.gz
+        cd random-*/
+        cabal test all
+  build-stack:
+    name: CI-stack
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         resolver: [nightly, lts-16, lts-14, lts-12, lts-11, lts-9, lts-6]
+        os: [ubuntu-latest]
         include:
           - resolver: lts-6
             ghc: 7.10.3
