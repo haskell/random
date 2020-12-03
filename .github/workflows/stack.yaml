@@ -92,6 +92,10 @@ jobs:
         curl -sSL https://gist.githubusercontent.com/lehins/fd36a8cc8bf853173437b17f6b6426ad/raw/4702d0252731ad8b21317375e917124c590819ce/git-modtime.hs -o git-modtime.hs
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
+        # git-modtime.hs updates modification time of files to the latest commit time that
+        # a file was modified in. This ensures that stack does not rebuild unchanged
+        # files. More info in this SO answer:
+        # https://stackoverflow.com/questions/60906336/stack-haskell-build-cache-of-source-files-with-github-actions/61178945#61178945
         stack --resolver ${{ matrix.resolver }} runghc git-modtime.hs
     - name: Tests
       env:
