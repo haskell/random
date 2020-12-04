@@ -130,13 +130,21 @@ integralSpec px =
 
 floatingSpec ::
      forall a.
-     (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, UniformRange a, Show a)
+     (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, UniformRange a, Read a, Show a)
   => Proxy a -> TestTree
 floatingSpec px =
   testGroup ("(" ++ showsType px ")")
   [ SC.testProperty "uniformR" $ seeded $ Range.uniformRangeWithin px
+  , testCase "r = +inf, x = 0" $ positiveInf @?= fst (uniformR (0, positiveInf) (ConstGen 0))
+  , testCase "r = +inf, x = 1" $ positiveInf @?= fst (uniformR (0, positiveInf) (ConstGen 1))
+  , testCase "l = -inf, x = 0" $ negativeInf @?= fst (uniformR (negativeInf, 0) (ConstGen 0))
+  , testCase "l = -inf, x = 1" $ negativeInf @?= fst (uniformR (negativeInf, 0) (ConstGen 1))
   -- TODO: Add more tests
   ]
+  where
+    positiveInf, negativeInf :: a
+    positiveInf = read "Infinity"
+    negativeInf = read "-Infinity"
 
 runSpec :: TestTree
 runSpec = testGroup "runStateGen_ and runPrimGenIO_"
@@ -165,3 +173,9 @@ data Foo
   | Final ()
   deriving (Eq, Ord, Show, Generic, Finite, Uniform)
 instance Monad m => Serial m Foo
+
+newtype ConstGen = ConstGen Word64
+
+instance RandomGen ConstGen where
+  genWord64 g@(ConstGen c) = (c, g)
+  split g = (g, g)
