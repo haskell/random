@@ -617,17 +617,14 @@ class UniformRange a where
   --
   -- > isInRange (lo, hi) lo == True
   --
+  -- When endpoints coincide, there is nothing else:
+  --
+  -- > isInRange (x, x) y == x == y
+  --
   -- Ranges are transitive relations:
   --
-  -- > isInRange (lo, hi) mid && isInRange (lo, mid) x ==> isInRange (lo, hi) x
-  --
-  -- Ranges are injective (up to symmetry), which means that
-  -- ranges between different endpoints cannot be the same:
-  --
-  -- > (a, b) == (c, d) || (a, b) == (d, c) ||
-  -- > there exists x such that
-  -- >    isInRange (a, b) x && not (isInRange (c, d) x)
-  -- > || isInRange (c, d) x && not (isInRange (a, b) x)
+  -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' &&
+  -- > && isInRange (lo', hi') x ==> isInRange (lo, hi) x
   --
   -- @since 1.3.0
   isInRange :: (a, a) -> a -> Bool
