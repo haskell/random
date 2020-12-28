@@ -1,5 +1,5 @@
 name:		random
-version:	1.1
+version:	1.1.0.1
 
 
 
@@ -29,14 +29,21 @@ build-type: Simple
 -- to a library which is defined within the same package"
 cabal-version: >= 1.8
 
-
+flag time
+  description:
+    Use time package to generate additional entropy
+    for the global random number generator.
+  default: True
 
 Library
     exposed-modules:
         System.Random
     extensions:	CPP
     GHC-Options: -O2
-    build-depends: base >= 3 && < 5, time
+    build-depends: base >= 3 && < 5
+    if flag(time)
+        build-depends: time
+        cpp-options: -DTIME
 
 source-repository head
     type:     git

@@ -1,3 +1,6 @@
+# 1.1.0.1
+make `time` an optional dependency
+
 # 1.1
   * breaking change to `randomIValInteger` to improve RNG quality and performance
     see https://github.com/haskell/random/pull/4 and

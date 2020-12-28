@@ -1,6 +1,10 @@
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
+#if !defined(__NHC__) && !defined(TIME)
+{-# LANGUAGE ForeignFunctionInterface #-}
+#endif
+
 
 -----------------------------------------------------------------------------
 -- |
@@ -88,7 +92,11 @@ import Foreign.Ptr      ( Ptr, nullPtr )
 import Foreign.C	( CTime, CUInt )
 #else
 import System.CPUTime	( getCPUTime )
+#ifdef TIME
 import Data.Time	( getCurrentTime, UTCTime(..) )
+#else
+import Foreign.Ptr      ( Ptr, nullPtr )
+#endif
 import Data.Ratio       ( numerator, denominator )
 #endif
 import Data.Char	( isSpace, chr, ord )
@@ -127,11 +135,18 @@ foreign import ccall "time.h time" readtime :: Ptr CTime -> IO CTime
 getTime :: IO (Integer, Integer)
 getTime = do CTime t <- readtime nullPtr;  return (toInteger t, 0)
 #else
+#ifndef TIME
+foreign import ccall "time.h time" readtime :: Ptr CTime -> IO CTime
+getTime :: IO (Integer, Integer)
+-- before base-4.5 CTime is opaque and fromEnum is the only way to cast
+getTime = do t <- readtime nullPtr;  return (toInteger (fromEnum t), 0)
+#else
 getTime :: IO (Integer, Integer)
 getTime = do
   utc <- getCurrentTime
   let daytime = toRational $ utctDayTime utc
   return $ quotRem (numerator daytime) (denominator daytime)
+#endif
 #endif
 
 -- | The class 'RandomGen' provides a common interface to random number
