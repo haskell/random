@@ -157,7 +157,7 @@ test-suite spec
         bytestring -any,
         random -any,
         smallcheck >=1.2 && <1.3,
-        tasty >=1.0 && <1.4,
+        tasty >=1.0 && <1.5,
         tasty-smallcheck >=0.8 && <0.9,
         tasty-hunit >=0.10 && <0.11
 
