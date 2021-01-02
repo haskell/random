@@ -8,9 +8,9 @@
 |:--------:|:--------------:|:---------:|
 | ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://github.com/haskell/random/workflows/random-CI/badge.svg)](https://github.com/haskell/random/actions) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=master)](https://coveralls.io/github/haskell/random?branch=master)
 
-|      Package       | Hackage | Nightly | LTS |
+|    Github Repo     | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
-|  [`random`](https://github.com/haskell/random)| [![Hackage](https://img.shields.io/hackage/v/random.svg)](https://hackage.haskell.org/package/random)| [![Nightly](https://www.stackage.org/package/random/badge/nightly)](https://www.stackage.org/nightly/package/random)| [![Nightly](https://www.stackage.org/package/random/badge/lts)](https://www.stackage.org/lts/package/random)
+|  [`random`](https://github.com/haskell/random)| [![Hackage](https://img.shields.io/hackage/v/random.svg)](https://hackage.haskell.org/package/random)| [![Nightly](https://www.stackage.org/package/random/badge/nightly)](https://www.stackage.org/nightly/package/random)| [![LTS](https://www.stackage.org/package/random/badge/lts)](https://www.stackage.org/lts/package/random)
 
 ### Description
 
