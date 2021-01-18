@@ -59,6 +59,8 @@ jobs:
           - resolver: lts-16
             ghc: 8.8.4
             stack-yaml: stack.yaml
+          - resolver: nightly
+            stack-yaml: stack-nightly.yaml
           # Latest stable for MacOS: ghc-8.8.4
           - resolver: lts-16
             os: macos-latest
