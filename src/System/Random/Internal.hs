@@ -621,6 +621,11 @@ class UniformRange a where
   --
   -- > isInRange (x, x) y == x == y
   --
+  -- Endpoints are endpoints:
+  --
+  -- > isInRange (lo, hi) x ==>
+  -- > isInRange (lo, x) hi == x == hi
+  --
   -- Ranges are transitive relations:
   --
   -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' &&
