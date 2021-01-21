@@ -628,8 +628,8 @@ class UniformRange a where
   --
   -- Ranges are transitive relations:
   --
-  -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' &&
-  -- > && isInRange (lo', hi') x ==> isInRange (lo, hi) x
+  -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' && isInRange (lo', hi') x
+  -- > ==> isInRange (lo, hi) x
   --
   -- @since 1.3.0
   isInRange :: (a, a) -> a -> Bool
