@@ -597,8 +597,45 @@ class UniformRange a where
   --
   -- > uniformRM (a, b) = uniformRM (b, a)
   --
+  -- The range is understood as defined by means of 'isInRange', so
+  --
+  -- > isInRange (a, b) <$> uniformRM (a, b) gen == pure True
+  --
+  -- but beware of
+  -- [floating point number caveats](System-Random-Stateful.html#fpcaveats).
+  --
   -- @since 1.2.0
   uniformRM :: StatefulGen g m => (a, a) -> g -> m a
+
+  -- | A notion of (inclusive) ranges prescribed to @a@.
+  --
+  -- Ranges are symmetric:
+  --
+  -- > isInRange (lo, hi) x == isInRange (hi, lo) x
+  --
+  -- Ranges include their endpoints:
+  --
+  -- > isInRange (lo, hi) lo == True
+  --
+  -- When endpoints coincide, there is nothing else:
+  --
+  -- > isInRange (x, x) y == x == y
+  --
+  -- Endpoints are endpoints:
+  --
+  -- > isInRange (lo, hi) x ==>
+  -- > isInRange (lo, x) hi == x == hi
+  --
+  -- Ranges are transitive relations:
+  --
+  -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' && isInRange (lo', hi') x
+  -- > ==> isInRange (lo, hi) x
+  --
+  -- @since 1.3.0
+  isInRange :: (a, a) -> a -> Bool
+
+  default isInRange :: Ord a => (a, a) -> a -> Bool
+  isInRange (a, b) x = min a b <= x && x <= max a b
 
 instance UniformRange Integer where
   uniformRM = uniformIntegralM
