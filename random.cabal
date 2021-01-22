@@ -88,6 +88,7 @@ library
         System.Random.Stateful
     other-modules:
         System.Random.GFinite
+        System.Random.GFiniteRange
 
     hs-source-dirs:   src
     default-language: Haskell2010

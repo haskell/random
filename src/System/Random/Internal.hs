@@ -93,6 +93,7 @@ import GHC.Word
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random.GFinite (Cardinality(..), GFinite(..))
+import System.Random.GFiniteRange (GFiniteRange(..))
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
 #if __GLASGOW_HASKELL__ >= 800
@@ -640,6 +641,20 @@ class UniformRange a where
   -- but beware of
   -- [floating point number caveats](System-Random-Stateful.html#fpcaveats).
   --
+  -- There is a default implementation via 'Generic':
+  --
+  -- >>> :set -XDeriveGeneric -XDeriveAnyClass
+  -- >>> import GHC.Generics (Generic)
+  -- >>> import Data.Word (Word8)
+  -- >>> import System.Random.Stateful
+  -- >>> gen <- newIOGenM (mkStdGen 42)
+  -- >>> data Tuple = Tuple Bool Word8 deriving (Show, Generic, FiniteRange, UniformRange)
+  -- >>> Control.Monad.replicateM 10 (uniformRM (Tuple False 100, Tuple True 150) gen)
+  -- [Tuple False 102,Tuple True 118,Tuple False 115,Tuple True 113,Tuple True 126,Tuple False 127,Tuple True 130,Tuple False 113,Tuple False 150,Tuple False 125]
+  -- >>> data Foo = Bar Word8 | Quux Word8 deriving (Show, Generic, FiniteRange, UniformRange)
+  -- >>> Control.Monad.replicateM 10 (uniformRM (Bar 100, Quux 150) gen)
+  -- [Bar 119,Quux 93,Quux 51,Bar 124,Quux 66,Bar 240,Bar 140,Bar 231,Quux 60,Bar 211]
+  --
   -- @since 1.2.0
   uniformRM :: StatefulGen g m => (a, a) -> g -> m a
 
@@ -667,20 +682,65 @@ class UniformRange a where
   -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' && isInRange (lo', hi') x
   -- > ==> isInRange (lo, hi) x
   --
+  -- There is a default implementation of 'isInRange' via 'Generic'.
+  --
   -- @since 1.3.0
   isInRange :: (a, a) -> a -> Bool
 
-  default isInRange :: Ord a => (a, a) -> a -> Bool
-  isInRange (a, b) x = min a b <= x && x <= max a b
+  default uniformRM :: (StatefulGen g m, Generic a, GUniformRange (Rep a)) => (a, a) -> g -> m a
+  uniformRM (a, b) = fmap to . (`runContT` pure) . guniformRM (from a, from b)
+  {-# INLINE uniformRM #-}
+
+  default isInRange :: (Generic a, GUniformRange (Rep a)) => (a, a) -> a -> Bool
+  isInRange (a, b) x = gisInRange (from a, from b) (from x)
   {-# INLINE isInRange #-}
+
+class GUniformRange f where
+  guniformRM :: StatefulGen g m => (f a, f a) -> g -> ContT r m (f a)
+  gisInRange :: (f a, f a) -> f a -> Bool
+
+instance GUniformRange f => GUniformRange (M1 i c f) where
+  guniformRM (M1 a, M1 b) = fmap M1 . guniformRM (a, b)
+  {-# INLINE guniformRM #-}
+  gisInRange (M1 a, M1 b) (M1 x) = gisInRange (a, b) x
+
+instance UniformRange a => GUniformRange (K1 i a) where
+  guniformRM (K1 a, K1 b) = fmap K1 . lift . uniformRM (a, b)
+  {-# INLINE guniformRM #-}
+  gisInRange (K1 a, K1 b) (K1 x) = isInRange (a, b) x
+
+instance GUniformRange U1 where
+  guniformRM = const $ const $ return U1
+  {-# INLINE guniformRM #-}
+  gisInRange = const $ const True
+
+instance (GUniformRange f, GUniformRange g) => GUniformRange (f :*: g) where
+  guniformRM (x1 :*: y1, x2 :*: y2) g =
+    (:*:) <$> guniformRM (x1, x2) g <*> guniformRM (y1, y2) g
+  {-# INLINE guniformRM #-}
+  gisInRange (x1 :*: y1, x2 :*: y2) (x3 :*: y3) =
+    gisInRange (x1, x2) x3 && gisInRange (y1, y2) y3
+
+instance (GFinite f, GFinite g, GFiniteRange f, GFiniteRange g) => GUniformRange (f :+: g) where
+  guniformRM (a, b)
+    = lift
+    . fmap (toGFiniteRange (a, b))
+    . boundedExclusiveIntegralM (grangeCardinality (a, b))
+  {-# INLINE guniformRM #-}
+  gisInRange = isInGFiniteRange
+
+isInRangeOrd :: Ord a => (a, a) -> a -> Bool
+isInRangeOrd (a, b) x = min a b <= x && x <= max a b
 
 instance UniformRange Integer where
   uniformRM = uniformIntegralM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance UniformRange Natural where
   uniformRM = uniformIntegralM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Int8 where
   uniformM = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
@@ -688,6 +748,7 @@ instance Uniform Int8 where
 instance UniformRange Int8 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int8 -> Word8) fromIntegral
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Int16 where
   uniformM = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
@@ -695,6 +756,7 @@ instance Uniform Int16 where
 instance UniformRange Int16 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int16 -> Word16) fromIntegral
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Int32 where
   uniformM = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
@@ -702,6 +764,7 @@ instance Uniform Int32 where
 instance UniformRange Int32 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int32 -> Word32) fromIntegral
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Int64 where
   uniformM = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
@@ -709,6 +772,7 @@ instance Uniform Int64 where
 instance UniformRange Int64 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int64 -> Word64) fromIntegral
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 wordSizeInBits :: Int
 wordSizeInBits = finiteBitSize (0 :: Word)
@@ -724,6 +788,7 @@ instance Uniform Int where
 instance UniformRange Int where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int -> Word) fromIntegral
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Word where
   uniformM
@@ -736,6 +801,7 @@ instance Uniform Word where
 instance UniformRange Word where
   uniformRM = unsignedBitmaskWithRejectionRM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Word8 where
   uniformM = uniformWord8
@@ -743,6 +809,7 @@ instance Uniform Word8 where
 instance UniformRange Word8 where
   uniformRM = unbiasedWordMult32RM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Word16 where
   uniformM = uniformWord16
@@ -750,6 +817,7 @@ instance Uniform Word16 where
 instance UniformRange Word16 where
   uniformRM = unbiasedWordMult32RM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Word32 where
   uniformM  = uniformWord32
@@ -757,6 +825,7 @@ instance Uniform Word32 where
 instance UniformRange Word32 where
   uniformRM = unbiasedWordMult32RM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform Word64 where
   uniformM  = uniformWord64
@@ -764,6 +833,7 @@ instance Uniform Word64 where
 instance UniformRange Word64 where
   uniformRM = unsignedBitmaskWithRejectionRM
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 #if __GLASGOW_HASKELL__ >= 802
 instance Uniform CBool where
@@ -772,6 +842,7 @@ instance Uniform CBool where
 instance UniformRange CBool where
   uniformRM (CBool b, CBool t) = fmap CBool . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 #endif
 
 instance Uniform CChar where
@@ -780,6 +851,7 @@ instance Uniform CChar where
 instance UniformRange CChar where
   uniformRM (CChar b, CChar t) = fmap CChar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CSChar where
   uniformM = fmap CSChar . uniformM
@@ -787,6 +859,7 @@ instance Uniform CSChar where
 instance UniformRange CSChar where
   uniformRM (CSChar b, CSChar t) = fmap CSChar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CUChar where
   uniformM = fmap CUChar . uniformM
@@ -794,6 +867,7 @@ instance Uniform CUChar where
 instance UniformRange CUChar where
   uniformRM (CUChar b, CUChar t) = fmap CUChar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CShort where
   uniformM = fmap CShort . uniformM
@@ -801,6 +875,7 @@ instance Uniform CShort where
 instance UniformRange CShort where
   uniformRM (CShort b, CShort t) = fmap CShort . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CUShort where
   uniformM = fmap CUShort . uniformM
@@ -808,6 +883,7 @@ instance Uniform CUShort where
 instance UniformRange CUShort where
   uniformRM (CUShort b, CUShort t) = fmap CUShort . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CInt where
   uniformM = fmap CInt . uniformM
@@ -815,6 +891,7 @@ instance Uniform CInt where
 instance UniformRange CInt where
   uniformRM (CInt b, CInt t) = fmap CInt . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CUInt where
   uniformM = fmap CUInt . uniformM
@@ -822,6 +899,7 @@ instance Uniform CUInt where
 instance UniformRange CUInt where
   uniformRM (CUInt b, CUInt t) = fmap CUInt . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CLong where
   uniformM = fmap CLong . uniformM
@@ -829,6 +907,7 @@ instance Uniform CLong where
 instance UniformRange CLong where
   uniformRM (CLong b, CLong t) = fmap CLong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CULong where
   uniformM = fmap CULong . uniformM
@@ -836,6 +915,7 @@ instance Uniform CULong where
 instance UniformRange CULong where
   uniformRM (CULong b, CULong t) = fmap CULong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CPtrdiff where
   uniformM = fmap CPtrdiff . uniformM
@@ -843,6 +923,7 @@ instance Uniform CPtrdiff where
 instance UniformRange CPtrdiff where
   uniformRM (CPtrdiff b, CPtrdiff t) = fmap CPtrdiff . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CSize where
   uniformM = fmap CSize . uniformM
@@ -850,6 +931,7 @@ instance Uniform CSize where
 instance UniformRange CSize where
   uniformRM (CSize b, CSize t) = fmap CSize . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CWchar where
   uniformM = fmap CWchar . uniformM
@@ -857,6 +939,7 @@ instance Uniform CWchar where
 instance UniformRange CWchar where
   uniformRM (CWchar b, CWchar t) = fmap CWchar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CSigAtomic where
   uniformM = fmap CSigAtomic . uniformM
@@ -864,6 +947,7 @@ instance Uniform CSigAtomic where
 instance UniformRange CSigAtomic where
   uniformRM (CSigAtomic b, CSigAtomic t) = fmap CSigAtomic . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CLLong where
   uniformM = fmap CLLong . uniformM
@@ -871,6 +955,7 @@ instance Uniform CLLong where
 instance UniformRange CLLong where
   uniformRM (CLLong b, CLLong t) = fmap CLLong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CULLong where
   uniformM = fmap CULLong . uniformM
@@ -878,6 +963,7 @@ instance Uniform CULLong where
 instance UniformRange CULLong where
   uniformRM (CULLong b, CULLong t) = fmap CULLong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CIntPtr where
   uniformM = fmap CIntPtr . uniformM
@@ -885,6 +971,7 @@ instance Uniform CIntPtr where
 instance UniformRange CIntPtr where
   uniformRM (CIntPtr b, CIntPtr t) = fmap CIntPtr . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CUIntPtr where
   uniformM = fmap CUIntPtr . uniformM
@@ -892,6 +979,7 @@ instance Uniform CUIntPtr where
 instance UniformRange CUIntPtr where
   uniformRM (CUIntPtr b, CUIntPtr t) = fmap CUIntPtr . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CIntMax where
   uniformM = fmap CIntMax . uniformM
@@ -899,6 +987,7 @@ instance Uniform CIntMax where
 instance UniformRange CIntMax where
   uniformRM (CIntMax b, CIntMax t) = fmap CIntMax . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform CUIntMax where
   uniformM = fmap CUIntMax . uniformM
@@ -906,17 +995,19 @@ instance Uniform CUIntMax where
 instance UniformRange CUIntMax where
   uniformRM (CUIntMax b, CUIntMax t) = fmap CUIntMax . uniformRM (b, t)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 -- | See [Floating point number caveats](System-Random-Stateful.html#fpcaveats).
 instance UniformRange CFloat where
   uniformRM (CFloat l, CFloat h) = fmap CFloat . uniformRM (l, h)
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 -- | See [Floating point number caveats](System-Random-Stateful.html#fpcaveats).
 instance UniformRange CDouble where
   uniformRM (CDouble l, CDouble h) = fmap CDouble . uniformRM (l, h)
   {-# INLINE uniformRM #-}
-
+  isInRange = isInRangeOrd
 
 -- The `chr#` and `ord#` are the prim functions that will be called, regardless of which
 -- way you gonna do the `Char` conversion, so it is better to call them directly and
@@ -947,6 +1038,7 @@ instance UniformRange Char where
   uniformRM (l, h) g =
     word32ToChar <$> unbiasedWordMult32RM (charToWord32 l, charToWord32 h) g
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 instance Uniform () where
   uniformM = const $ pure ()
@@ -980,6 +1072,7 @@ instance UniformRange Double where
       x <- uniformDouble01M g
       return $ x * l + (1 -x) * h
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 -- | Generates uniformly distributed 'Double' in the range \([0, 1]\).
 --   Numbers are generated by generating uniform 'Word64' and dividing
@@ -1023,6 +1116,7 @@ instance UniformRange Float where
       x <- uniformFloat01M g
       return $ x * l + (1 - x) * h
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 -- | Generates uniformly distributed 'Float' in the range \([0, 1]\).
 --   Numbers are generated by generating uniform 'Word32' and dividing
@@ -1316,6 +1410,13 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Unif
                <*> uniformM g
                <*> uniformM g
   {-# INLINE uniformM #-}
+
+instance (UniformRange a, UniformRange b) => UniformRange (a, b)
+instance (UniformRange a, UniformRange b, UniformRange c) => UniformRange (a, b, c)
+instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d) => UniformRange (a, b, c, d)
+instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e) => UniformRange (a, b, c, d, e)
+instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e, UniformRange f) => UniformRange (a, b, c, d, e, f)
+instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e, UniformRange f, UniformRange g) => UniformRange (a, b, c, d, e, f, g)
 
 -- Appendix 1.
 --

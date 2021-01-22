@@ -72,6 +72,9 @@ main =
     , integralSpec (Proxy :: Proxy Integer)
     , integralSpec (Proxy :: Proxy Natural)
     , enumSpec     (Proxy :: Proxy Colors)
+    , enumSpec     (Proxy :: Proxy MyBool)
+    , enumSpec     (Proxy :: Proxy MyAction)
+    , enumSpec     (Proxy :: Proxy Foo)
     , runSpec
     , floatTests
     , byteStringSpec
@@ -163,23 +166,21 @@ seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
 
 data MyBool = MyTrue | MyFalse
-  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
+  deriving (Eq, Ord, Show, Generic, Finite, FiniteRange, Uniform, UniformRange)
 instance Monad m => Serial m MyBool
 
 data MyAction = Code (Maybe MyBool) | Never Void | Eat (Bool, Bool) | Sleep ()
-  deriving (Eq, Ord, Show, Generic, Finite)
+  deriving (Eq, Ord, Show, Generic, Finite, FiniteRange)
 instance Monad m => Serial m MyAction
 instance Uniform MyAction
+instance UniformRange MyAction
 
 data Foo
   = Quux Char
-  | Bar   Int   | Baz Word
-  | Bar8  Int8  | Baz8 Word8
-  | Bar16 Int16 | Baz16 Word16
-  | Bar32 Int32 | Baz32 Word32
-  | Bar64 Int64 | Baz64 Word64
+  | Bar8  Int8
+  | Baz8 Word8
   | Final ()
-  deriving (Eq, Ord, Show, Generic, Finite, Uniform)
+  deriving (Eq, Ord, Show, Generic, Finite, FiniteRange, Uniform, UniformRange)
 instance Monad m => Serial m Foo
 
 newtype ConstGen = ConstGen Word64

@@ -80,8 +80,7 @@ instance Integral Cardinality where
 
 -- | A type class for data with a finite number of inhabitants.
 -- This type class is used
--- in default implementations of 'System.Random.Stateful.Uniform'
--- and 'System.Random.Stateful.UniformRange'.
+-- in the default implementation of 'System.Random.Stateful.Uniform'.
 --
 -- Users are not supposed to write instances of 'Finite' manually.
 -- There is a default implementation in terms of 'Generic' instead.
@@ -281,3 +280,4 @@ instance (Finite a, Finite b, Finite c) => Finite (a, b, c)
 instance (Finite a, Finite b, Finite c, Finite d) => Finite (a, b, c, d)
 instance (Finite a, Finite b, Finite c, Finite d, Finite e) => Finite (a, b, c, d, e)
 instance (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f) => Finite (a, b, c, d, e, f)
+instance (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f, Finite g) => Finite (a, b, c, d, e, f, g)
