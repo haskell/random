@@ -28,13 +28,19 @@ module System.Random.Stateful
 
   -- * Mutable pseudo-random number generator interfaces
   -- $interfaces
+  -- ** StatefulGen
   , StatefulGen(..)
+  -- ** FrozenGen
   , FrozenGen(..)
-  , RandomGenM(..)
   , withMutableGen
   , withMutableGen_
+  -- ** RandomGenM
+  , RandomGenM(..)
+  , splitRandomGenM
   , randomM
   , randomRM
+  , getGenM
+  , putGenM
   , splitGenM
 
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
@@ -203,7 +209,22 @@ import System.Random.Internal
 --
 -- @since 1.2.0
 class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
+
+  -- | Construct a mutable pseudo-random number generator out of the pure one
+  --
+  -- @since 1.3.0
+  newRandomGenM :: r -> m g
+
+  -- | Apply a pure function to the undelying pure pseudo-random number generator
+  --
+  -- @since 1.2.0
   applyRandomGenM :: (r -> (a, r)) -> g -> m a
+
+-- | Splits mutable pseudo-random number generator into two and retuns the new one
+--
+-- @since 1.3.0
+splitRandomGenM :: RandomGenM g r m => g -> m g
+splitRandomGenM = applyRandomGenM split >=> newRandomGenM
 
 -- | Splits a pseudo-random number generator into two. Overwrites the mutable
 -- wrapper with one of the resulting generators and returns the other.
@@ -212,16 +233,37 @@ class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
 splitGenM :: RandomGenM g r m => g -> m r
 splitGenM = applyRandomGenM split
 
+-- | Get the underlying pure pseudo-random number generator from the mutable one.
+--
+-- @since 1.3.0
+getGenM :: RandomGenM g r m => g -> m r
+getGenM = applyRandomGenM (\g -> (g, g))
+
+-- | Get the underlying pure pseudo-random number generator from the mutable one.
+--
+-- @since 1.3.0
+putGenM :: RandomGenM g r m => g -> r -> m ()
+putGenM gen rng = applyRandomGenM (\_ -> ((), rng)) gen
+
+
 instance (RandomGen r, MonadIO m) => RandomGenM (IOGenM r) r m where
+  newRandomGenM = newIOGenM
+
   applyRandomGenM = applyIOGen
 
 instance (RandomGen r, MonadIO m) => RandomGenM (AtomicGenM r) r m where
+  newRandomGenM = newAtomicGenM
+
   applyRandomGenM = applyAtomicGen
 
 instance (RandomGen r, MonadState r m) => RandomGenM (StateGenM r) r m where
+  newRandomGenM g = StateGenM <$ put g
+
   applyRandomGenM f _ = state f
 
 instance RandomGen r => RandomGenM (STGenM r s) r (ST s) where
+  newRandomGenM = newSTGenM
+
   applyRandomGenM = applySTGen
 
 

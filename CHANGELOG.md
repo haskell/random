@@ -1,3 +1,12 @@
+# 1.3.0
+
+* Improve `RandomGenM` interface:
+
+   * Add a new class method `newRandomGenM`, which also allowed addition
+     of `splitRandomGenM`
+   * Add `getGenM` and getGenM`
+
+
 # 1.2.0
 
 1. Breaking change which mostly maintains backwards compatibility, see
