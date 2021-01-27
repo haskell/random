@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -84,6 +85,7 @@ import Foreign.Storable (Storable)
 import GHC.Exts
 import GHC.Generics
 import GHC.IO (IO(..))
+import GHC.TypeLits
 import GHC.Word
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
@@ -110,6 +112,9 @@ import Data.ByteString (ByteString)
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
+  type Splittable g :: Constraint
+  type Splittable g =
+    TypeError ('ShowType g ':<>: 'Text " is not a splittable RandomGen")
   {-# MINIMAL split,(genWord32|genWord64|(next,genRange)) #-}
   -- | Returns an 'Int' that is uniformly distributed over the range returned by
   -- 'genRange' (including both end points), and a new generator. Using 'next'
@@ -207,7 +212,7 @@ class RandomGen g where
   -- descriptive 'error' message.
   --
   -- @since 1.0.0
-  split :: g -> (g, g)
+  split :: Splittable g => g -> (g, g)
 
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
@@ -457,7 +462,7 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
 -- one of the resulting generators and returns the other.
 --
 -- @since 1.2.0
-splitGen :: (MonadState g m, RandomGen g) => m g
+splitGen :: forall g m. (MonadState g m, RandomGen g, Splittable g) => m g
 splitGen = state split
 {-# INLINE splitGen #-}
 
@@ -549,6 +554,7 @@ instance Eq StdGen where
   StdGen x1 == StdGen x2 = SM.unseedSMGen x1 == SM.unseedSMGen x2
 
 instance RandomGen SM.SMGen where
+  type Splittable SM.SMGen = ()
   next = SM.nextInt
   {-# INLINE next #-}
   genWord32 = SM.nextWord32
@@ -559,6 +565,7 @@ instance RandomGen SM.SMGen where
   {-# INLINE split #-}
 
 instance RandomGen SM32.SMGen where
+  type Splittable SM32.SMGen = ()
   next = SM32.nextInt
   {-# INLINE next #-}
   genWord32 = SM32.nextWord32
