@@ -15,6 +15,7 @@
 * Add default implementation of `uniformM` that uses `Generic`
   [#70](https://github.com/haskell/random/pull/70)
 * `Random` instance for `CBool` [#77](https://github.com/haskell/random/pull/77)
+* Addition of `TGen` and `TGenM` [#95](https://github.com/haskell/random/pull/95)
 
 # 1.2.0
 
