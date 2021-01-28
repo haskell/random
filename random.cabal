@@ -141,6 +141,7 @@ test-suite doctests
         mwc-random >=0.13 && <0.16,
         primitive >=0.6 && <0.8,
         random,
+        stm,
         unliftio >=0.2 && <0.3,
         vector >= 0.10 && <0.14
 
