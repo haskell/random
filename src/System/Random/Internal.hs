@@ -20,6 +20,10 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE KindSignatures #-}
 #endif
+#if __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+#endif
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
 -- |
@@ -33,6 +37,7 @@
 module System.Random.Internal
   (-- * Pure and monadic pseudo-random number generator interfaces
     RandomGen(..)
+  , RepLike
   , StatefulGen(..)
   , FrozenGen(..)
 
@@ -60,6 +65,7 @@ module System.Random.Internal
   , uniformDoublePositive01M
   , uniformFloat01M
   , uniformFloatPositive01M
+  , UniformEnum(..)
 
   -- * Generators for sequences of pseudo-random bytes
   , genShortByteStringIO
@@ -196,9 +202,15 @@ class RandomGen g where
   -- descriptive 'error' message.
   split :: g -> (g, g)
 
+#if __GLASGOW_HASKELL__ >= 806
+type RepLike m = (forall x y. Coercible x y => Coercible (m x) (m y) :: Constraint)
+#else
+class RepLike (m :: * -> *)
+instance RepLike m
+#endif
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
-class Monad m => StatefulGen g m where
+class (Monad m, RepLike m) => StatefulGen g m where
   {-# MINIMAL (uniformWord32|uniformWord64) #-}
   -- | @uniformWord32R upperBound g@ generates a 'Word32' that is uniformly
   -- distributed over the range @[0, upperBound]@.
@@ -387,7 +399,7 @@ data StateGenM g = StateGenM
 newtype StateGen g = StateGen { unStateGen :: g }
   deriving (Eq, Ord, Show, RandomGen, Storable, NFData)
 
-instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
+instance (RandomGen g, MonadState g m, RepLike m) => StatefulGen (StateGenM g) m where
   uniformWord32R r _ = state (genWord32R r)
   uniformWord64R r _ = state (genWord64R r)
   uniformWord8 _ = state genWord8
@@ -396,7 +408,7 @@ instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
   uniformWord64 _ = state genWord64
   uniformShortByteString n _ = state (genShortByteString n)
 
-instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
+instance (RandomGen g, MonadState g m, RepLike m) => FrozenGen (StateGen g) m where
   type MutableGen (StateGen g) m = StateGenM g
   freezeGen _ = fmap StateGen get
   thawGen (StateGen g) = StateGenM <$ put g
@@ -1186,6 +1198,17 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) => U
 
 instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Uniform g) => Uniform (a, b, c, d, e, f, g) where
   uniformM g = (,,,,,,) <$> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g
+
+newtype UniformEnum a = UniformEnum a
+  deriving (Eq, Ord)
+
+instance (Ord a, Enum a) => UniformRange (UniformEnum a) where
+  uniformRM (UniformEnum l, UniformEnum h) g =
+    pure . UniformEnum . toEnum =<< uniformIntegralM (fromEnum l, fromEnum h) g
+
+instance (Bounded a, Enum a) => Uniform (UniformEnum a) where
+  uniformM g = pure . UniformEnum . toEnum
+    =<< uniformIntegralM (fromEnum (minBound :: a), fromEnum (maxBound :: a)) g
 
 -- Appendix 1.
 --

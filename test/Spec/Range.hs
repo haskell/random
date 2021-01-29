@@ -7,6 +7,7 @@ module Spec.Range
   , uniformRangeWithinExcludedD
   ) where
 
+import Control.Monad.State.Strict (StateT(..))
 import System.Random.Internal
 import System.Random.Stateful
 import Data.Proxy

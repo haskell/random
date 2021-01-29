@@ -155,6 +155,7 @@ test-suite spec
     build-depends:
         base -any,
         bytestring -any,
+        mtl,
         random -any,
         smallcheck >=1.2 && <1.3,
         tasty >=1.0 && <1.5,

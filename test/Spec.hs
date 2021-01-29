@@ -6,6 +6,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+#if __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE StandaloneDeriving #-}
+#endif
 module Main (main) where
 
 import Data.ByteString.Short as SBS
@@ -179,3 +185,13 @@ newtype ConstGen = ConstGen Word64
 instance RandomGen ConstGen where
   genWord64 g@(ConstGen c) = (c, g)
   split g = (g, g)
+
+#if __GLASGOW_HASKELL__ >= 806
+newtype MyInt = MyInt Int
+deriving newtype instance UniformRange MyInt
+
+data Things = This | That | Those | These
+  deriving stock (Eq, Ord, Enum, Bounded)
+deriving via UniformEnum Things instance UniformRange Things
+deriving via UniformEnum Things instance Uniform Things
+#endif

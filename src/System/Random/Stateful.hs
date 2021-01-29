@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -7,6 +8,9 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+#if __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE QuantifiedConstraints #-}
+#endif
 
 -- |
 -- Module      :  System.Random.Stateful
@@ -212,13 +216,13 @@ class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
 splitGenM :: RandomGenM g r m => g -> m r
 splitGenM = applyRandomGenM split
 
-instance (RandomGen r, MonadIO m) => RandomGenM (IOGenM r) r m where
+instance (RandomGen r, MonadIO m, RepLike m) => RandomGenM (IOGenM r) r m where
   applyRandomGenM = applyIOGen
 
-instance (RandomGen r, MonadIO m) => RandomGenM (AtomicGenM r) r m where
+instance (RandomGen r, MonadIO m, RepLike m) => RandomGenM (AtomicGenM r) r m where
   applyRandomGenM = applyAtomicGen
 
-instance (RandomGen r, MonadState r m) => RandomGenM (StateGenM r) r m where
+instance (RandomGen r, MonadState r m, RepLike m) => RandomGenM (StateGenM r) r m where
   applyRandomGenM f _ = state f
 
 instance RandomGen r => RandomGenM (STGenM r s) r (ST s) where
@@ -320,7 +324,7 @@ newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
 newAtomicGenM :: MonadIO m => g -> m (AtomicGenM g)
 newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
 
-instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
+instance (RandomGen g, MonadIO m, RepLike m) => StatefulGen (AtomicGenM g) m where
   uniformWord32R r = applyAtomicGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
   uniformWord64R r = applyAtomicGen (genWord64R r)
@@ -336,7 +340,7 @@ instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
   uniformShortByteString n = applyAtomicGen (genShortByteString n)
 
 
-instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
+instance (RandomGen g, MonadIO m, RepLike m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
   freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
   thawGen (AtomicGen g) = newAtomicGenM g
@@ -393,7 +397,7 @@ newtype IOGen g = IOGen { unIOGen :: g }
 newIOGenM :: MonadIO m => g -> m (IOGenM g)
 newIOGenM = fmap IOGenM . liftIO . newIORef
 
-instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
+instance (RandomGen g, MonadIO m, RepLike m) => StatefulGen (IOGenM g) m where
   uniformWord32R r = applyIOGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
   uniformWord64R r = applyIOGen (genWord64R r)
@@ -409,7 +413,7 @@ instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
   uniformShortByteString n = applyIOGen (genShortByteString n)
 
 
-instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
+instance (RandomGen g, MonadIO m, RepLike m) => FrozenGen (IOGen g) m where
   type MutableGen (IOGen g) m = IOGenM g
   freezeGen = fmap IOGen . liftIO . readIORef . unIOGenM
   thawGen (IOGen g) = newIOGenM g
@@ -638,14 +642,14 @@ runSTGen_ g action = fst $ runSTGen g action
 -- Here is an example instance for the monadic pseudo-random number generator
 -- from the @mwc-random@ package:
 --
--- > instance (s ~ PrimState m, PrimMonad m) => StatefulGen (MWC.Gen s) m where
+-- > instance (s ~ PrimState m, PrimMonad m, RepLike m) => StatefulGen (MWC.Gen s) m where
 -- >   uniformWord8 = MWC.uniform
 -- >   uniformWord16 = MWC.uniform
 -- >   uniformWord32 = MWC.uniform
 -- >   uniformWord64 = MWC.uniform
 -- >   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
 --
--- > instance PrimMonad m => FrozenGen MWC.Seed m where
+-- > instance (PrimMonad m, RepLike) => FrozenGen MWC.Seed m where
 -- >   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)
 -- >   thawGen = MWC.restore
 -- >   freezeGen = MWC.save
@@ -709,13 +713,13 @@ runSTGen_ g action = fst $ runSTGen g action
 -- >>> :set -XUndecidableInstances
 --
 -- >>> :{
--- instance (s ~ PrimState m, PrimMonad m) => StatefulGen (MWC.Gen s) m where
+-- instance (s ~ PrimState m, PrimMonad m, RepLike m) => StatefulGen (MWC.Gen s) m where
 --   uniformWord8 = MWC.uniform
 --   uniformWord16 = MWC.uniform
 --   uniformWord32 = MWC.uniform
 --   uniformWord64 = MWC.uniform
 --   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
--- instance PrimMonad m => FrozenGen MWC.Seed m where
+-- instance (PrimMonad m, RepLike m) => FrozenGen MWC.Seed m where
 --   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)
 --   thawGen = MWC.restore
 --   freezeGen = MWC.save

@@ -6,7 +6,11 @@ module Main where
 import Test.DocTest (doctest)
 
 main :: IO ()
-main = doctest ["src"]
+main = doctest [
+#if __GLASGOW_HASKELL__ >= 806
+  "-XQuantifiedConstraints",
+#endif
+  "src" ]
 
 #else
 

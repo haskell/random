@@ -1,5 +1,6 @@
 module Spec.Run (runsEqual) where
 
+import Control.Monad.State.Strict (StateT(..))
 import Data.Word (Word64)
 import System.Random.Stateful
 

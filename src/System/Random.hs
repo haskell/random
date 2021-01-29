@@ -27,6 +27,7 @@ module System.Random
   , Random(..)
   , Uniform
   , UniformRange
+  , UniformEnum(..)
   , Finite
 
   -- ** Standard pseudo-random number generator
@@ -59,6 +60,7 @@ module System.Random
 
 import Control.Arrow
 import Control.Monad.IO.Class
+import Control.Monad.State.Strict (StateT(..))
 import Data.ByteString (ByteString)
 import Data.Int
 import Data.IORef
