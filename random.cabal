@@ -135,7 +135,7 @@ test-suite doctests
     default-language: Haskell2010
     build-depends:
         base -any,
-        doctest >=0.15 && <0.18,
+        doctest >=0.15 && <0.19,
         mwc-random >=0.13 && <0.16,
         primitive >=0.6 && <0.8,
         random -any,
