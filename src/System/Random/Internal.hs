@@ -860,11 +860,19 @@ instance UniformRange CDouble where
 -- `Char`, therefore it is totally fine to omit all the unnecessary checks involved in
 -- other paths of conversion.
 word32ToChar :: Word32 -> Char
+#if __GLASGOW_HASKELL__ < 902
 word32ToChar (W32# w#) = C# (chr# (word2Int# w#))
+#else
+word32ToChar (W32# w#) = C# (chr# (word2Int# (word32ToWord# w#)))
+#endif
 {-# INLINE word32ToChar #-}
 
 charToWord32 :: Char -> Word32
+#if __GLASGOW_HASKELL__ < 902
 charToWord32 (C# c#) = W32# (int2Word# (ord# c#))
+#else
+charToWord32 (C# c#) = W32# (wordToWord32# (int2Word# (ord# c#)))
+#endif
 {-# INLINE charToWord32 #-}
 
 instance Uniform Char where
