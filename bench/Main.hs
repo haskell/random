@@ -10,9 +10,9 @@ import Data.Proxy
 import Data.Typeable
 import Data.Word
 import Foreign.C.Types
-import Gauge.Main
 import Numeric.Natural (Natural)
 import System.Random.SplitMix as SM
+import Test.Tasty.Bench
 
 import System.Random.Stateful
 

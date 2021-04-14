@@ -188,7 +188,7 @@ benchmark bench
     ghc-options:      -Wall -O2
     build-depends:
         base -any,
-        gauge >=0.2.3 && <0.3,
         mtl,
         random -any,
-        splitmix >=0.1 && <0.2
+        splitmix >=0.1 && <0.2,
+        tasty-bench
