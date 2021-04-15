@@ -16,6 +16,9 @@ import Test.Tasty.Bench
 
 import System.Random.Stateful
 
+seed :: Int
+seed = 1337
+
 main :: IO ()
 main = do
   let !sz = 100000
@@ -24,49 +27,61 @@ main = do
         runStateGen (mkStdGen 2020) $ \g -> replicateM 5000 (uniformRM (16 + 1, 16 + 7) g)
   defaultMain
     [ bgroup "baseline"
-      [ let !smGen = SM.mkSMGen 1337 in bench "nextWord32" $ nf (genMany SM.nextWord32 smGen) sz
-      , let !smGen = SM.mkSMGen 1337 in bench "nextWord64" $ nf (genMany SM.nextWord64 smGen) sz
-      , let !smGen = SM.mkSMGen 1337 in bench "nextInt" $ nf (genMany SM.nextInt smGen) sz
-      , let !smGen = SM.mkSMGen 1337 in bench "split" $ nf (genMany SM.splitSMGen smGen) sz
+      [ env (pure $ SM.mkSMGen $ fromIntegral seed) $ \smGen ->
+          bench "nextWord32" $ whnf (genMany SM.nextWord32 smGen) sz
+      , env (pure $ SM.mkSMGen $ fromIntegral seed) $ \smGen ->
+          bench "nextWord64" $ whnf (genMany SM.nextWord64 smGen) sz
+      , env (pure $ SM.mkSMGen $ fromIntegral seed) $ \smGen ->
+          bench "nextInt" $ whnf (genMany SM.nextInt smGen) sz
+      , env (pure $ SM.mkSMGen $ fromIntegral seed) $ \smGen ->
+          bench "split" $ whnf (genMany SM.splitSMGen smGen) sz
       ]
     , bgroup "pure"
       [ bgroup "random"
-        [ pureRandomBench (Proxy :: Proxy Float) sz
-        , pureRandomBench (Proxy :: Proxy Double) sz
-        , pureRandomBench (Proxy :: Proxy Integer) sz
+        [ pureBench random sz (Proxy :: Proxy Word8)
+        , pureBench random sz (Proxy :: Proxy Word16)
+        , pureBench random sz (Proxy :: Proxy Word32)
+        , pureBench random sz (Proxy :: Proxy Word64)
+        , pureBench random sz (Proxy :: Proxy Int8)
+        , pureBench random sz (Proxy :: Proxy Int16)
+        , pureBench random sz (Proxy :: Proxy Int32)
+        , pureBench random sz (Proxy :: Proxy Int64)
+        , pureBench random sz (Proxy :: Proxy Bool)
+        , pureBench random sz (Proxy :: Proxy Char)
+        , pureBench random sz (Proxy :: Proxy Float)
+        , pureBench random sz (Proxy :: Proxy Double)
+        , pureBench random sz (Proxy :: Proxy Integer)
         ]
       , bgroup "uniform"
-        [ pureUniformBench (Proxy :: Proxy Word8) sz
-        , pureUniformBench (Proxy :: Proxy Word16) sz
-        , pureUniformBench (Proxy :: Proxy Word32) sz
-        , pureUniformBench (Proxy :: Proxy Word64) sz
-        , pureUniformBench (Proxy :: Proxy Word) sz
-        , pureUniformBench (Proxy :: Proxy Int8) sz
-        , pureUniformBench (Proxy :: Proxy Int16) sz
-        , pureUniformBench (Proxy :: Proxy Int32) sz
-        , pureUniformBench (Proxy :: Proxy Int64) sz
-        , pureUniformBench (Proxy :: Proxy Int) sz
-        , pureUniformBench (Proxy :: Proxy Char) sz
-        , pureUniformBench (Proxy :: Proxy Bool) sz
-        , pureUniformBench (Proxy :: Proxy CChar) sz
-        , pureUniformBench (Proxy :: Proxy CSChar) sz
-        , pureUniformBench (Proxy :: Proxy CUChar) sz
-        , pureUniformBench (Proxy :: Proxy CShort) sz
-        , pureUniformBench (Proxy :: Proxy CUShort) sz
-        , pureUniformBench (Proxy :: Proxy CInt) sz
-        , pureUniformBench (Proxy :: Proxy CUInt) sz
-        , pureUniformBench (Proxy :: Proxy CLong) sz
-        , pureUniformBench (Proxy :: Proxy CULong) sz
-        , pureUniformBench (Proxy :: Proxy CPtrdiff) sz
-        , pureUniformBench (Proxy :: Proxy CSize) sz
-        , pureUniformBench (Proxy :: Proxy CWchar) sz
-        , pureUniformBench (Proxy :: Proxy CSigAtomic) sz
-        , pureUniformBench (Proxy :: Proxy CLLong) sz
-        , pureUniformBench (Proxy :: Proxy CULLong) sz
-        , pureUniformBench (Proxy :: Proxy CIntPtr) sz
-        , pureUniformBench (Proxy :: Proxy CUIntPtr) sz
-        , pureUniformBench (Proxy :: Proxy CIntMax) sz
-        , pureUniformBench (Proxy :: Proxy CUIntMax) sz
+        [ pureBench uniform sz (Proxy :: Proxy Word8)
+        , pureBench uniform sz (Proxy :: Proxy Word16)
+        , pureBench uniform sz (Proxy :: Proxy Word32)
+        , pureBench uniform sz (Proxy :: Proxy Word64)
+        , pureBench uniform sz (Proxy :: Proxy Int8)
+        , pureBench uniform sz (Proxy :: Proxy Int16)
+        , pureBench uniform sz (Proxy :: Proxy Int32)
+        , pureBench uniform sz (Proxy :: Proxy Int64)
+        , pureBench uniform sz (Proxy :: Proxy Bool)
+        , pureBench uniform sz (Proxy :: Proxy Char)
+        , pureBench uniform sz (Proxy :: Proxy CChar)
+        , pureBench uniform sz (Proxy :: Proxy CSChar)
+        , pureBench uniform sz (Proxy :: Proxy CUChar)
+        , pureBench uniform sz (Proxy :: Proxy CShort)
+        , pureBench uniform sz (Proxy :: Proxy CUShort)
+        , pureBench uniform sz (Proxy :: Proxy CInt)
+        , pureBench uniform sz (Proxy :: Proxy CUInt)
+        , pureBench uniform sz (Proxy :: Proxy CLong)
+        , pureBench uniform sz (Proxy :: Proxy CULong)
+        , pureBench uniform sz (Proxy :: Proxy CPtrdiff)
+        , pureBench uniform sz (Proxy :: Proxy CSize)
+        , pureBench uniform sz (Proxy :: Proxy CWchar)
+        , pureBench uniform sz (Proxy :: Proxy CSigAtomic)
+        , pureBench uniform sz (Proxy :: Proxy CLLong)
+        , pureBench uniform sz (Proxy :: Proxy CULLong)
+        , pureBench uniform sz (Proxy :: Proxy CIntPtr)
+        , pureBench uniform sz (Proxy :: Proxy CUIntPtr)
+        , pureBench uniform sz (Proxy :: Proxy CIntMax)
+        , pureBench uniform sz (Proxy :: Proxy CUIntMax)
         ]
       , bgroup "uniformR"
         [ bgroup "full"
@@ -180,75 +195,56 @@ main = do
           ]
         , bgroup "floating"
           [ bgroup "IO"
-            [ bench "uniformFloat01M" $ nfIO $ runStateGenT_ (mkStdGen 1337) $ \g ->
-                replicateM_ sz $ do !_ <- uniformFloat01M g
-                                    return ()
-            , bench "uniformFloatPositive01M" $ nfIO $ runStateGenT_ (mkStdGen 1337) $ \g ->
-                replicateM_ sz $ do !_ <- uniformFloatPositive01M g
-                                    return ()
-            , bench "uniformDouble01M" $ nfIO $ runStateGenT_ (mkStdGen 1337) $ \g ->
-                replicateM_ sz $ do !_ <- uniformDouble01M g
-                                    return ()
-            , bench "uniformDoublePositive01M" $ nfIO $ runStateGenT_ (mkStdGen 1337) $ \g ->
-                replicateM_ sz $ do !_ <- uniformDoublePositive01M g
-                                    return ()
+            [ env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformFloat01M" $ nfIO (runStateGenT gen (replicateM_ sz . uniformFloat01M))
+            , env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformFloatPositive01M" $
+                nfIO (runStateGenT gen (replicateM_ sz . uniformFloatPositive01M))
+            , env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformDouble01M" $ nfIO (runStateGenT gen (replicateM_ sz . uniformDouble01M))
+            , env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformDoublePositive01M" $
+                nfIO (runStateGenT gen (replicateM_ sz . uniformDoublePositive01M))
             ]
-          --
-          , bgroup "St"
-            [ bench "uniformFloat01M" $ nf
-              (\n -> runStateGen_ (mkStdGen 1337) $ \g -> replicateM_ n $ do !_ <- uniformFloat01M g
-                                                                             return ()
-              ) sz
-            , bench "uniformFloatPositive01M" $ nf
-              (\n -> runStateGen_ (mkStdGen 1337) $ \g -> replicateM_ n $ do !_ <- uniformFloatPositive01M g
-                                                                             return ()
-              ) sz
-            , bench "uniformDouble01M" $ nf
-              (\n -> runStateGen_ (mkStdGen 1337) $ \g -> replicateM_ n $ do !_ <- uniformDouble01M g
-                                                                             return ()
-              ) sz
-            , bench "uniformDoublePositive01M" $ nf
-              (\n -> runStateGen_ (mkStdGen 1337) $ \g -> replicateM_ n $ do !_ <- uniformDoublePositive01M g
-                                                                             return ()
-              ) sz
+          , bgroup "State"
+            [ env (pure (mkStdGen seed)) $
+                bench "uniformFloat01M" . nf (`runStateGen` (replicateM_ sz . uniformFloat01M))
+            , env (pure (mkStdGen seed)) $
+                bench "uniformFloatPositive01M" .
+                nf (`runStateGen` (replicateM_ sz . uniformFloatPositive01M))
+            , env (pure (mkStdGen seed)) $
+                bench "uniformDouble01M" . nf (`runStateGen` (replicateM_ sz . uniformDouble01M))
+            , env (pure (mkStdGen seed)) $
+                bench "uniformDoublePositive01M" .
+                nf (`runStateGen` (replicateM_ sz . uniformDoublePositive01M))
             ]
           , bgroup "pure"
-            [ let !stdGen = mkStdGen 1337
-              in bench "uniformFloat01M" $ nf
-                 (genMany (runState $ uniformFloat01M (StateGenM :: StateGenM StdGen)) stdGen)
-                 sz
-            , let !stdGen = mkStdGen 1337
-              in bench "uniformFloatPositive01M" $ nf
-                 (genMany (runState $ uniformFloatPositive01M (StateGenM :: StateGenM StdGen)) stdGen)
-                 sz
-            , let !stdGen = mkStdGen 1337
-              in bench "uniformDouble01M" $ nf
-                 (genMany (runState $ uniformDouble01M (StateGenM :: StateGenM StdGen)) stdGen)
-                 sz
-            , let !stdGen = mkStdGen 1337
-              in bench "uniformDoublePositive01M" $ nf
-                 (genMany (runState $ uniformDoublePositive01M (StateGenM :: StateGenM StdGen)) stdGen)
-                 sz
+            [ env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformFloat01M" $ nf
+                (genMany (runState $ uniformFloat01M (StateGenM :: StateGenM StdGen)) gen)
+                sz
+            , env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformFloatPositive01M" $ nf
+                (genMany (runState $ uniformFloatPositive01M (StateGenM :: StateGenM StdGen)) gen)
+                sz
+            , env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformDouble01M" $ nf
+                (genMany (runState $ uniformDouble01M (StateGenM :: StateGenM StdGen)) gen)
+                sz
+            , env (pure (mkStdGen seed)) $ \gen ->
+                bench "uniformDoublePositive01M" $ nf
+                (genMany (runState $ uniformDoublePositive01M (StateGenM :: StateGenM StdGen)) gen)
+                sz
             ]
           ]
         , bgroup "ShortByteString"
           [ env (pure genLengths) $ \ ~(ns, gen) ->
               bench "genShortByteString" $
-              nfIO $ runStateGenT_ gen $ \g -> mapM (`uniformShortByteString` g) ns
+              nfIO $ runStateGenT gen $ \g -> mapM (`uniformShortByteString` g) ns
           ]
         ]
       ]
     ]
-
-pureRandomBench :: forall a. (Typeable a, Random a) => Proxy a -> Int -> Benchmark
-pureRandomBench px =
-  let !stdGen = mkStdGen 1337
-   in pureBench px (genMany (random :: StdGen -> (a, StdGen)) stdGen)
-
-pureUniformBench :: forall a. (Typeable a, Uniform a) => Proxy a -> Int -> Benchmark
-pureUniformBench px =
-  let !stdGen = mkStdGen 1337
-   in pureBench px (genMany (uniform :: StdGen -> (a, StdGen)) stdGen)
 
 pureUniformRFullBench ::
      forall a. (Typeable a, UniformRange a, Bounded a)
@@ -258,6 +254,7 @@ pureUniformRFullBench ::
 pureUniformRFullBench px =
   let range = (minBound :: a, maxBound :: a)
    in pureUniformRBench px range
+{-# INLINE pureUniformRFullBench #-}
 
 pureUniformRExcludeMaxBench ::
      forall a. (Typeable a, UniformRange a, Bounded a, Enum a)
@@ -267,6 +264,7 @@ pureUniformRExcludeMaxBench ::
 pureUniformRExcludeMaxBench px =
   let range = (minBound :: a, pred (maxBound :: a))
    in pureUniformRBench px range
+{-# INLINE pureUniformRExcludeMaxBench #-}
 
 pureUniformRIncludeHalfBench ::
      forall a. (Typeable a, UniformRange a, Bounded a, Integral a)
@@ -276,6 +274,7 @@ pureUniformRIncludeHalfBench ::
 pureUniformRIncludeHalfBench px =
   let range = ((minBound :: a) + 1, ((maxBound :: a) `div` 2) + 1)
   in pureUniformRBench px range
+{-# INLINE pureUniformRIncludeHalfBench #-}
 
 pureUniformRIncludeHalfEnumBench ::
      forall a. (Typeable a, UniformRange a, Bounded a, Enum a)
@@ -285,6 +284,7 @@ pureUniformRIncludeHalfEnumBench ::
 pureUniformRIncludeHalfEnumBench px =
   let range = (succ (minBound :: a), toEnum ((fromEnum (maxBound :: a) `div` 2) + 1))
   in pureUniformRBench px range
+{-# INLINE pureUniformRIncludeHalfEnumBench #-}
 
 pureUniformRBench ::
      forall a. (Typeable a, UniformRange a)
@@ -292,18 +292,24 @@ pureUniformRBench ::
   -> (a, a)
   -> Int
   -> Benchmark
-pureUniformRBench px range@(!_, !_) =
-  let !stdGen = mkStdGen 1337
-  in pureBench px (genMany (uniformR range) stdGen)
+pureUniformRBench px range@(!_, !_) sz = pureBench (uniformR range) sz px
+{-# INLINE pureUniformRBench #-}
 
-pureBench :: forall a. (Typeable a) => Proxy a -> (Int -> ()) -> Int -> Benchmark
-pureBench px f sz = bench (showsTypeRep (typeRep px) "") $ nf f sz
+pureBench ::
+     forall a. Typeable a
+  => (StdGen -> (a, StdGen))
+  -> Int
+  -> Proxy a
+  -> Benchmark
+pureBench f sz px =
+  env (pure (mkStdGen seed)) $ \gen ->
+    bench (showsTypeRep (typeRep px) "") $ whnf (genMany f gen) sz
+{-# INLINE pureBench #-}
 
-genMany :: (g -> (a, g)) -> g -> Int -> ()
-genMany f g0 n = go g0 0
+
+genMany :: (g -> (a, g)) -> g -> Int -> a
+genMany f g0 n = go 0 $ f g0
   where
-    go g i
-      | i < n =
-        case f g of
-          (x, g') -> x `seq` go g' (i + 1)
-      | otherwise = g `seq` ()
+    go i (!y, !g)
+      | i < n = go (i + 1) $ f g
+      | otherwise = y
