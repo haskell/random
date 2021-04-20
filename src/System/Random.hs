@@ -146,6 +146,7 @@ import qualified System.Random.SplitMix as SM
 -- @since 1.2.0
 uniform :: (RandomGen g, Uniform a) => g -> (a, g)
 uniform g = runStateGen g uniformM
+{-# INLINE uniform #-}
 
 -- | Generates a value uniformly distributed over the provided range, which
 -- is interpreted as inclusive in the lower and upper bound.
@@ -172,6 +173,7 @@ uniform g = runStateGen g uniformM
 -- @since 1.2.0
 uniformR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
 uniformR r g = runStateGen g (uniformRM r)
+{-# INLINE uniformR #-}
 
 -- | Generates a 'ByteString' of the specified size using a pure pseudo-random
 -- number generator. See 'uniformByteStringM' for the monadic version.
@@ -258,6 +260,7 @@ buildRandoms cons rand = go
 -- Generate values in the Int range
 instance Random Integer where
   random = first (toInteger :: Int -> Integer) . random
+  {-# INLINE random #-}
 instance Random Int8
 instance Random Int16
 instance Random Int32
@@ -292,25 +295,33 @@ instance Random CIntMax
 instance Random CUIntMax
 instance Random CFloat where
   randomR (CFloat l, CFloat h) = first CFloat . randomR (l, h)
+  {-# INLINE randomR #-}
   random = first CFloat . random
+  {-# INLINE random #-}
 instance Random CDouble where
   randomR (CDouble l, CDouble h) = first CDouble . randomR (l, h)
+  {-# INLINE randomR #-}
   random = first CDouble . random
+  {-# INLINE random #-}
 
 instance Random Char
 instance Random Bool
 instance Random Double where
   randomR r g = runStateGen g (uniformRM r)
+  {-# INLINE randomR #-}
   -- We return 1 - uniformDouble01M here for backwards compatibility with
   -- v1.2.0. Just return the result of uniformDouble01M in the next major
   -- version.
   random g = runStateGen g (\gen -> (1 -) <$> uniformDouble01M gen)
+  {-# INLINE random #-}
 instance Random Float where
   randomR r g = runStateGen g (uniformRM r)
+  {-# INLINE randomR #-}
   -- We return 1 - uniformFloat01M here for backwards compatibility with
   -- v1.2.0. Just return the result of uniformFloat01M in the next major
   -- version.
   random g = runStateGen g (\gen -> (1 -) <$> uniformFloat01M gen)
+  {-# INLINE random #-}
 
 -------------------------------------------------------------------------------
 -- Global pseudo-random number generator
