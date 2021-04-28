@@ -25,6 +25,9 @@ import Test.Tasty.SmallCheck as SC
 
 import qualified Spec.Range as Range
 import qualified Spec.Run as Run
+#if __GLASGOW_HASKELL__ >= 800
+import qualified Spec.Inspection as Inspection
+#endif
 
 main :: IO ()
 main =
@@ -77,6 +80,9 @@ main =
     , byteStringSpec
     , SC.testProperty "uniformRangeWithinExcludedF" $ seeded Range.uniformRangeWithinExcludedF
     , SC.testProperty "uniformRangeWithinExcludedD" $ seeded Range.uniformRangeWithinExcludedD
+#if __GLASGOW_HASKELL__ >= 800
+    , Inspection.inspectionTests
+#endif
     ]
 
 floatTests :: TestTree
