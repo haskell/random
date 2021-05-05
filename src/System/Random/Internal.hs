@@ -1,9 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
@@ -18,7 +19,6 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 #else
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE KindSignatures #-}
 #endif
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
@@ -109,6 +109,8 @@ import Data.ByteString (ByteString)
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
+  type Splittable g :: Bool
+  type Splittable g = 'True
   {-# MINIMAL split,(genWord32|genWord64|(next,genRange)) #-}
   -- | Returns an 'Int' that is uniformly distributed over the range returned by
   -- 'genRange' (including both end points), and a new generator. Using 'next'
@@ -200,7 +202,7 @@ class RandomGen g where
   -- are not correlated. Some pseudo-random number generators are not
   -- splittable. In that case, the 'split' implementation should fail with a
   -- descriptive 'error' message.
-  split :: g -> (g, g)
+  split :: Splittable g ~ 'True => g -> (g, g)
 
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
@@ -425,7 +427,7 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
 -- one of the resulting generators and returns the other.
 --
 -- @since 1.2.0
-splitGen :: (MonadState g m, RandomGen g) => m g
+splitGen :: (MonadState g m, RandomGen g, Splittable g ~ 'True) => m g
 splitGen = state split
 {-# INLINE splitGen #-}
 

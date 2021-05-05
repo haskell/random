@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -209,7 +210,7 @@ class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
 -- wrapper with one of the resulting generators and returns the other.
 --
 -- @since 1.2.0
-splitGenM :: RandomGenM g r m => g -> m r
+splitGenM :: (Splittable r ~ 'True, RandomGenM g r m) => g -> m r
 splitGenM = applyRandomGenM split
 
 instance (RandomGen r, MonadIO m) => RandomGenM (IOGenM r) r m where
