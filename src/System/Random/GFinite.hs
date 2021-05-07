@@ -98,12 +98,15 @@ class Finite a where
 
   default cardinality :: (Generic a, GFinite (Rep a)) => Proxy# a -> Cardinality
   cardinality _ = gcardinality (proxy# :: Proxy# (Rep a))
+  {-# INLINE cardinality #-}
 
   default toFinite :: (Generic a, GFinite (Rep a)) => Integer -> a
   toFinite = to . toGFinite
+  {-# INLINE toFinite #-}
 
   default fromFinite :: (Generic a, GFinite (Rep a)) => a -> Integer
   fromFinite = fromGFinite . from
+  {-# INLINE fromFinite #-}
 
 class GFinite f where
   gcardinality :: Proxy# f -> Cardinality
