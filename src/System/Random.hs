@@ -248,7 +248,7 @@ class Random a where
 --
 {-# INLINE buildRandoms #-}
 buildRandoms :: RandomGen g
-             => (a -> as -> as)  -- ^ E.g. '(:)' but subject to fusion
+             => (a -> as -> as)  -- ^ E.g. @(:)@ but subject to fusion
              -> (g -> (a,g))     -- ^ E.g. 'random'
              -> g                -- ^ A 'RandomGen' instance
              -> as

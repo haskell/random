@@ -225,7 +225,7 @@ instance RandomGen r => RandomGenM (STGenM r s) r (ST s) where
   applyRandomGenM = applySTGen
 
 
--- | Runs a mutable pseudo-random number generator from its 'Frozen' state.
+-- | Runs a mutable pseudo-random number generator from its 'FrozenGen' state.
 --
 -- ====__Examples__
 --
@@ -534,7 +534,7 @@ runSTGen_ g action = fst $ runSTGen g action
 -- Types may have instances for both or just one of 'UniformRange' and
 -- 'Uniform'. A few examples illustrate this:
 --
--- *   'Int', 'Word16' and 'Bool' are instances of both 'UniformRange' and
+-- *   'Int', 'Data.Word.Word16' and 'Bool' are instances of both 'UniformRange' and
 --     'Uniform'.
 -- *   'Integer', 'Float' and 'Double' each have an instance for 'UniformRange'
 --     but no 'Uniform' instance.
