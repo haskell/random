@@ -60,6 +60,8 @@ module System.Random.Internal
   , uniformDoublePositive01M
   , uniformFloat01M
   , uniformFloatPositive01M
+  , uniformEnumM
+  , uniformEnumRM
 
   -- * Generators for sequences of pseudo-random bytes
   , genShortByteStringIO
@@ -1009,6 +1011,30 @@ uniformFloatPositive01M g = (+ d) <$> uniformFloat01M g
     -- See uniformDoublePositive01M
     d = 1.1641532182693481e-10 -- 2**(-33)
 {-# INLINE uniformFloatPositive01M #-}
+
+-- | Generates uniformly distributed 'Enum'.
+-- One can use it to define a 'Uniform' instance:
+--
+-- > data Colors = Red | Green | Blue deriving (Enum, Bounded)
+-- > instance Uniform Colors where uniformM = uniformEnumM
+--
+-- @since 1.2.1
+uniformEnumM :: forall g m a. (Enum a, Bounded a) => StatefulGen g m => g -> m a
+uniformEnumM g = pure . toEnum =<< uniformRM (fromEnum (minBound :: a), fromEnum (maxBound :: a)) g
+{-# INLINE uniformEnumM #-}
+
+-- | Generates uniformly distributed 'Enum' in the given range.
+-- One can use it to define a 'UniformRange' instance:
+--
+-- > data Colors = Red | Green | Blue deriving (Enum)
+-- > instance UniformRange Colors where
+-- >   uniformRM = uniformEnumRM
+-- >   inInRange (lo, hi) x = isInRange (fromEnum lo, fromEnum hi) (fromEnum x)
+--
+-- @since 1.2.1
+uniformEnumRM :: Enum a => (a, a) -> StatefulGen g m => g -> m a
+uniformEnumRM (l,h) g = pure . toEnum =<< uniformRM (fromEnum l, fromEnum h) g
+{-# INLINE uniformEnumRM #-}
 
 -- The two integer functions below take an [inclusive,inclusive] range.
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)

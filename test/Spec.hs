@@ -17,6 +17,7 @@ import Foreign.C.Types
 import GHC.Generics
 import Numeric.Natural (Natural)
 import System.Random
+import System.Random.Stateful
 import Test.SmallCheck.Series as SC
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -70,6 +71,7 @@ main =
     , integralSpec (Proxy :: Proxy CUIntMax)
     , integralSpec (Proxy :: Proxy Integer)
     , integralSpec (Proxy :: Proxy Natural)
+    , enumSpec     (Proxy :: Proxy Colors)
     , runSpec
     , floatTests
     , byteStringSpec
@@ -128,6 +130,12 @@ integralSpec px =
   -- TODO: Add more tests
   ]
 
+enumSpec ::
+     forall a.
+     (SC.Serial IO a, Typeable a, Ord a, UniformRange a, Show a)
+  => Proxy a -> TestTree
+enumSpec = integralSpec
+
 floatingSpec ::
      forall a.
      (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, UniformRange a, Read a, Show a)
@@ -179,3 +187,13 @@ newtype ConstGen = ConstGen Word64
 instance RandomGen ConstGen where
   genWord64 g@(ConstGen c) = (c, g)
   split g = (g, g)
+
+data Colors = Red | Green | Blue | Purple | Yellow | Black | White | Orange
+  deriving (Eq, Ord, Show, Generic, Enum, Bounded)
+instance Monad m => Serial m Colors
+
+instance Uniform Colors where
+  uniformM = uniformEnumM
+
+instance UniformRange Colors where
+  uniformRM = uniformEnumRM

@@ -81,6 +81,8 @@ module System.Random.Stateful
   , uniformDoublePositive01M
   , uniformFloat01M
   , uniformFloatPositive01M
+  , uniformEnumM
+  , uniformEnumRM
 
   -- * Appendix
 
