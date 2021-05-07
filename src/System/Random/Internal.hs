@@ -1058,7 +1058,7 @@ uniformFloatPositive01M g = (+ d) <$> uniformFloat01M g
 --
 -- @since 1.3.0
 uniformEnumM :: forall g m a. (Enum a, Bounded a) => StatefulGen g m => g -> m a
-uniformEnumM g = pure . toEnum =<< uniformRM (fromEnum (minBound :: a), fromEnum (maxBound :: a)) g
+uniformEnumM g = toEnum <$> uniformRM (fromEnum (minBound :: a), fromEnum (maxBound :: a)) g
 {-# INLINE uniformEnumM #-}
 
 -- | Generates uniformly distributed 'Enum' in the given range.
@@ -1071,18 +1071,18 @@ uniformEnumM g = pure . toEnum =<< uniformRM (fromEnum (minBound :: a), fromEnum
 --
 -- @since 1.3.0
 uniformEnumRM :: Enum a => (a, a) -> StatefulGen g m => g -> m a
-uniformEnumRM (l,h) g = pure . toEnum =<< uniformRM (fromEnum l, fromEnum h) g
+uniformEnumRM (l, h) g = toEnum <$> uniformRM (fromEnum l, fromEnum h) g
 {-# INLINE uniformEnumRM #-}
 
 -- The two integer functions below take an [inclusive,inclusive] range.
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
-randomIvalIntegral (l,h) = randomIvalInteger (toInteger l, toInteger h)
+randomIvalIntegral (l, h) = randomIvalInteger (toInteger l, toInteger h)
 
 {-# SPECIALIZE randomIvalInteger :: (Num a) =>
     (Integer, Integer) -> StdGen -> (a, StdGen) #-}
 
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
-randomIvalInteger (l,h) rng
+randomIvalInteger (l, h) rng
  | l > h     = randomIvalInteger (h,l) rng
  | otherwise = case f 1 0 rng of (v, rng') -> (fromInteger (l + v `mod` k), rng')
      where
