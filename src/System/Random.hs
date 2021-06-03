@@ -143,6 +143,12 @@ import qualified System.Random.SplitMix as SM
 -- >>> uniform pureGen :: (Bool, StdGen)
 -- (True,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
 --
+-- You can use type applications to disambiguate the type of the generated numbers:
+--
+-- >>> :set -XTypeApplications
+-- >>> uniform @Bool pureGen
+-- (True,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
+--
 -- @since 1.2.0
 uniform :: (Uniform a, RandomGen g) => g -> (a, g)
 uniform g = runStateGen g uniformM
@@ -168,6 +174,12 @@ uniform g = runStateGen g uniformM
 -- >>> import System.Random
 -- >>> let pureGen = mkStdGen 137
 -- >>> uniformR (1 :: Int, 4 :: Int) pureGen
+-- (4,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
+--
+-- You can use type applications to disambiguate the type of the generated numbers:
+--
+-- >>> :set -XTypeApplications
+-- >>> uniformR @Int (1, 4) pureGen
 -- (4,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
 --
 -- @since 1.2.0
