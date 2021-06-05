@@ -39,8 +39,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        resolver: [nightly, lts-16, lts-14, lts-12, lts-11, lts-9, lts-6]
         os: [ubuntu-latest]
+        resolver: [nightly, lts-17, lts-16, lts-14, lts-12, lts-11, lts-9, lts-6]
         include:
           - resolver: lts-6
             ghc: 7.10.3
@@ -59,6 +59,9 @@ jobs:
           - resolver: lts-16
             ghc: 8.8.4
             stack-yaml: stack.yaml
+          - resolver: lts-17
+            ghc: 8.10.4
+            stack-yaml: stack.yaml
           - resolver: nightly
             stack-yaml: stack-nightly.yaml
           # Latest stable for MacOS: ghc-8.8.4
@@ -71,7 +74,7 @@ jobs:
     env:
       STACK_YAML: stack.yaml
       STACK_ARGS: '--resolver ${{ matrix.resolver }}'
-      cache-version: v2 # bump up this version to invalidate currently stored cache
+      cache-version: v3 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
 
@@ -99,7 +102,8 @@ jobs:
       if: matrix.os == 'windows-latest'
       with:
         path: |
-          ~/AppData/Local/Programs/stack
+          C:\\Users\\RUNNER~1\\AppData\\Roaming\\stack
+          C:\\Users\\RUNNER~1\\AppData\\Local\\Programs\\stack
         key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
@@ -115,14 +119,14 @@ jobs:
       run: |
         set -ex
         curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://gist.githubusercontent.com/lehins/fd36a8cc8bf853173437b17f6b6426ad/raw/4702d0252731ad8b21317375e917124c590819ce/git-modtime.hs -o git-modtime.hs
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         # git-modtime.hs updates modification time of files to the latest commit time that
         # a file was modified in. This ensures that stack does not rebuild unchanged
         # files. More info in this SO answer:
         # https://stackoverflow.com/questions/60906336/stack-haskell-build-cache-of-source-files-with-github-actions/61178945#61178945
-        stack --resolver ${{ matrix.resolver }} runghc git-modtime.hs
+        stack $STACK_ARGS runghc git-modtime.hs
     - name: Tests
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
@@ -130,11 +134,14 @@ jobs:
         set -ex
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
-          stack test random:spec random:legacy-test --coverage --haddock --no-haddock-deps
-          stack hpc report --all
-          curl -L https://github.com/lehins/stack-hpc-coveralls/releases/download/v0.0.6.0/shc.tar.gz | tar xz shc
-          ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ]; then
+          stack $STACK_ARGS test random:spec random:legacy-test --coverage --haddock --no-haddock-deps
+          stack $STACK_ARGS hpc report --all
+          # Upload coverage report only when the token is available.
+          if [ -n "${COVERALLS_TOKEN}" ]; then
+            curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
+            ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
+          fi
         else
-          stack --resolver ${{ matrix.resolver }} test --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
         fi
