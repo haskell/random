@@ -142,6 +142,9 @@ jobs:
             curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
             ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
           fi
+        elif [ "${{ matrix.resolver }}" == "lts-6" ]; then
+          # Inspection tests are not supported by pre ghc-8.0 compiler
+          stack $STACK_ARGS test  random:spec random:legacy-test --bench --no-run-benchmarks --haddock --no-haddock-deps
         else
           stack $STACK_ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
         fi
