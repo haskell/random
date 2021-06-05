@@ -281,8 +281,14 @@ uniformListM n gen = replicateM n (uniformM gen)
 -- >>> randomM g :: IO Double
 -- 0.5728354935654512
 --
+-- You can use type applications to disambiguate the type of the generated numbers:
+--
+-- >>> :set -XTypeApplications
+-- >>> randomM @Double g
+-- 0.6268211351114487
+--
 -- @since 1.2.0
-randomM :: (RandomGenM g r m, Random a) => g -> m a
+randomM :: (Random a, RandomGenM g r m) => g -> m a
 randomM = applyRandomGenM random
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
@@ -295,8 +301,14 @@ randomM = applyRandomGenM random
 -- >>> randomRM (1, 100) g :: IO Int
 -- 52
 --
+-- You can use type applications to disambiguate the type of the generated numbers:
+--
+-- >>> :set -XTypeApplications
+-- >>> randomRM @Int (1, 100) g
+-- 2
+--
 -- @since 1.2.0
-randomRM :: (RandomGenM g r m, Random a) => (a, a) -> g -> m a
+randomRM :: (Random a, RandomGenM g r m) => (a, a) -> g -> m a
 randomRM r = applyRandomGenM (randomR r)
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
