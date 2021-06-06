@@ -1,3 +1,7 @@
+# 1.2.1
+
+* Addition of `initStdGen`
+
 # 1.2.0
 
 1. Breaking change which mostly maintains backwards compatibility, see
