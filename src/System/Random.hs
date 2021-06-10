@@ -32,6 +32,7 @@ module System.Random
   -- ** Standard pseudo-random number generator
   , StdGen
   , mkStdGen
+  , initStdGen
 
   -- ** Global standard pseudo-random number generator
   -- $globalstdgen
@@ -324,7 +325,7 @@ instance Random Double where
   -- We return 1 - uniformDouble01M here for backwards compatibility with
   -- v1.2.0. Just return the result of uniformDouble01M in the next major
   -- version.
-  random g = runStateGen g (\gen -> (1 -) <$> uniformDouble01M gen)
+  random g = runStateGen g (fmap (1 -) . uniformDouble01M)
   {-# INLINE random #-}
 instance Random Float where
   randomR r g = runStateGen g (uniformRM r)
@@ -332,8 +333,17 @@ instance Random Float where
   -- We return 1 - uniformFloat01M here for backwards compatibility with
   -- v1.2.0. Just return the result of uniformFloat01M in the next major
   -- version.
-  random g = runStateGen g (\gen -> (1 -) <$> uniformFloat01M gen)
+  random g = runStateGen g (fmap (1 -) . uniformFloat01M)
   {-# INLINE random #-}
+
+
+
+-- | Initialize 'StdGen' using entropy available on the system (time, ...)
+--
+-- @since 1.2.1
+initStdGen :: MonadIO m => m StdGen
+initStdGen = liftIO (StdGen <$> SM.initSMGen)
+
 
 -------------------------------------------------------------------------------
 -- Global pseudo-random number generator
