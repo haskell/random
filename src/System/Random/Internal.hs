@@ -93,7 +93,6 @@ import GHC.Word
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random.GFinite (Cardinality(..), GFinite(..))
-import System.Random.GFiniteRange (GFiniteRange(..))
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
 #if __GLASGOW_HASKELL__ >= 800
@@ -648,12 +647,9 @@ class UniformRange a where
   -- >>> import Data.Word (Word8)
   -- >>> import System.Random.Stateful
   -- >>> gen <- newIOGenM (mkStdGen 42)
-  -- >>> data Tuple = Tuple Bool Word8 deriving (Show, Generic, FiniteRange, UniformRange)
+  -- >>> data Tuple = Tuple Bool Word8 deriving (Show, Generic, UniformRange)
   -- >>> Control.Monad.replicateM 10 (uniformRM (Tuple False 100, Tuple True 150) gen)
   -- [Tuple False 102,Tuple True 118,Tuple False 115,Tuple True 113,Tuple True 126,Tuple False 127,Tuple True 130,Tuple False 113,Tuple False 150,Tuple False 125]
-  -- >>> data Foo = Bar Word8 | Quux Word8 deriving (Show, Generic, FiniteRange, UniformRange)
-  -- >>> Control.Monad.replicateM 10 (uniformRM (Bar 100, Quux 150) gen)
-  -- [Bar 119,Quux 93,Quux 51,Bar 124,Quux 66,Bar 240,Bar 140,Bar 231,Quux 60,Bar 211]
   --
   -- @since 1.2.0
   uniformRM :: StatefulGen g m => (a, a) -> g -> m a
@@ -720,14 +716,6 @@ instance (GUniformRange f, GUniformRange g) => GUniformRange (f :*: g) where
   {-# INLINE guniformRM #-}
   gisInRange (x1 :*: y1, x2 :*: y2) (x3 :*: y3) =
     gisInRange (x1, x2) x3 && gisInRange (y1, y2) y3
-
-instance (GFinite f, GFinite g, GFiniteRange f, GFiniteRange g) => GUniformRange (f :+: g) where
-  guniformRM (a, b)
-    = lift
-    . fmap (toGFiniteRange (a, b))
-    . boundedExclusiveIntegralM (grangeCardinality (a, b))
-  {-# INLINE guniformRM #-}
-  gisInRange = isInGFiniteRange
 
 isInRangeOrd :: Ord a => (a, a) -> a -> Bool
 isInRangeOrd (a, b) x = min a b <= x && x <= max a b
@@ -1057,6 +1045,7 @@ instance UniformRange Bool where
   uniformRM (True, True)   _g = return True
   uniformRM _               g = uniformM g
   {-# INLINE uniformRM #-}
+  isInRange = isInRangeOrd
 
 -- | See [Floating point number caveats](System-Random-Stateful.html#fpcaveats).
 instance UniformRange Double where
