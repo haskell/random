@@ -72,6 +72,9 @@ main =
     , integralSpec (Proxy :: Proxy Integer)
     , integralSpec (Proxy :: Proxy Natural)
     , enumSpec     (Proxy :: Proxy Colors)
+    , enumSpec     (Proxy :: Proxy (Int, Int))
+    , enumSpec     (Proxy :: Proxy (Bool, Bool, Bool))
+    , enumSpec     (Proxy :: Proxy ((), Int, Bool, Word))
     , runSpec
     , floatTests
     , byteStringSpec
