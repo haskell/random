@@ -102,7 +102,8 @@ library
         bytestring >=0.10.4 && <0.12,
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.3,
-        splitmix >=0.1 && <0.2
+        splitmix >=0.1 && <0.2,
+        stm
     if impl(ghc < 8.0)
        build-depends:
            transformers

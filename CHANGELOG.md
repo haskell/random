@@ -1,6 +1,7 @@
 # 1.2.1
 
 * Addition of `initStdGen`
+* Addition of `TGen` and `TGenM`
 
 # 1.2.0
 
