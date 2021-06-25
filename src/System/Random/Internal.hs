@@ -1069,7 +1069,7 @@ instance UniformRange Double where
 --   'Double'.
 --
 -- @since 1.2.0
-uniformDouble01M :: StatefulGen g m => g -> m Double
+uniformDouble01M :: forall g m. StatefulGen g m => g -> m Double
 uniformDouble01M g = do
   w64 <- uniformWord64 g
   return $ fromIntegral w64 / m
@@ -1083,7 +1083,7 @@ uniformDouble01M g = do
 --   by 'uniformDouble01M'.
 --
 -- @since 1.2.0
-uniformDoublePositive01M :: StatefulGen g m => g -> m Double
+uniformDoublePositive01M :: forall g m. StatefulGen g m => g -> m Double
 uniformDoublePositive01M g = (+ d) <$> uniformDouble01M g
   where
     -- We add small constant to shift generated value from zero. It's
@@ -1112,7 +1112,7 @@ instance UniformRange Float where
 --   it by \(2^{32}\). It's used to implement 'UniformRange' instance for 'Float'.
 --
 -- @since 1.2.0
-uniformFloat01M :: StatefulGen g m => g -> m Float
+uniformFloat01M :: forall g m. StatefulGen g m => g -> m Float
 uniformFloat01M g = do
   w32 <- uniformWord32 g
   return $ fromIntegral w32 / m
@@ -1126,7 +1126,7 @@ uniformFloat01M g = do
 --   by 'uniformFloat01M'.
 --
 -- @since 1.2.0
-uniformFloatPositive01M :: StatefulGen g m => g -> m Float
+uniformFloatPositive01M :: forall g m. StatefulGen g m => g -> m Float
 uniformFloatPositive01M g = (+ d) <$> uniformFloat01M g
   where
     -- See uniformDoublePositive01M
@@ -1140,7 +1140,7 @@ uniformFloatPositive01M g = (+ d) <$> uniformFloat01M g
 -- > instance Uniform Colors where uniformM = uniformEnumM
 --
 -- @since 1.3.0
-uniformEnumM :: forall g m a. (Enum a, Bounded a) => StatefulGen g m => g -> m a
+uniformEnumM :: forall a g m. (Enum a, Bounded a, StatefulGen g m) => g -> m a
 uniformEnumM g = toEnum <$> uniformRM (fromEnum (minBound :: a), fromEnum (maxBound :: a)) g
 {-# INLINE uniformEnumM #-}
 
@@ -1153,7 +1153,7 @@ uniformEnumM g = toEnum <$> uniformRM (fromEnum (minBound :: a), fromEnum (maxBo
 -- >   inInRange (lo, hi) x = isInRange (fromEnum lo, fromEnum hi) (fromEnum x)
 --
 -- @since 1.3.0
-uniformEnumRM :: Enum a => (a, a) -> StatefulGen g m => g -> m a
+uniformEnumRM :: forall a g m. (Enum a, StatefulGen g m) => (a, a) -> g -> m a
 uniformEnumRM (l, h) g = toEnum <$> uniformRM (fromEnum l, fromEnum h) g
 {-# INLINE uniformEnumRM #-}
 
@@ -1190,7 +1190,7 @@ randomIvalInteger (l, h) rng
 
 -- | Generate an integral in the range @[l, h]@ if @l <= h@ and @[h, l]@
 -- otherwise.
-uniformIntegralM :: (Bits a, Integral a, StatefulGen g m) => (a, a) -> g -> m a
+uniformIntegralM :: forall a g m. (Bits a, Integral a, StatefulGen g m) => (a, a) -> g -> m a
 uniformIntegralM (l, h) gen = case l `compare` h of
   LT -> do
     let limit = h - l
@@ -1239,7 +1239,8 @@ boundedExclusiveIntegralM s gen = go
 {-# INLINE boundedExclusiveIntegralM #-}
 
 -- | boundedByPowerOf2ExclusiveIntegralM s ~ boundedExclusiveIntegralM (bit s)
-boundedByPowerOf2ExclusiveIntegralM :: (Bits a, Integral a, StatefulGen g m) => Int -> g -> m a
+boundedByPowerOf2ExclusiveIntegralM ::
+  forall a g m. (Bits a, Integral a, StatefulGen g m) => Int -> g -> m a
 boundedByPowerOf2ExclusiveIntegralM s gen = do
   let n = (s + wordSizeInBits - 1) `quot` wordSizeInBits
   x <- uniformIntegralWords n gen
@@ -1258,7 +1259,7 @@ integralWordSize = go 0
 
 -- | @uniformIntegralWords n@ is a uniformly pseudo-random integral in the range
 -- @[0, WORD_SIZE_IN_BITS^n)@.
-uniformIntegralWords :: (Bits a, Integral a, StatefulGen g m) => Int -> g -> m a
+uniformIntegralWords :: forall a g m. (Bits a, Integral a, StatefulGen g m) => Int -> g -> m a
 uniformIntegralWords n gen = go 0 n
   where
     go !acc i
@@ -1271,14 +1272,14 @@ uniformIntegralWords n gen = go 0 n
 -- | Uniformly generate an 'Integral' in an inclusive-inclusive range.
 --
 -- Only use for integrals size less than or equal to that of 'Word32'.
-unbiasedWordMult32RM :: (StatefulGen g m, Integral a) => (a, a) -> g -> m a
+unbiasedWordMult32RM :: forall a g m. (Integral a, StatefulGen g m) => (a, a) -> g -> m a
 unbiasedWordMult32RM (b, t) g
   | b <= t    = (+b) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (t - b)) g
   | otherwise = (+t) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (b - t)) g
 {-# INLINE unbiasedWordMult32RM #-}
 
 -- | Uniformly generate Word32 in @[0, s]@.
-unbiasedWordMult32 :: StatefulGen g m => Word32 -> g -> m Word32
+unbiasedWordMult32 :: forall g m. StatefulGen g m => Word32 -> g -> m Word32
 unbiasedWordMult32 s g
   | s == maxBound = uniformWord32 g
   | otherwise = unbiasedWordMult32Exclusive (s+1) g
@@ -1307,7 +1308,7 @@ unbiasedWordMult32Exclusive r g = go
 
 -- | This only works for unsigned integrals
 unsignedBitmaskWithRejectionRM ::
-     (StatefulGen g m, FiniteBits a, Num a, Ord a, Uniform a)
+     forall a g m . (FiniteBits a, Num a, Ord a, Uniform a, StatefulGen g m)
   => (a, a)
   -> g
   -> m a
@@ -1322,12 +1323,12 @@ unsignedBitmaskWithRejectionRM (bottom, top) gen
 -- overflow. It uses `unsignedBitmaskWithRejectionM`, therefore it requires functions that
 -- take the value to unsigned and back.
 signedBitmaskWithRejectionRM ::
-     (Num a, Num b, Ord b, Ord a, FiniteBits a, StatefulGen g f, Uniform a)
+     forall a b g m. (Num a, Num b, Ord b, Ord a, FiniteBits a, StatefulGen g m, Uniform a)
   => (b -> a) -- ^ Convert signed to unsigned. @a@ and @b@ must be of the same size.
   -> (a -> b) -- ^ Convert unsigned to signed. @a@ and @b@ must be of the same size.
   -> (b, b) -- ^ Range.
   -> g -- ^ Generator.
-  -> f b
+  -> m b
 signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
   | bottom == top = pure top
   | otherwise =
@@ -1344,7 +1345,7 @@ signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
 -- | Detailed explanation about the algorithm employed here can be found in this post:
 -- http://web.archive.org/web/20200520071940/https://www.pcg-random.org/posts/bounded-rands.html
 unsignedBitmaskWithRejectionM ::
-  forall a g m . (Ord a, FiniteBits a, Num a, StatefulGen g m) => (g -> m a) -> a -> g -> m a
+  forall a g m. (Ord a, FiniteBits a, Num a, StatefulGen g m) => (g -> m a) -> a -> g -> m a
 unsignedBitmaskWithRejectionM genUniformM range gen = go
   where
     mask :: a
