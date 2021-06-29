@@ -195,28 +195,28 @@ main = do
           ]
         , bgroup "floating"
           [ bgroup "IO"
-            [ env (pure (mkStdGen seed)) $ \gen ->
-                bench "uniformFloat01M" $ nfIO (runStateGenT gen (replicateM_ sz . uniformFloat01M))
-            , env (pure (mkStdGen seed)) $ \gen ->
-                bench "uniformFloatPositive01M" $
-                nfIO (runStateGenT gen (replicateM_ sz . uniformFloatPositive01M))
-            , env (pure (mkStdGen seed)) $ \gen ->
-                bench "uniformDouble01M" $ nfIO (runStateGenT gen (replicateM_ sz . uniformDouble01M))
-            , env (pure (mkStdGen seed)) $ \gen ->
-                bench "uniformDoublePositive01M" $
-                nfIO (runStateGenT gen (replicateM_ sz . uniformDoublePositive01M))
+            [ env (pure (mkStdGen seed)) $
+                bench "uniformFloat01M" . nfAppIO (\gen -> runStateGenT gen (replicateM' sz . uniformFloat01M))
+            , env (pure (mkStdGen seed)) $
+                bench "uniformFloatPositive01M" .
+                nfAppIO (\gen -> runStateGenT gen (replicateM' sz . uniformFloatPositive01M))
+            , env (pure (mkStdGen seed)) $
+                bench "uniformDouble01M" . nfAppIO (\gen -> runStateGenT gen (replicateM' sz . uniformDouble01M))
+            , env (pure (mkStdGen seed)) $
+                bench "uniformDoublePositive01M" .
+                nfAppIO (\gen -> runStateGenT gen (replicateM' sz . uniformDoublePositive01M))
             ]
           , bgroup "State"
             [ env (pure (mkStdGen seed)) $
-                bench "uniformFloat01M" . nf (`runStateGen` (replicateM_ sz . uniformFloat01M))
+                bench "uniformFloat01M" . nf (`runStateGen` (replicateM' sz . uniformFloat01M))
             , env (pure (mkStdGen seed)) $
                 bench "uniformFloatPositive01M" .
-                nf (`runStateGen` (replicateM_ sz . uniformFloatPositive01M))
+                nf (`runStateGen` (replicateM' sz . uniformFloatPositive01M))
             , env (pure (mkStdGen seed)) $
-                bench "uniformDouble01M" . nf (`runStateGen` (replicateM_ sz . uniformDouble01M))
+                bench "uniformDouble01M" . nf (`runStateGen` (replicateM' sz . uniformDouble01M))
             , env (pure (mkStdGen seed)) $
                 bench "uniformDoublePositive01M" .
-                nf (`runStateGen` (replicateM_ sz . uniformDoublePositive01M))
+                nf (`runStateGen` (replicateM' sz . uniformDoublePositive01M))
             ]
           , bgroup "pure"
             [ env (pure (mkStdGen seed)) $ \gen ->
@@ -313,3 +313,11 @@ genMany f g0 n = go 0 $ f g0
     go i (!y, !g)
       | i < n = go (i + 1) $ f g
       | otherwise = y
+
+-- | Repeat action N times, forcing each result, and return the last one.
+replicateM' :: Monad m => Int -> m a -> m a
+replicateM' n action = go 0
+  where
+    go i
+      | i < n = action >>= \x -> x `seq` go (i + 1)
+      | otherwise = action
