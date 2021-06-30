@@ -209,6 +209,7 @@ benchmark bench
     build-depends:
         base -any,
         mtl,
+        primitive >= 0.7.1,
         random -any,
         splitmix >=0.1 && <0.2,
         tasty-bench

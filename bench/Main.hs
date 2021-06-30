@@ -13,6 +13,9 @@ import Foreign.C.Types
 import Numeric.Natural (Natural)
 import System.Random.SplitMix as SM
 import Test.Tasty.Bench
+import Control.Monad.Primitive
+import Data.Primitive.PrimArray
+import Data.Primitive.Types
 
 import System.Random.Stateful
 
@@ -25,6 +28,7 @@ main = do
       genLengths =
         -- create 5000 small lengths that are needed for ShortByteString generation
         runStateGen (mkStdGen 2020) $ \g -> replicateM 5000 (uniformRM (16 + 1, 16 + 7) g)
+  setStdGen $ mkStdGen seed
   defaultMain
     [ bgroup "baseline"
       [ env (pure $ SM.mkSMGen $ fromIntegral seed) $ \smGen ->
@@ -195,43 +199,45 @@ main = do
           ]
         , bgroup "floating"
           [ bgroup "IO"
-            [ env (pure (mkStdGen seed)) $ \gen ->
-                bench "uniformFloat01M" $ nfIO (runStateGenT gen (replicateM_ sz . uniformFloat01M))
-            , env (pure (mkStdGen seed)) $ \gen ->
+            [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                bench "uniformFloat01M" $
+                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloat01M ma))
+            , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
                 bench "uniformFloatPositive01M" $
-                nfIO (runStateGenT gen (replicateM_ sz . uniformFloatPositive01M))
-            , env (pure (mkStdGen seed)) $ \gen ->
-                bench "uniformDouble01M" $ nfIO (runStateGenT gen (replicateM_ sz . uniformDouble01M))
-            , env (pure (mkStdGen seed)) $ \gen ->
+                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloatPositive01M ma))
+            , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                bench "uniformDouble01M" $
+                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDouble01M ma))
+            , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
                 bench "uniformDoublePositive01M" $
-                nfIO (runStateGenT gen (replicateM_ sz . uniformDoublePositive01M))
+                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDoublePositive01M ma))
             ]
           , bgroup "State"
-            [ env (pure (mkStdGen seed)) $
+            [ env getStdGen $
                 bench "uniformFloat01M" . nf (`runStateGen` (replicateM_ sz . uniformFloat01M))
-            , env (pure (mkStdGen seed)) $
+            , env getStdGen $
                 bench "uniformFloatPositive01M" .
                 nf (`runStateGen` (replicateM_ sz . uniformFloatPositive01M))
-            , env (pure (mkStdGen seed)) $
+            , env getStdGen $
                 bench "uniformDouble01M" . nf (`runStateGen` (replicateM_ sz . uniformDouble01M))
-            , env (pure (mkStdGen seed)) $
+            , env getStdGen $
                 bench "uniformDoublePositive01M" .
                 nf (`runStateGen` (replicateM_ sz . uniformDoublePositive01M))
             ]
           , bgroup "pure"
-            [ env (pure (mkStdGen seed)) $ \gen ->
+            [ env getStdGen $ \gen ->
                 bench "uniformFloat01M" $ nf
                 (genMany (runState $ uniformFloat01M (StateGenM :: StateGenM StdGen)) gen)
                 sz
-            , env (pure (mkStdGen seed)) $ \gen ->
+            , env getStdGen $ \gen ->
                 bench "uniformFloatPositive01M" $ nf
                 (genMany (runState $ uniformFloatPositive01M (StateGenM :: StateGenM StdGen)) gen)
                 sz
-            , env (pure (mkStdGen seed)) $ \gen ->
+            , env getStdGen $ \gen ->
                 bench "uniformDouble01M" $ nf
                 (genMany (runState $ uniformDouble01M (StateGenM :: StateGenM StdGen)) gen)
                 sz
-            , env (pure (mkStdGen seed)) $ \gen ->
+            , env getStdGen $ \gen ->
                 bench "uniformDoublePositive01M" $ nf
                 (genMany (runState $ uniformDoublePositive01M (StateGenM :: StateGenM StdGen)) gen)
                 sz
@@ -302,7 +308,7 @@ pureBench ::
   -> Proxy a
   -> Benchmark
 pureBench f sz px =
-  env (pure (mkStdGen seed)) $ \gen ->
+  env getStdGen $ \gen ->
     bench (showsTypeRep (typeRep px) "") $ whnf (genMany f gen) sz
 {-# INLINE pureBench #-}
 
@@ -313,3 +319,18 @@ genMany f g0 n = go 0 $ f g0
     go i (!y, !g)
       | i < n = go (i + 1) $ f g
       | otherwise = y
+
+
+fillMutablePrimArrayM ::
+     (Prim a, PrimMonad m)
+  => (gen -> m a)
+  -> MutablePrimArray (PrimState m) a
+  -> gen
+  -> m (PrimArray a)
+fillMutablePrimArrayM f ma g = do
+  n <- getSizeofMutablePrimArray ma
+  let go i
+        | i < n = f g >>= writePrimArray ma i >> go (i + 1)
+        | otherwise = pure ()
+  go 0
+  unsafeFreezePrimArray ma
