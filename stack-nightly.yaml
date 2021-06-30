@@ -1,6 +1,0 @@
-resolver: nightly-2021-01-17
-packages:
-- .
-extra-deps:
-- inspection-testing-0.4.5.0@sha256:938e7ce2ef42033071a5e60198c6e19ab61c411f5879b85821247a504f131768,8058
-- tasty-inspection-testing-0.1@sha256:9c5e76345168fd3a59b43d305eebf8df3c792ce324c66bbdee45b54aa7d2c0ad,1214
