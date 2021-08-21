@@ -390,13 +390,37 @@ getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
   where swap (v, g) = (g, v)
 
 
--- | A variant of 'randomR' that uses the global pseudo-random number
+-- | Use this to generate random numbers from within do-notation / IO monads.
+--
+-- You can generate a random number between 1 and 6 like this:
+--
+-- > do
+-- >     number :: Int <- randomRIO (1, 6)
+-- >     let output = "Result: " ++ show number
+-- >     putStrLn output
+--
+-- This example will output numbers like 2 or 6 if you run it. If you want to generate random
+-- numbers without a specific range, check out 'randomIO'.
+--
+-- A quick tip to better remember the name: the R in the name stands for range.
+--
+-- Technically speaking this is a variant of 'randomR' that uses the global pseudo-random number
 -- generator.
 randomRIO :: (Random a, MonadIO m) => (a, a) -> m a
 randomRIO range = liftIO $ getStdRandom (randomR range)
 
--- | A variant of 'random' that uses the global pseudo-random number
--- generator.
+-- | Use this to generate random numbers without a specific range from within do-notation / IO monads.
+--
+-- > do
+-- >     number :: Int <- randomIO
+-- >     let output = "Result: " ++ show number
+-- >     putStrLn output
+--
+-- This example will output numbers like 8443721260048554185. If you want random numbers within a
+-- specific range, like between 0 and 10, check out 'randomRIO' (the R in the name stands for range).
+--
+-- Technically speaking this is a variant of 'random' that uses the global pseudo-random
+-- number generator.
 randomIO :: (Random a, MonadIO m) => m a
 randomIO = liftIO $ getStdRandom random
 
