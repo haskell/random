@@ -1,6 +1,7 @@
 # 1.2.1
 
 * Addition of `initStdGen`
+* Addition of `runStateGenST_`
 
 # 1.2.0
 

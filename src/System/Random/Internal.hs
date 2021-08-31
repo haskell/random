@@ -50,6 +50,7 @@ module System.Random.Internal
   , runStateGenT
   , runStateGenT_
   , runStateGenST
+  , runStateGenST_
 
   -- * Pseudo-random values of various types
   , Uniform(..)
@@ -500,6 +501,15 @@ runStateGenT_ g = fmap fst . runStateGenT g
 runStateGenST :: RandomGen g => g -> (forall s . StateGenM g -> StateT g (ST s) a) -> (a, g)
 runStateGenST g action = runST $ runStateGenT g action
 {-# INLINE runStateGenST #-}
+
+-- | Runs a monadic generating action in the `ST` monad using a pure
+-- pseudo-random number generator. Same as `runStateGenST`, but discards the
+-- resulting generator.
+--
+-- @since 1.2.1
+runStateGenST_ :: RandomGen g => g -> (forall s . StateGenM g -> StateT g (ST s) a) -> a
+runStateGenST_ g action = runST $ runStateGenT_ g action
+{-# INLINE runStateGenST_ #-}
 
 
 -- | The standard pseudo-random number generator.
