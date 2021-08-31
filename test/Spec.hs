@@ -1,14 +1,16 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
-import Data.ByteString.Short as SBS
+import Control.Monad (forM_)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as SBS
 import Data.Int
 import Data.Typeable
 import Data.Void
@@ -105,6 +107,14 @@ byteStringSpec =
         let n = fromIntegral (n8 :: Word8)
          in SBS.toShort (fst (seeded (genByteString n) seed)) ==
             fst (seeded (genShortByteString n) seed)
+    , testCase "genByteString/ShortByteString consistency" $ do
+        let g = mkStdGen 2021
+            bs = [78,232,117,189,13,237,63,84,228,82,19,36,191,5,128,192] :: [Word8]
+        forM_ [0 .. length bs - 1] $ \ n -> do
+          xs <- SBS.unpack <$> runStateGenT_ g (uniformShortByteString n)
+          xs @?= take n bs
+          ys <- BS.unpack <$> runStateGenT_ g (uniformByteStringM n)
+          ys @?= xs
     ]
 
 
