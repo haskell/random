@@ -36,6 +36,7 @@ module System.Random.Stateful
   , randomM
   , randomRM
   , splitGenM
+  , globalStdGen
 
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
   -- $monadicadapters
@@ -323,6 +324,18 @@ newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
 newAtomicGenM :: MonadIO m => g -> m (AtomicGenM g)
 newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
 
+
+-- | Global mutable standard pseudo-random number generator. This is the same
+-- generator that was historically used by `randomIO` and `randomRIO` functions.
+--
+-- >>> replicateM 10 (uniformRM ('a', 'z') globalStdGen)
+-- "tdzxhyfvgr"
+--
+-- @since 1.2.1
+globalStdGen :: AtomicGenM StdGen
+globalStdGen = AtomicGenM theStdGen
+
+
 instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
   uniformWord32R r = applyAtomicGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
@@ -356,7 +369,7 @@ instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
 -- 7879794327570578227
 --
 -- @since 1.2.0
-applyAtomicGen :: MonadIO m => (g -> (a, g)) -> (AtomicGenM g) -> m a
+applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGenM g -> m a
 applyAtomicGen op (AtomicGenM gVar) =
   liftIO $ atomicModifyIORef' gVar $ \g ->
     case op g of
@@ -395,6 +408,8 @@ newtype IOGen g = IOGen { unIOGen :: g }
 -- @since 1.2.0
 newIOGenM :: MonadIO m => g -> m (IOGenM g)
 newIOGenM = fmap IOGenM . liftIO . newIORef
+
+
 
 instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
   uniformWord32R r = applyIOGen (genWord32R r)
@@ -704,6 +719,7 @@ runSTGen_ g action = fst $ runSTGen g action
 -- $setup
 -- >>> import Control.Monad.Primitive
 -- >>> import qualified System.Random.MWC as MWC
+-- >>> writeIORef theStdGen $ mkStdGen 2021
 --
 -- >>> :set -XFlexibleContexts
 -- >>> :set -XFlexibleInstances

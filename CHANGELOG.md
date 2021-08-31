@@ -1,5 +1,6 @@
 # 1.2.1
 
+* Add `globalStdGen`
 * Addition of `initStdGen`
 * Addition of `runStateGenST_`
 * Ensure that default implementation of `ShortByteString` generation uses unpinned memory.

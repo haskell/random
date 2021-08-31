@@ -66,7 +66,6 @@ import Data.IORef
 import Data.Word
 import Foreign.C.Types
 import GHC.Exts
-import System.IO.Unsafe (unsafePerformIO)
 import System.Random.GFinite (Finite)
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
@@ -354,10 +353,6 @@ setStdGen = liftIO . writeIORef theStdGen
 -- |Gets the global pseudo-random number generator.
 getStdGen :: MonadIO m => m StdGen
 getStdGen = liftIO $ readIORef theStdGen
-
-theStdGen :: IORef StdGen
-theStdGen = unsafePerformIO $ SM.initSMGen >>= newIORef . StdGen
-{-# NOINLINE theStdGen #-}
 
 -- |Applies 'split' to the current global pseudo-random generator,
 -- updates it with one of the results, and returns the other.
