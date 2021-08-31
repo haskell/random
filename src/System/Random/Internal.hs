@@ -79,14 +79,11 @@ import Control.Monad.ST.Unsafe
 import Control.Monad.State.Strict (StateT(..), State, MonadState(..), runState)
 import Control.Monad.Trans (lift)
 import Data.Bits
-import Data.ByteString.Builder.Prim (word64LE)
-import Data.ByteString.Builder.Prim.Internal (runF)
 import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
 import Data.Int
 import Data.Word
 import Foreign.C.Types
-import Foreign.Ptr (plusPtr)
-import Foreign.Storable (Storable(pokeByteOff))
+import Foreign.Storable (Storable)
 import GHC.Exts
 import GHC.Generics
 import GHC.IO (IO(..))
@@ -105,6 +102,8 @@ import GHC.ForeignPtr
 #else
 import Data.ByteString (ByteString)
 #endif
+
+#include "MachDeps.h"
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
@@ -304,7 +303,7 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   thawGen :: f -> m (MutableGen f m)
 
 
-data MBA s = MBA (MutableByteArray# s)
+data MBA = MBA (MutableByteArray# RealWorld)
 
 
 -- | Efficiently generates a sequence of pseudo-random bytes in a platform
@@ -319,39 +318,74 @@ genShortByteStringIO ::
 genShortByteStringIO n0 gen64 = do
   let !n@(I# n#) = max 0 n0
       !n64 = n `quot` 8
-      !nrem64 = n `rem` 8
-  MBA mba# <-
-    liftIO $
-    IO $ \s# ->
-      case newPinnedByteArray# n# s# of
+      !nrem = n `rem` 8
+      !nremStart = n - nrem
+  mba@(MBA mba#) <-
+    liftIO $ IO $ \s# ->
+      case newByteArray# n# s# of
         (# s'#, mba# #) -> (# s'#, MBA mba# #)
-  let go i ptr
-        | i < n64 = do
+  let go i =
+        when (i < n64) $ do
           w64 <- gen64
           -- Writing 8 bytes at a time in a Little-endian order gives us
           -- platform portability
-          liftIO $ runF word64LE w64 ptr
-          go (i + 1) (ptr `plusPtr` 8)
-        | otherwise = return ptr
-  ptr <- go 0 (Ptr (byteArrayContents# (unsafeCoerce# mba#)))
-  when (nrem64 > 0) $ do
+          liftIO $ writeWord64LE mba i w64
+          go (i + 1)
+  go 0
+  when (nrem > 0) $ do
     w64 <- gen64
-    -- In order to not mess up the byte order we write generated Word64 into a
-    -- temporary pointer and then copy only the missing bytes over to the array.
-    -- It is tempting to simply generate as many bytes as we still need using
-    -- smaller generators (eg. uniformWord8), but that would result in
-    -- inconsistent tail when total length is slightly varied.
-    liftIO $ do
-      let goRem64 z i =
-            when (i < nrem64) $ do
-              pokeByteOff ptr i (fromIntegral z :: Word8)
-              goRem64 (z `shiftR` 8) (i + 1)
-      goRem64 w64 0
-  liftIO $
-    IO $ \s# ->
-      case unsafeFreezeByteArray# mba# s# of
-        (# s'#, ba# #) -> (# s'#, SBS ba# #)
+    let goRem32 z i =
+          when (i < n) $ do
+            writeWord8 mba i (fromIntegral z :: Word8)
+            goRem32 (z `shiftR` 8) (i + 1)
+    -- In order to not mess up the byte order we write 1 byte at a time in
+    -- Little endian order. It is tempting to simply generate as many bytes as we
+    -- still need using smaller generators (eg. uniformWord8), but that would
+    -- result in inconsistent tail when total length is slightly varied.
+    liftIO $
+      if nrem >= 4
+      then do
+           writeWord32LE mba (nremStart `quot` 4) (fromIntegral w64)
+           goRem32 (w64 `shiftR` 32) (nremStart + 4)
+      else goRem32 w64 nremStart
+  liftIO $ IO $ \s# ->
+    case unsafeFreezeByteArray# mba# s# of
+      (# s'#, ba# #) -> (# s'#, SBS ba# #)
 {-# INLINE genShortByteStringIO #-}
+
+writeWord8 :: MBA -> Int -> Word8 -> IO ()
+writeWord8 (MBA mba#) (I# i#) (W8# w#) =
+  IO $ \s# -> (# writeWord8Array# mba# i# w# s#, () #)
+{-# INLINE writeWord8 #-}
+
+-- Architecture independent helpers:
+
+writeWord32LE :: MBA -> Int -> Word32 -> IO ()
+writeWord32LE (MBA mba#) (I# i#) w =
+  IO $ \s# -> (# writeWord32Array# mba# i# wle# s#, () #)
+  where
+#ifdef WORDS_BIGENDIAN
+    !(W32# wle#) = byteSwap32 w
+#else
+    !(W32# wle#) = w
+#endif /* WORD_SIZE_IN_BITS */
+{-# INLINE writeWord32LE #-}
+
+writeWord64LE :: MBA -> Int -> Word64 -> IO ()
+writeWord64LE mba@(MBA mba#) i@(I# i#) w64@(W64# w#)
+  | wordSizeInBits == 64 = do
+#ifdef WORDS_BIGENDIAN
+    let !wle# = byteSwap64# w#
+#else
+    let !wle# = w#
+#endif /* WORDS_BIGENDIAN */
+    IO $ \s# -> (# writeWord64Array# mba# i# wle# s#, () #)
+  | otherwise = do
+    let !i' = i * 2
+    writeWord32LE mba i' (fromIntegral w64)
+    writeWord32LE mba (i' + 1) (fromIntegral (w64 `shiftR` 32))
+{-# INLINE writeWord64LE #-}
+
 
 -- | Same as 'genShortByteStringIO', but runs in 'ST'.
 --
