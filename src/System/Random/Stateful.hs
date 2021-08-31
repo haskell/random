@@ -48,6 +48,7 @@ module System.Random.Stateful
   , runStateGenT
   , runStateGenT_
   , runStateGenST
+  , runStateGenST_
   -- ** Mutable adapter with atomic operations
   , AtomicGen(..)
   , AtomicGenM(..)
