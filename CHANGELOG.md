@@ -1,5 +1,6 @@
 # 1.2.1
 
+* Add `globalStdGen`
 * Addition of `initStdGen`
 
 # 1.2.0
