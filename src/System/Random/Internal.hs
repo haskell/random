@@ -84,6 +84,7 @@ import Data.Int
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
+import GHC.ByteOrder
 import GHC.Exts
 import GHC.Generics
 import GHC.IO (IO(..))
@@ -102,8 +103,6 @@ import GHC.ForeignPtr
 #else
 import Data.ByteString (ByteString)
 #endif
-
-#include "MachDeps.h"
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
@@ -364,21 +363,17 @@ writeWord32LE :: MBA -> Int -> Word32 -> IO ()
 writeWord32LE (MBA mba#) (I# i#) w =
   IO $ \s# -> (# writeWord32Array# mba# i# wle# s#, () #)
   where
-#ifdef WORDS_BIGENDIAN
-    !(W32# wle#) = byteSwap32 w
-#else
-    !(W32# wle#) = w
-#endif /* WORD_SIZE_IN_BITS */
+    !(W32# wle#)
+      | targetByteOrder == BigEndian = byteSwap32 w
+      | otherwise = w
 {-# INLINE writeWord32LE #-}
 
 writeWord64LE :: MBA -> Int -> Word64 -> IO ()
 writeWord64LE mba@(MBA mba#) i@(I# i#) w64@(W64# w#)
   | wordSizeInBits == 64 = do
-#ifdef WORDS_BIGENDIAN
-    let !wle# = byteSwap64# w#
-#else
-    let !wle# = w#
-#endif /* WORDS_BIGENDIAN */
+    let !wle#
+          | targetByteOrder == BigEndian = byteSwap64# w#
+          | otherwise = w#
     IO $ \s# -> (# writeWord64Array# mba# i# wle# s#, () #)
   | otherwise = do
     let !i' = i * 2
