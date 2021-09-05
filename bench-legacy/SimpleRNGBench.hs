@@ -222,7 +222,7 @@ main = do
       randBool    = random :: RandomGen g => g -> (Bool,g)
       randChar    = random :: RandomGen g => g -> (Char,g)
 
-      gen = mkStdGen 23852358661234
+      gen = mkStdGen 238523586
       gamut th = do
         putStrLn "  First, timing System.Random.next:"
         timeit th freq "constant zero gen"      NoopRNG next
