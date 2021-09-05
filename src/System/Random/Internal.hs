@@ -17,8 +17,8 @@
 #if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TypeFamilyDependencies #-}
 #else
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
 #endif
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
@@ -39,6 +39,7 @@ module System.Random.Internal
   -- ** Standard pseudo-random number generator
   , StdGen(..)
   , mkStdGen
+  , theStdGen
 
   -- * Monadic adapters for pure pseudo-random number generators
   -- ** Pure adapter
@@ -76,10 +77,11 @@ import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.ST
 import Control.Monad.ST.Unsafe
-import Control.Monad.State.Strict (StateT(..), State, MonadState(..), runState)
+import Control.Monad.State.Strict (MonadState(..), State, StateT(..), runState)
 import Control.Monad.Trans (lift)
 import Data.Bits
 import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
+import Data.IORef (IORef, newIORef)
 import Data.Int
 import Data.Word
 import Foreign.C.Types
@@ -571,6 +573,12 @@ instance RandomGen SM32.SMGen where
 -- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen
 mkStdGen = StdGen . SM.mkSMGen . fromIntegral
+
+-- | Global mutable veriable with `StdGen`
+theStdGen :: IORef StdGen
+theStdGen = unsafePerformIO $ SM.initSMGen >>= newIORef . StdGen
+{-# NOINLINE theStdGen #-}
+
 
 -- | The class of types for which a uniformly distributed value can be drawn
 -- from all possible values of the type.
