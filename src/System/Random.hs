@@ -209,6 +209,8 @@ genByteString n g = runStateGenST g (uniformByteStringM n)
 -- 'Random' exists primarily for backwards compatibility with version 1.1 of
 -- this library. In new code, use the better specified 'Uniform' and
 -- 'UniformRange' instead.
+--
+-- @since 1.0.0
 class Random a where
 
   -- | Takes a range /(lo,hi)/ and a pseudo-random number generator
@@ -217,6 +219,8 @@ class Random a where
   -- what happens if /lo>hi/. For continuous types there is no requirement
   -- that the values /lo/ and /hi/ are ever produced, but they may be,
   -- depending on the implementation and the interval.
+  --
+  -- @since 1.0.0
   {-# INLINE randomR #-}
   randomR :: RandomGen g => (a, a) -> g -> (a, g)
   default randomR :: (RandomGen g, UniformRange a) => (a, a) -> g -> (a, g)
@@ -231,6 +235,8 @@ class Random a where
   -- @[0,1)@.
   --
   -- * For 'Integer', the range is (arbitrarily) the range of 'Int'.
+  --
+  -- @since 1.0.0
   {-# INLINE random #-}
   random  :: RandomGen g => g -> (a, g)
   default random :: (RandomGen g, Uniform a) => g -> (a, g)
@@ -238,12 +244,16 @@ class Random a where
 
   -- | Plural variant of 'randomR', producing an infinite list of
   -- pseudo-random values instead of returning a new generator.
+  --
+  -- @since 1.0.0
   {-# INLINE randomRs #-}
   randomRs :: RandomGen g => (a,a) -> g -> [a]
   randomRs ival g = build (\cons _nil -> buildRandoms cons (randomR ival) g)
 
   -- | Plural variant of 'random', producing an infinite list of
   -- pseudo-random values instead of returning a new generator.
+  --
+  -- @since 1.0.0
   {-# INLINE randoms #-}
   randoms  :: RandomGen g => g -> [a]
   randoms  g      = build (\cons _nil -> buildRandoms cons random g)
@@ -269,7 +279,7 @@ buildRandoms cons rand = go
     -- The seq fixes part of #4218 and also makes fused Core simpler.
     go g = x `seq` (x `cons` go g') where (x,g') = rand g
 
--- Generate values in the Int range
+-- | 'random' generates values in the 'Int' range
 instance Random Integer where
   random = first (toInteger :: Int -> Integer) . random
   {-# INLINE random #-}
@@ -337,7 +347,8 @@ instance Random Float where
 
 
 
--- | Initialize 'StdGen' using entropy available on the system (time, ...)
+-- | Initialize 'StdGen' using system entropy (i.e. @\/dev\/urandom@) when it is
+-- available, while falling back on using system time as the seed.
 --
 -- @since 1.2.1
 initStdGen :: MonadIO m => m StdGen
@@ -351,49 +362,117 @@ initStdGen = liftIO (StdGen <$> SM.initSMGen)
 -- $globalstdgen
 --
 -- There is a single, implicit, global pseudo-random number generator of type
--- 'StdGen', held in a global variable maintained by the 'IO' monad. It is
--- initialised automatically in some system-dependent fashion. To get
--- deterministic behaviour, use 'setStdGen'.
+-- 'StdGen', held in a global mutable variable that can be manipulated from
+-- within the 'IO' monad. It is also available as
+-- 'System.Random.Stateful.globalStdGen', therefore it is recommended to use the
+-- new "System.Random.Stateful" interface to explicitly operate on the global
+-- pseudo-random number generator.
 --
--- Note that 'mkStdGen' also gives deterministic behaviour without requiring an
--- 'IO' context.
+-- It is initialised with 'initStdGen', although it is possible to override its
+-- value with 'setStdGen'. All operations on the global pseudo-random number
+-- generator are thread safe, however in presence of concurrency they are
+-- naturally become non-deterministic. Moreover, relying on the global mutable
+-- state makes it hard to know which of the dependent libraries are using it as
+-- well, making it unpredictable in the local context. Precisely of this reason,
+-- the global pseudo-random number generator is only suitable for uses in
+-- applications, test suites, etc. and is advised against in development of
+-- reusable libraries.
+--
+-- It is also important to note that either using 'StdGen' with pure functions
+-- from other sections of this module or by relying on
+-- 'System.Random.Stateful.runStateGen' from stateful interface does not only
+-- give us deterministic behaviour without requiring 'IO', but it is also more
+-- efficient.
 
--- |Sets the global pseudo-random number generator.
+
+-- | Sets the global pseudo-random number generator. Overwrites the contents of
+-- 'System.Random.Stateful.globalStdGen'
+--
+-- @since 1.0.0
 setStdGen :: MonadIO m => StdGen -> m ()
 setStdGen = liftIO . writeIORef theStdGen
 
--- |Gets the global pseudo-random number generator.
+-- | Gets the global pseudo-random number generator. Extracts the contents of
+-- 'System.Random.Stateful.globalStdGen'
+--
+-- @since 1.0.0
 getStdGen :: MonadIO m => m StdGen
 getStdGen = liftIO $ readIORef theStdGen
 
--- |Applies 'split' to the current global pseudo-random generator,
--- updates it with one of the results, and returns the other.
+-- | Applies 'split' to the current global pseudo-random generator
+-- 'System.Random.Stateful.globalStdGen', updates it with one of the results,
+-- and returns the other.
+--
+-- @since 1.0.0
 newStdGen :: MonadIO m => m StdGen
 newStdGen = liftIO $ atomicModifyIORef' theStdGen split
 
-{- |Uses the supplied function to get a value from the current global
-random generator, and updates the global generator with the new generator
-returned by the function. For example, @rollDice@ gets a pseudo-random integer
-between 1 and 6:
-
->  rollDice :: IO Int
->  rollDice = getStdRandom (randomR (1,6))
-
--}
+-- | Uses the supplied function to get a value from the current global
+-- random generator, and updates the global generator with the new generator
+-- returned by the function. For example, @rollDice@ produces a pseudo-random integer
+-- between 1 and 6:
+--
+-- >>> rollDice = getStdRandom (randomR (1, 6))
+-- >>> replicateM 10 (rollDice :: IO Int)
+-- [5,6,6,1,1,6,4,2,4,1]
+--
+-- This is an outdated function and it is recommended to switch to its
+-- equivalent 'System.Random.Stateful.applyAtomicGen' instead, possibly with the
+-- 'System.Random.Stateful.globalStdGen' if relying on the global state is
+-- acceptable.
+--
+-- >>> import System.Random.Stateful
+-- >>> rollDice = applyAtomicGen (uniformR (1, 6)) globalStdGen
+-- >>> replicateM 10 (rollDice :: IO Int)
+-- [4,6,1,1,4,4,3,2,1,2]
+--
+-- @since 1.0.0
 getStdRandom :: MonadIO m => (StdGen -> (a, StdGen)) -> m a
 getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
   where swap (v, g) = (g, v)
 
 
--- | A variant of 'randomR' that uses the global pseudo-random number
--- generator.
+-- | A variant of 'System.Random.Stateful.randomRM' that uses the global
+-- pseudo-random number generator 'System.Random.Stateful.globalStdGen'
+--
+-- >>> randomRIO (2020, 2100) :: IO Int
+-- 2040
+--
+-- Similar to 'randomIO', this function is equivalent to @'getStdRandom'
+-- 'randomR'@ and is included in this interface for historical reasons and
+-- backwards compatibility. It is recommended to use
+-- 'System.Random.Stateful.uniformRM' instead, possibly with the
+-- 'System.Random.Stateful.globalStdGen' if relying on the global state is
+-- acceptable.
+--
+-- >>> import System.Random.Stateful
+-- >>> uniformRM (2020, 2100) globalStdGen :: IO Int
+-- 2079
+--
+-- @since 1.0.0
 randomRIO :: (Random a, MonadIO m) => (a, a) -> m a
-randomRIO range = liftIO $ getStdRandom (randomR range)
+randomRIO range = getStdRandom (randomR range)
 
--- | A variant of 'random' that uses the global pseudo-random number
--- generator.
+-- | A variant of 'System.Random.Stateful.randomM' that uses the global
+-- pseudo-random number generator 'System.Random.Stateful.globalStdGen'.
+--
+-- >>> import Data.Int
+-- >>> randomIO :: IO Int32
+-- -1580093805
+--
+-- This function is equivalent to @'getStdRandom' 'random'@ and is included in
+-- this interface for historical reasons and backwards compatibility. It is
+-- recommended to use 'System.Random.Stateful.uniformM' instead, possibly with
+-- the 'System.Random.Stateful.globalStdGen' if relying on the global state is
+-- acceptable.
+--
+-- >>> import System.Random.Stateful
+-- >>> uniformM globalStdGen :: IO Int32
+-- -1649127057
+--
+-- @since 1.0.0
 randomIO :: (Random a, MonadIO m) => m a
-randomIO = liftIO $ getStdRandom random
+randomIO = getStdRandom random
 
 -------------------------------------------------------------------------------
 -- Notes
