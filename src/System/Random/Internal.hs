@@ -111,6 +111,8 @@ import Data.ByteString (ByteString)
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
 -- 'StdGen' is the standard 'RandomGen' instance provided by this library.
+--
+-- @since 1.0.0
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
@@ -120,6 +122,8 @@ class RandomGen g where
   -- is inefficient as all operations go via 'Integer'. See
   -- [here](https://alexey.kuleshevi.ch/blog/2019/12/21/random-benchmarks) for
   -- more details. It is thus deprecated.
+  --
+  -- @since 1.0.0
   next :: g -> (Int, g)
   next g = runStateGen g (uniformRM (genRange g))
 
@@ -196,6 +200,8 @@ class RandomGen g where
   --     determined only by the instance of 'RandomGen'.
   --
   -- The default definition spans the full range of 'Int'.
+  --
+  -- @since 1.0.0
   genRange :: g -> (Int, Int)
   genRange _ = (minBound, maxBound)
 
@@ -205,10 +211,14 @@ class RandomGen g where
   -- are not correlated. Some pseudo-random number generators are not
   -- splittable. In that case, the 'split' implementation should fail with a
   -- descriptive 'error' message.
+  --
+  -- @since 1.0.0
   split :: g -> (g, g)
 
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
+--
+-- @since 1.2.0
 class Monad m => StatefulGen g m where
   {-# MINIMAL (uniformWord32|uniformWord64) #-}
   -- | @uniformWord32R upperBound g@ generates a 'Word32' that is uniformly
