@@ -85,7 +85,6 @@ import Data.Int
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
-import GHC.ByteOrder
 import GHC.Exts
 import GHC.Generics
 import GHC.IO (IO(..))
@@ -104,6 +103,10 @@ import GHC.ForeignPtr
 #else
 import Data.ByteString (ByteString)
 #endif
+
+-- Needed for WORDS_BIGENDIAN
+#include "MachDeps.h"
+
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
@@ -365,16 +368,19 @@ writeByteSliceWord64LE mba fromByteIx toByteIx = go fromByteIx
 {-# INLINE writeByteSliceWord64LE #-}
 
 writeWord64LE :: MBA -> Int -> Word64 -> IO ()
+#ifdef WORDS_BIGENDIAN
+writeWord64LE mba i w64 = do
+  let !i8 = i * 8
+  writeByteSliceWord64LE mba i8 (i8 + 8) w64
+#else
 writeWord64LE mba@(MBA mba#) i@(I# i#) w64@(W64# w#)
-  | targetByteOrder == BigEndian = do
-    let !i8 = i * 8
-    writeByteSliceWord64LE mba i8 (i8 + 8) w64
   | wordSizeInBits == 64 = do
     IO $ \s# -> (# writeWord64Array# mba# i# w# s#, () #)
   | otherwise = do
     let !i32 = i * 2
     writeWord32 mba i32 (fromIntegral w64)
     writeWord32 mba (i32 + 1) (fromIntegral (w64 `shiftR` 32))
+#endif
 {-# INLINE writeWord64LE #-}
 
 
