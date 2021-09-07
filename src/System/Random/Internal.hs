@@ -348,16 +348,13 @@ genShortByteStringIO n0 gen64 = do
 {-# INLINE genShortByteStringIO #-}
 
 -- Architecture independent helpers:
+io_ :: (State# RealWorld -> State# RealWorld) -> IO ()
+io_ m# = IO $ \s# -> (# m# s#, () #)
+{-# INLINE io_ #-}
 
 writeWord8 :: MBA -> Int -> Word8 -> IO ()
-writeWord8 (MBA mba#) (I# i#) (W8# w#) =
-  IO $ \s# -> (# writeWord8Array# mba# i# w# s#, () #)
+writeWord8 (MBA mba#) (I# i#) (W8# w#) = io_ (writeWord8Array# mba# i# w#)
 {-# INLINE writeWord8 #-}
-
-writeWord32 :: MBA -> Int -> Word32 -> IO ()
-writeWord32 (MBA mba#) (I# i#) (W32# w#) =
-  IO $ \s# -> (# writeWord32Array# mba# i# w# s#, () #)
-{-# INLINE writeWord32 #-}
 
 writeByteSliceWord64LE :: MBA -> Int -> Int -> Word64 -> IO ()
 writeByteSliceWord64LE mba fromByteIx toByteIx = go fromByteIx
@@ -374,13 +371,12 @@ writeWord64LE mba i w64 = do
   let !i8 = i * 8
   writeByteSliceWord64LE mba i8 (i8 + 8) w64
 #else
-writeWord64LE mba@(MBA mba#) i@(I# i#) w64@(W64# w#)
-  | wordSizeInBits == 64 = do
-    IO $ \s# -> (# writeWord64Array# mba# i# w# s#, () #)
+writeWord64LE (MBA mba#) (I# i#) (W64# w#)
+  | wordSizeInBits == 64 = io_ (writeWord64Array# mba# i# w#)
   | otherwise = do
-    let !i32 = i * 2
-    writeWord32 mba i32 (fromIntegral w64)
-    writeWord32 mba (i32 + 1) (fromIntegral (w64 `shiftR` 32))
+    let !i32# = i# *# 2#
+    io_ (writeWord32Array# mba# i32# w#)
+    io_ (writeWord32Array# mba# (i32# +# 1#) (w# `shiftRL#` 32#))
 #endif
 {-# INLINE writeWord64LE #-}
 
