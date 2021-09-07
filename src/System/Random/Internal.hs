@@ -86,7 +86,6 @@ import Data.Int
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
-import GHC.ByteOrder
 import GHC.Exts
 import GHC.Generics
 import GHC.IO (IO(..))
@@ -105,6 +104,10 @@ import GHC.ForeignPtr
 #else
 import Data.ByteString (ByteString)
 #endif
+
+-- Needed for WORDS_BIGENDIAN
+#include "MachDeps.h"
+
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
@@ -320,7 +323,6 @@ genShortByteStringIO n0 gen64 = do
   let !n@(I# n#) = max 0 n0
       !n64 = n `quot` 8
       !nrem = n `rem` 8
-      !nremStart = n - nrem
   mba@(MBA mba#) <-
     liftIO $ IO $ \s# ->
       case newByteArray# n# s# of
@@ -335,52 +337,47 @@ genShortByteStringIO n0 gen64 = do
   go 0
   when (nrem > 0) $ do
     w64 <- gen64
-    let goRem32 z i =
-          when (i < n) $ do
-            writeWord8 mba i (fromIntegral z :: Word8)
-            goRem32 (z `shiftR` 8) (i + 1)
     -- In order to not mess up the byte order we write 1 byte at a time in
     -- Little endian order. It is tempting to simply generate as many bytes as we
     -- still need using smaller generators (eg. uniformWord8), but that would
     -- result in inconsistent tail when total length is slightly varied.
-    liftIO $
-      if nrem >= 4
-      then do
-           writeWord32LE mba (nremStart `quot` 4) (fromIntegral w64)
-           goRem32 (w64 `shiftR` 32) (nremStart + 4)
-      else goRem32 w64 nremStart
+    liftIO $ writeByteSliceWord64LE mba (n - nrem) n w64
   liftIO $ IO $ \s# ->
     case unsafeFreezeByteArray# mba# s# of
       (# s'#, ba# #) -> (# s'#, SBS ba# #)
 {-# INLINE genShortByteStringIO #-}
 
+-- Architecture independent helpers:
+io_ :: (State# RealWorld -> State# RealWorld) -> IO ()
+io_ m# = IO $ \s# -> (# m# s#, () #)
+{-# INLINE io_ #-}
+
 writeWord8 :: MBA -> Int -> Word8 -> IO ()
-writeWord8 (MBA mba#) (I# i#) (W8# w#) =
-  IO $ \s# -> (# writeWord8Array# mba# i# w# s#, () #)
+writeWord8 (MBA mba#) (I# i#) (W8# w#) = io_ (writeWord8Array# mba# i# w#)
 {-# INLINE writeWord8 #-}
 
--- Architecture independent helpers:
-
-writeWord32LE :: MBA -> Int -> Word32 -> IO ()
-writeWord32LE (MBA mba#) (I# i#) w =
-  IO $ \s# -> (# writeWord32Array# mba# i# wle# s#, () #)
+writeByteSliceWord64LE :: MBA -> Int -> Int -> Word64 -> IO ()
+writeByteSliceWord64LE mba fromByteIx toByteIx = go fromByteIx
   where
-    !(W32# wle#)
-      | targetByteOrder == BigEndian = byteSwap32 w
-      | otherwise = w
-{-# INLINE writeWord32LE #-}
+    go !i !z =
+      when (i < toByteIx) $ do
+        writeWord8 mba i (fromIntegral z :: Word8)
+        go (i + 1) (z `shiftR` 8)
+{-# INLINE writeByteSliceWord64LE #-}
 
 writeWord64LE :: MBA -> Int -> Word64 -> IO ()
-writeWord64LE mba@(MBA mba#) i@(I# i#) w64@(W64# w#)
-  | wordSizeInBits == 64 = do
-    let !wle#
-          | targetByteOrder == BigEndian = byteSwap64# w#
-          | otherwise = w#
-    IO $ \s# -> (# writeWord64Array# mba# i# wle# s#, () #)
+#ifdef WORDS_BIGENDIAN
+writeWord64LE mba i w64 = do
+  let !i8 = i * 8
+  writeByteSliceWord64LE mba i8 (i8 + 8) w64
+#else
+writeWord64LE (MBA mba#) (I# i#) (W64# w#)
+  | wordSizeInBits == 64 = io_ (writeWord64Array# mba# i# w#)
   | otherwise = do
-    let !i' = i * 2
-    writeWord32LE mba i' (fromIntegral w64)
-    writeWord32LE mba (i' + 1) (fromIntegral (w64 `shiftR` 32))
+    let !i32# = i# *# 2#
+    io_ (writeWord32Array# mba# i32# w#)
+    io_ (writeWord32Array# mba# (i32# +# 1#) (w# `shiftRL#` 32#))
+#endif
 {-# INLINE writeWord64LE #-}
 
 
