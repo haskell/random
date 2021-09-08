@@ -1,9 +1,20 @@
 # 1.2.1
 
-* Add `globalStdGen`
-* Addition of `initStdGen`
-* Addition of `runStateGenST_`
-* Ensure that default implementation of `ShortByteString` generation uses unpinned memory.
+* Fix support for ghc-9.2 [#99](https://github.com/haskell/random/pull/99)
+* Fix performance regression for ghc-9.0 [#101](https://github.com/haskell/random/pull/101)
+* Add `uniformEnumM` and `uniformEnumRM`
+* Add `initStdGen` [#103](https://github.com/haskell/random/pull/103)
+* Add `globalStdGen` [#117](https://github.com/haskell/random/pull/117)
+* Add `runStateGenST_`
+* Ensure that default implementation of `ShortByteString` generation uses
+  unpinned memory. [#116](https://github.com/haskell/random/pull/116)
+* Fix [#54](https://github.com/haskell/random/issues/54) with
+  [#68](https://github.com/haskell/random/pull/68) - if exactly one value in the
+  range of floating point is infinite, then `uniformRM`/`randomR` returns that
+  value.
+* Add default implementation of `uniformM` that uses `Generic`
+  [#70](https://github.com/haskell/random/pull/70)
+* `Random` instance for `CBool` [#77](https://github.com/haskell/random/pull/77)
 
 # 1.2.0
 
