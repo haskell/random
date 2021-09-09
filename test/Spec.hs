@@ -27,6 +27,7 @@ import Test.Tasty.SmallCheck as SC
 
 import qualified Spec.Range as Range
 import qualified Spec.Run as Run
+import qualified Spec.Stateful as Stateful
 
 main :: IO ()
 main =
@@ -79,6 +80,7 @@ main =
     , byteStringSpec
     , SC.testProperty "uniformRangeWithinExcludedF" $ seeded Range.uniformRangeWithinExcludedF
     , SC.testProperty "uniformRangeWithinExcludedD" $ seeded Range.uniformRangeWithinExcludedD
+    , Stateful.statefulSpec
     ]
 
 floatTests :: TestTree
