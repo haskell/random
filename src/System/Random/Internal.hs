@@ -516,7 +516,7 @@ runStateGenT g f = runStateT (f StateGenM) g
 -- >>> runStateGenT_ pureGen randomM :: IO Int
 -- 7879794327570578227
 --
--- @since 1.2.0
+-- @since 1.2.1
 runStateGenT_ :: (RandomGen g, Functor f) => g -> (StateGenM g -> StateT g f a) -> f a
 runStateGenT_ g = fmap fst . runStateGenT g
 {-# INLINE runStateGenT_ #-}
