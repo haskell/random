@@ -10,6 +10,7 @@ main = doctest ["src"]
 
 #else
 
+-- Also disabled in cabal file.
 -- TODO: fix doctest support
 main :: IO ()
 main = putStrLn "\nDoctests are not supported for older ghc version\n"

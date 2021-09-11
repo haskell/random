@@ -209,12 +209,23 @@ class Random a where
   -- closed interval /[lo,hi]/, together with a new generator. It is unspecified
   -- what happens if /lo>hi/, but usually the values will simply get swapped.
   --
+  -- >>> let gen = mkStdGen 2021
+  -- >>> fst $ randomR ('a', 'z') gen
+  -- 't'
+  -- >>> fst $ randomR ('z', 'a') gen
+  -- 't'
+  --
   -- For continuous types there is no requirement that the values /lo/ and /hi/ are ever
   -- produced, but they may be, depending on the implementation and the interval.
   --
   -- There is no requirement to follow the @Ord@ instance and the concept of range can be
   -- defined on per type basis. For example product types will treat their values
-  -- independently. In case when a lawful range is desired `uniformR` should be used
+  -- independently:
+  --
+  -- >>> fst $ randomR (('a', 5.0), ('z', 10.0)) $ mkStdGen 2021
+  -- ('t',6.240232662366563)
+  --
+  -- In case when a lawful range is desired `uniformR` should be used
   -- instead.
   --
   -- @since 1.0.0
