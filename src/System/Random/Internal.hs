@@ -3,7 +3,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
@@ -17,7 +17,6 @@
 #if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TypeFamilyDependencies #-}
 #else
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 #endif
 {-# OPTIONS_HADDOCK hide, not-home #-}
@@ -517,7 +516,7 @@ runStateGenT g f = runStateT (f StateGenM) g
 -- >>> runStateGenT_ pureGen randomM :: IO Int
 -- 7879794327570578227
 --
--- @since 1.2.0
+-- @since 1.2.1
 runStateGenT_ :: (RandomGen g, Functor f) => g -> (StateGenM g -> StateT g f a) -> f a
 runStateGenT_ g = fmap fst . runStateGenT g
 {-# INLINE runStateGenT_ #-}
