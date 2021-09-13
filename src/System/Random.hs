@@ -517,11 +517,12 @@ randomIO = liftIO $ getStdRandom random
 -- $reproducibility
 --
 -- If you have two builds of a particular piece of code against this library,
--- any deterministic function call should give the same result in the two
--- builds if the builds are
+-- any deterministic function call should give the same result in the two builds
+-- if the builds are compiled against the same major version of this library.
 --
--- *   compiled against the same major version of this library
--- *   on the same architecture (32-bit or 64-bit)
+-- When using the same `StdGen` with deterministic functions, they will produce
+-- the same results independently of target architecture the program was build
+-- for: 32-bit or 64-bit, big endian or little endian.
 --
 -- $references
 --
