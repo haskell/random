@@ -11,7 +11,7 @@ steps:
     - ghc --version
     - cabal --version
     - cabal new-update
-    - cabal new-test
+    - cabal new-test random:spec random:legacy-test random:spec-inspection
 ---
 kind: pipeline
 name: i386
