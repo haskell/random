@@ -370,12 +370,14 @@ writeWord64LE mba i w64 = do
   let !i8 = i * 8
   writeByteSliceWord64LE mba i8 (i8 + 8) w64
 #else
-writeWord64LE (MBA mba#) (I# i#) (W64# w#)
-  | wordSizeInBits == 64 = io_ (writeWord64Array# mba# i# w#)
+writeWord64LE (MBA mba#) (I# i#) w64@(W64# w64#)
+  | wordSizeInBits == 64 = io_ (writeWord64Array# mba# i# w64#)
   | otherwise = do
     let !i32# = i# *# 2#
-    io_ (writeWord32Array# mba# i32# w#)
-    io_ (writeWord32Array# mba# (i32# +# 1#) (w# `shiftRL#` 32#))
+        !(W32# w32l#) = fromIntegral w64
+        !(W32# w32u#) = fromIntegral (w64 `shiftR` 32)
+    io_ (writeWord32Array# mba# i32# w32l#)
+    io_ (writeWord32Array# mba# (i32# +# 1#) w32u#)
 #endif
 {-# INLINE writeWord64LE #-}
 
