@@ -78,9 +78,8 @@ instance Integral Cardinality where
       x = toInteger x'
   {-# INLINE quotRem #-}
 
--- | A type class for data with a finite number of inhabitants.
--- This type class is used
--- in the default implementation of 'System.Random.Stateful.Uniform'.
+-- | A type class for data with a finite number of inhabitants. This type class
+-- is used in the default implementation of 'System.Random.Stateful.Uniform'.
 --
 -- Users are not supposed to write instances of 'Finite' manually.
 -- There is a default implementation in terms of 'Generic' instead.
