@@ -36,7 +36,6 @@ module System.Random.Stateful
   , randomM
   , randomRM
   , splitGenM
-  , globalStdGen
 
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
   -- $monadicadapters
@@ -55,6 +54,7 @@ module System.Random.Stateful
   , AtomicGenM(..)
   , newAtomicGenM
   , applyAtomicGen
+  , globalStdGen
   -- ** Mutable adapter in 'IO'
   , IOGen(..)
   , IOGenM(..)
