@@ -106,8 +106,6 @@ library
     if impl(ghc < 8.0)
        build-depends:
            transformers
-    if impl(ghc < 8.4)
-      build-depends:  ghc-byteorder
 
 test-suite legacy-test
     type:             exitcode-stdio-1.0
