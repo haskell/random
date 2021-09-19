@@ -5,6 +5,7 @@
 * Addition of `runStateGenST_`
 * Ensure that default implementation of `ShortByteString` generation uses unpinned memory.
 * Addition of `TGen` and `TGenM`
+* Addition of tuple instances for `Random` up to 7-tuple
 
 # 1.2.0
 

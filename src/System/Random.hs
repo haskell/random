@@ -60,6 +60,7 @@ module System.Random
 
 import Control.Arrow
 import Control.Monad.IO.Class
+import Control.Monad.State.Strict
 import Data.ByteString (ByteString)
 import Data.Int
 import Data.IORef
@@ -203,8 +204,10 @@ genByteString :: RandomGen g => Int -> g -> (ByteString, g)
 genByteString n g = runStateGenST g (uniformByteStringM n)
 {-# INLINE genByteString #-}
 
--- | The class of types for which uniformly distributed values can be
--- generated.
+-- | The class of types for which random values can be generated. Most
+-- instances of `Random` will produce values that are uniformly distributed on the full
+-- range, but for those types without a well-defined "full range" some sensible default
+-- subrange will be selected.
 --
 -- 'Random' exists primarily for backwards compatibility with version 1.1 of
 -- this library. In new code, use the better specified 'Uniform' and
@@ -216,9 +219,26 @@ class Random a where
   -- | Takes a range /(lo,hi)/ and a pseudo-random number generator
   -- /g/, and returns a pseudo-random value uniformly distributed over the
   -- closed interval /[lo,hi]/, together with a new generator. It is unspecified
-  -- what happens if /lo>hi/. For continuous types there is no requirement
-  -- that the values /lo/ and /hi/ are ever produced, but they may be,
-  -- depending on the implementation and the interval.
+  -- what happens if /lo>hi/, but usually the values will simply get swapped.
+  --
+  -- >>> let gen = mkStdGen 2021
+  -- >>> fst $ randomR ('a', 'z') gen
+  -- 't'
+  -- >>> fst $ randomR ('z', 'a') gen
+  -- 't'
+  --
+  -- For continuous types there is no requirement that the values /lo/ and /hi/ are ever
+  -- produced, but they may be, depending on the implementation and the interval.
+  --
+  -- There is no requirement to follow the @Ord@ instance and the concept of range can be
+  -- defined on per type basis. For example product types will treat their values
+  -- independently:
+  --
+  -- >>> fst $ randomR (('a', 5.0), ('z', 10.0)) $ mkStdGen 2021
+  -- ('t',6.240232662366563)
+  --
+  -- In case when a lawful range is desired `uniformR` should be used
+  -- instead.
   --
   -- @since 1.0.0
   {-# INLINE randomR #-}
@@ -231,8 +251,7 @@ class Random a where
   -- * For bounded types (instances of 'Bounded', such as 'Char'),
   --   the range is normally the whole type.
   --
-  -- * For fractional types, the range is normally the semi-closed interval
-  -- @[0,1)@.
+  -- * For floating point types, the range is normally the closed interval @[0,1]@.
   --
   -- * For 'Integer', the range is (arbitrarily) the range of 'Int'.
   --
@@ -279,7 +298,7 @@ buildRandoms cons rand = go
     -- The seq fixes part of #4218 and also makes fused Core simpler.
     go g = x `seq` (x `cons` go g') where (x,g') = rand g
 
--- | 'random' generates values in the 'Int' range
+-- | /Note/ - `random` generates values in the `Int` range
 instance Random Integer where
   random = first (toInteger :: Int -> Integer) . random
   {-# INLINE random #-}
@@ -315,19 +334,22 @@ instance Random CIntPtr
 instance Random CUIntPtr
 instance Random CIntMax
 instance Random CUIntMax
+-- | /Note/ - `random` produces values in the closed range @[0,1]@.
 instance Random CFloat where
-  randomR (CFloat l, CFloat h) = first CFloat . randomR (l, h)
+  randomR r = coerce . randomR (coerce r :: (Float, Float))
   {-# INLINE randomR #-}
   random = first CFloat . random
   {-# INLINE random #-}
+-- | /Note/ - `random` produces values in the closed range @[0,1]@.
 instance Random CDouble where
-  randomR (CDouble l, CDouble h) = first CDouble . randomR (l, h)
+  randomR r = coerce . randomR (coerce r :: (Double, Double))
   {-# INLINE randomR #-}
   random = first CDouble . random
   {-# INLINE random #-}
 
 instance Random Char
 instance Random Bool
+-- | /Note/ - `random` produces values in the closed range @[0,1]@.
 instance Random Double where
   randomR r g = runStateGen g (uniformRM r)
   {-# INLINE randomR #-}
@@ -336,6 +358,7 @@ instance Random Double where
   -- version.
   random g = runStateGen g (fmap (1 -) . uniformDouble01M)
   {-# INLINE random #-}
+-- | /Note/ - `random` produces values in the closed range @[0,1]@.
 instance Random Float where
   randomR r g = runStateGen g (uniformRM r)
   {-# INLINE randomR #-}
@@ -354,6 +377,91 @@ instance Random Float where
 initStdGen :: MonadIO m => m StdGen
 initStdGen = liftIO (StdGen <$> SM.initSMGen)
 
+
+-- | /Note/ - `randomR` treats @a@ and @b@ types independently
+instance (Random a, Random b) => Random (a, b) where
+  randomR ((al, bl), (ah, bh)) = runState $
+    (,) <$> state (randomR (al, ah)) <*> state (randomR (bl, bh))
+  {-# INLINE randomR #-}
+  random = runState $ (,) <$> state random <*> state random
+  {-# INLINE random #-}
+
+-- | /Note/ - `randomR` treats @a@, @b@ and @c@ types independently
+instance (Random a, Random b, Random c) => Random (a, b, c) where
+  randomR ((al, bl, cl), (ah, bh, ch)) = runState $
+    (,,) <$> state (randomR (al, ah))
+         <*> state (randomR (bl, bh))
+         <*> state (randomR (cl, ch))
+  {-# INLINE randomR #-}
+  random = runState $ (,,) <$> state random <*> state random <*> state random
+  {-# INLINE random #-}
+
+-- | /Note/ - `randomR` treats @a@, @b@, @c@ and @d@ types independently
+instance (Random a, Random b, Random c, Random d) => Random (a, b, c, d) where
+  randomR ((al, bl, cl, dl), (ah, bh, ch, dh)) = runState $
+    (,,,) <$> state (randomR (al, ah))
+          <*> state (randomR (bl, bh))
+          <*> state (randomR (cl, ch))
+          <*> state (randomR (dl, dh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,) <$> state random <*> state random <*> state random <*> state random
+  {-# INLINE random #-}
+
+-- | /Note/ - `randomR` treats @a@, @b@, @c@, @d@ and @e@ types independently
+instance (Random a, Random b, Random c, Random d, Random e) => Random (a, b, c, d, e) where
+  randomR ((al, bl, cl, dl, el), (ah, bh, ch, dh, eh)) = runState $
+    (,,,,) <$> state (randomR (al, ah))
+           <*> state (randomR (bl, bh))
+           <*> state (randomR (cl, ch))
+           <*> state (randomR (dl, dh))
+           <*> state (randomR (el, eh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,,) <$> state random <*> state random <*> state random <*> state random <*> state random
+  {-# INLINE random #-}
+
+-- | /Note/ - `randomR` treats @a@, @b@, @c@, @d@, @e@ and @f@ types independently
+instance (Random a, Random b, Random c, Random d, Random e, Random f) =>
+  Random (a, b, c, d, e, f) where
+  randomR ((al, bl, cl, dl, el, fl), (ah, bh, ch, dh, eh, fh)) = runState $
+    (,,,,,) <$> state (randomR (al, ah))
+            <*> state (randomR (bl, bh))
+            <*> state (randomR (cl, ch))
+            <*> state (randomR (dl, dh))
+            <*> state (randomR (el, eh))
+            <*> state (randomR (fl, fh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,,,) <$> state random
+            <*> state random
+            <*> state random
+            <*> state random
+            <*> state random
+            <*> state random
+  {-# INLINE random #-}
+
+-- | /Note/ - `randomR` treats @a@, @b@, @c@, @d@, @e@, @f@ and @g@ types independently
+instance (Random a, Random b, Random c, Random d, Random e, Random f, Random g) =>
+  Random (a, b, c, d, e, f, g) where
+  randomR ((al, bl, cl, dl, el, fl, gl), (ah, bh, ch, dh, eh, fh, gh)) = runState $
+    (,,,,,,) <$> state (randomR (al, ah))
+             <*> state (randomR (bl, bh))
+             <*> state (randomR (cl, ch))
+             <*> state (randomR (dl, dh))
+             <*> state (randomR (el, eh))
+             <*> state (randomR (fl, fh))
+             <*> state (randomR (gl, gh))
+  {-# INLINE randomR #-}
+  random = runState $
+    (,,,,,,) <$> state random
+             <*> state random
+             <*> state random
+             <*> state random
+             <*> state random
+             <*> state random
+             <*> state random
+  {-# INLINE random #-}
 
 -------------------------------------------------------------------------------
 -- Global pseudo-random number generator
