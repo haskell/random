@@ -206,7 +206,7 @@ benchmark legacy-bench
         random,
         rdtsc,
         split >=0.2 && <0.3,
-        time >=1.4 && <1.11
+        time >=1.4 && <1.13
 
 benchmark bench
     type:             exitcode-stdio-1.0
