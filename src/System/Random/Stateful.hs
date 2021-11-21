@@ -105,10 +105,11 @@ module System.Random.Stateful
   ) where
 
 import Control.DeepSeq
+import Control.Monad (replicateM)
 import Control.Monad.IO.Class
 import Control.Monad.ST
 import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
-import Control.Monad.State.Strict
+import Control.Monad.State.Strict (MonadState, state)
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
