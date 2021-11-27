@@ -1070,8 +1070,10 @@ uniformFloatPositive01M g = (+ d) <$> uniformFloat01M g
 -- | Generates uniformly distributed 'Enum'.
 -- One can use it to define a 'Uniform' instance:
 --
--- > data Colors = Red | Green | Blue deriving (Enum, Bounded)
--- > instance Uniform Colors where uniformM = uniformEnumM
+-- >>> data Direction = North | East | South | West deriving (Enum, Bounded, Show)
+-- >>> instance Uniform Direction where uniformM = uniformEnumM
+-- >>> runStateGen_ (mkStdGen 2021) uniformM :: Direction
+-- South
 --
 -- @since 1.2.1
 uniformEnumM :: forall a g m. (Enum a, Bounded a, StatefulGen g m) => g -> m a
@@ -1081,10 +1083,10 @@ uniformEnumM g = toEnum <$> uniformRM (fromEnum (minBound :: a), fromEnum (maxBo
 -- | Generates uniformly distributed 'Enum' in the given range.
 -- One can use it to define a 'UniformRange' instance:
 --
--- > data Colors = Red | Green | Blue deriving (Enum)
--- > instance UniformRange Colors where
--- >   uniformRM = uniformEnumRM
--- >   inInRange (lo, hi) x = isInRange (fromEnum lo, fromEnum hi) (fromEnum x)
+-- >>> data Color = Red | Green | Blue deriving (Enum, Show)
+-- >>> instance UniformRange Color where uniformRM = uniformEnumRM
+-- >>> runStateGen_ (mkStdGen 2021) $ uniformRM (Red, Green)
+-- Red
 --
 -- @since 1.2.1
 uniformEnumRM :: forall a g m. (Enum a, StatefulGen g m) => (a, a) -> g -> m a
