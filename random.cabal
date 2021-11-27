@@ -1,6 +1,6 @@
 cabal-version:      >=1.10
 name:               random
-version:            1.2.1
+version:            1.2.1.1
 license:            BSD3
 license-file:       LICENSE
 maintainer:         core-libraries-committee@haskell.org
