@@ -1,4 +1,6 @@
-import Distribution.Simple
+module Main where
+
+import Distribution.Extra.Doctest (defaultMainWithDoctests)
 
 main :: IO ()
-main = defaultMain
+main = defaultMainWithDoctests "doctests"
