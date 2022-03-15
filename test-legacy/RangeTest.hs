@@ -10,7 +10,7 @@ import Foreign.C.Types
 approxBounds ::
   (RandomGen g, Random a, Ord a, Num a) =>
   (g -> (a,g)) -> Int -> a -> (a,a) -> g -> ((a,a,a),g)
--- Here we do a little hack to essentiall pass in the type in the last argument:
+-- Here we do a little hack to essentially pass in the type in the last argument:
 approxBounds nxt iters unused (explo,exphi) initrng =
    if False
    then ((unused,unused,unused),undefined)
