@@ -295,7 +295,8 @@ buildRandoms :: RandomGen g
              -> as
 buildRandoms cons rand = go
   where
-    -- The seq fixes part of #4218 and also makes fused Core simpler.
+    -- The seq fixes part of #4218 and also makes fused Core simpler:
+    -- https://gitlab.haskell.org/ghc/ghc/-/issues/4218
     go g = x `seq` (x `cons` go g') where (x,g') = rand g
 
 -- | /Note/ - `random` generates values in the `Int` range

@@ -63,18 +63,15 @@ build-type:         Simple
 extra-source-files:
     README.md
     CHANGELOG.md
-tested-with:         GHC == 7.10.2
-                   , GHC == 7.10.3
-                   , GHC == 8.0.2
+tested-with:         GHC == 8.0.2
                    , GHC == 8.2.2
-                   , GHC == 8.4.3
                    , GHC == 8.4.4
-                   , GHC == 8.6.3
-                   , GHC == 8.6.4
                    , GHC == 8.6.5
-                   , GHC == 8.8.1
-                   , GHC == 8.8.2
-                   , GHC == 8.10.1
+                   , GHC == 8.8.4
+                   , GHC == 8.10.7
+                   , GHC == 9.0.2
+                   , GHC == 9.2.4
+                   , GHC == 9.4.1
 
 source-repository head
     type:     git
@@ -98,7 +95,7 @@ library
             -Wincomplete-record-updates -Wincomplete-uni-patterns
 
     build-depends:
-        base >=4.8 && <5,
+        base >=4.9 && <5,
         bytestring >=0.10.4 && <0.12,
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,

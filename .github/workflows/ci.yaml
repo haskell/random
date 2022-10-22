@@ -17,44 +17,47 @@ jobs:
       matrix:
         include:
           # Linux
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "7.10.3" }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.0.2"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.2.2"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.4.4"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.6.5"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.8.4"  }
-          # - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.10.7" }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "9.0.2"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "9.2.2"  }
+          - { os: ubuntu-latest,  ghc: "8.0.2"  }
+          - { os: ubuntu-latest,  ghc: "8.2.2"  }
+          - { os: ubuntu-latest,  ghc: "8.4.4"  }
+          - { os: ubuntu-latest,  ghc: "8.6.5"  }
+          - { os: ubuntu-latest,  ghc: "8.8.4"  }
+          - { os: ubuntu-latest,  ghc: "8.10.7" }
+          - { os: ubuntu-latest,  ghc: "9.0.2"  }
+          - { os: ubuntu-latest,  ghc: "9.2.4"  }
+          - { os: ubuntu-latest,  ghc: "9.4.1"  }
           # MacOS
-          - { cabal: "3.6", os: macOS-latest,  ghc: "7.10.3" }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.0.2"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.2.2"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.4.4"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.6.5"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.8.4"  }
-          # - { cabal: "3.6", os: macOS-latest,  ghc: "8.10.7" }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "9.0.2"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "9.2.2"  }
+          - { os: macOS-latest,  ghc: "8.0.2"  }
+          - { os: macOS-latest,  ghc: "8.2.2"  }
+          - { os: macOS-latest,  ghc: "8.4.4"  }
+          - { os: macOS-latest,  ghc: "8.6.5"  }
+          - { os: macOS-latest,  ghc: "8.8.4"  }
+          - { os: macOS-latest,  ghc: "8.10.7" }
+          - { os: macOS-latest,  ghc: "9.0.2"  }
+          - { os: macOS-latest,  ghc: "9.2.4"  }
+          - { os: macOS-latest,  ghc: "9.4.1"  }
           # Windows
-          - { cabal: "3.6", os: windows-latest,  ghc: "7.10.3" }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.0.2"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.2.2"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.4.4"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.6.5"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.8.4"  }
-          # - { cabal: "3.6", os: windows-latest,  ghc: "8.10.7" }
-          - { cabal: "3.6", os: windows-latest,  ghc: "9.0.2"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "9.2.2"  }
+          - { os: windows-latest,  ghc: "8.0.2"  }
+          - { os: windows-latest,  ghc: "8.2.2"  }
+          - { os: windows-latest,  ghc: "8.4.4"  }
+          - { os: windows-latest,  ghc: "8.6.5"  }
+          - { os: windows-latest,  ghc: "8.8.4"  }
+          - { os: windows-latest,  ghc: "8.10.7" }
+          - { os: windows-latest,  ghc: "9.0.2"  }
+          - { os: windows-latest,  ghc: "9.2.4"  }
+          - { os: windows-latest,  ghc: "9.4.1"  }
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-haskell@v1
+    - uses: actions/checkout@v3
+
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
+      name: Setup Haskell
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: ${{ matrix.cabal }}
+
     - name: Update cabal package database
       run: cabal update
+
     - uses: actions/cache@v2
       name: Cache cabal stuff
       with:
@@ -62,14 +65,12 @@ jobs:
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
         key: ${{ runner.os }}-${{ matrix.ghc }}
+
     - name: Build and test
       run: |
         cabal sdist -z -o .
         cabal get random-*.tar.gz
         cd random-*/
-        if [ ${{matrix.ghc}} = 7.10.3 ]; then
-          EXTRA_FLAGS=--ghc-option="-optl-no-pie"
-        fi
         echo $EXTRA_FLAGS
         cabal $EXTRA_FLAGS configure --haddock-all --enable-tests --enable-benchmarks --benchmark-option=-l
         cabal $EXTRA_FLAGS build all --write-ghc-environment-files=always
@@ -80,8 +81,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-19, lts-18, lts-16, lts-14, lts-12]
+        resolver: [nightly, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11]
         include:
+          - resolver: lts-11
+            ghc: 8.2.2
+            stack-yaml: stack-old.yaml
           - resolver: lts-12
             ghc: 8.4.4
             stack-yaml: stack-old.yaml
@@ -111,10 +115,10 @@ jobs:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v4 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - uses: haskell/actions/setup@v1
-      id: setup-haskell-cabal
+    - uses: haskell/actions/setup@v2
+      id: setup-haskell-stack
       name: Setup Haskell
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -132,6 +136,7 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+
     # Executable files somehow become incompatible after restoring on MacOS from a
     # previous build, so it needs to be cleaned up. This is very inconvenient and will
     # need to be fixed.
@@ -140,6 +145,7 @@ jobs:
       run: |
         rm -r ~/.stack/setup-exe-cache
         rm -r .stack-work
+
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v2
@@ -156,7 +162,7 @@ jobs:
       run: |
         set -ex
         curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/c426e74aa129b7cb14e83305fd2639ccc41b03cd/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         # git-modtime.hs updates modification time of files to the latest commit time that
@@ -165,6 +171,7 @@ jobs:
         # https://stackoverflow.com/questions/60906336/stack-haskell-build-cache-of-source-files-with-github-actions/61178945#61178945
         # Windows is confused about stack's default user directory
         stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
+
     - name: Tests
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
