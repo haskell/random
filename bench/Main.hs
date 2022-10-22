@@ -248,6 +248,11 @@ main = do
               bench "genShortByteString" $
               nfIO $ runStateGenT gen $ \g -> mapM (`uniformShortByteString` g) ns
           ]
+        , bgroup "ByteString"
+          [ env getStdGen $ \gen ->
+              bench "genByteString 100MB" $
+              nfIO $ runStateGenT gen $ uniformByteStringM 100000000
+          ]
         ]
       ]
     ]
