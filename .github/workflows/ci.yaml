@@ -81,8 +81,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-19, lts-18, lts-16, lts-14, lts-12]
+        resolver: [nightly, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11]
         include:
+          - resolver: lts-11
+            ghc: 8.2.2
+            stack-yaml: stack-old.yaml
           - resolver: lts-12
             ghc: 8.4.4
             stack-yaml: stack-old.yaml
