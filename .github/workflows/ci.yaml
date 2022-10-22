@@ -158,7 +158,7 @@ jobs:
       run: |
         set -ex
         curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/c426e74aa129b7cb14e83305fd2639ccc41b03cd/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         # git-modtime.hs updates modification time of files to the latest commit time that
