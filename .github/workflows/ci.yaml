@@ -17,42 +17,44 @@ jobs:
       matrix:
         include:
           # Linux
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "7.10.3" }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.0.2"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.2.2"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.4.4"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.6.5"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.8.4"  }
-          # - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.10.7" }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "9.0.2"  }
-          - { cabal: "3.6", os: ubuntu-latest,  ghc: "9.2.2"  }
+          - { os: ubuntu-latest,  ghc: "7.10.3" }
+          - { os: ubuntu-latest,  ghc: "8.0.2"  }
+          - { os: ubuntu-latest,  ghc: "8.2.2"  }
+          - { os: ubuntu-latest,  ghc: "8.4.4"  }
+          - { os: ubuntu-latest,  ghc: "8.6.5"  }
+          - { os: ubuntu-latest,  ghc: "8.8.4"  }
+          - { os: ubuntu-latest,  ghc: "8.10.7" }
+          - { os: ubuntu-latest,  ghc: "9.0.2"  }
+          - { os: ubuntu-latest,  ghc: "9.2.4"  }
+          - { os: ubuntu-latest,  ghc: "9.4.1"  }
           # MacOS
-          - { cabal: "3.6", os: macOS-latest,  ghc: "7.10.3" }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.0.2"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.2.2"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.4.4"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.6.5"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "8.8.4"  }
-          # - { cabal: "3.6", os: macOS-latest,  ghc: "8.10.7" }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "9.0.2"  }
-          - { cabal: "3.6", os: macOS-latest,  ghc: "9.2.2"  }
+          - { os: macOS-latest,  ghc: "7.10.3" }
+          - { os: macOS-latest,  ghc: "8.0.2"  }
+          - { os: macOS-latest,  ghc: "8.2.2"  }
+          - { os: macOS-latest,  ghc: "8.4.4"  }
+          - { os: macOS-latest,  ghc: "8.6.5"  }
+          - { os: macOS-latest,  ghc: "8.8.4"  }
+          - { os: macOS-latest,  ghc: "8.10.7" }
+          - { os: macOS-latest,  ghc: "9.0.2"  }
+          - { os: macOS-latest,  ghc: "9.2.4"  }
+          - { os: macOS-latest,  ghc: "9.4.1"  }
           # Windows
-          - { cabal: "3.6", os: windows-latest,  ghc: "7.10.3" }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.0.2"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.2.2"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.4.4"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.6.5"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "8.8.4"  }
-          # - { cabal: "3.6", os: windows-latest,  ghc: "8.10.7" }
-          - { cabal: "3.6", os: windows-latest,  ghc: "9.0.2"  }
-          - { cabal: "3.6", os: windows-latest,  ghc: "9.2.2"  }
+          - { os: windows-latest,  ghc: "7.10.3" }
+          - { os: windows-latest,  ghc: "8.0.2"  }
+          - { os: windows-latest,  ghc: "8.2.2"  }
+          - { os: windows-latest,  ghc: "8.4.4"  }
+          - { os: windows-latest,  ghc: "8.6.5"  }
+          - { os: windows-latest,  ghc: "8.8.4"  }
+          - { os: windows-latest,  ghc: "8.10.7" }
+          - { os: windows-latest,  ghc: "9.0.2"  }
+          - { os: windows-latest,  ghc: "9.2.4"  }
+          - { os: windows-latest,  ghc: "9.4.1"  }
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-haskell@v1
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: ${{ matrix.cabal }}
     - name: Update cabal package database
       run: cabal update
     - uses: actions/cache@v2
