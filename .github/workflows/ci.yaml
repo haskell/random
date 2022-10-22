@@ -51,10 +51,12 @@ jobs:
           - { os: windows-latest,  ghc: "9.4.1"  }
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-haskell@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
+      name: Setup Haskell
       with:
         ghc-version: ${{ matrix.ghc }}
+
     - name: Update cabal package database
       run: cabal update
     - uses: actions/cache@v2
@@ -115,8 +117,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - uses: haskell/actions/setup@v1
-      id: setup-haskell-cabal
+    - uses: haskell/actions/setup@v2
+      id: setup-haskell-stack
       name: Setup Haskell
       with:
         ghc-version: ${{ matrix.ghc }}
