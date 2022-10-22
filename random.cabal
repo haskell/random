@@ -63,8 +63,7 @@ build-type:         Simple
 extra-source-files:
     README.md
     CHANGELOG.md
-tested-with:         GHC == 7.10.3
-                   , GHC == 8.0.2
+tested-with:         GHC == 8.0.2
                    , GHC == 8.2.2
                    , GHC == 8.4.4
                    , GHC == 8.6.5
@@ -96,7 +95,7 @@ library
             -Wincomplete-record-updates -Wincomplete-uni-patterns
 
     build-depends:
-        base >=4.8 && <5,
+        base >=4.9 && <5,
         bytestring >=0.10.4 && <0.12,
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,

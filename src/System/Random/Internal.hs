@@ -14,11 +14,7 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnliftedFFITypes #-}
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TypeFamilyDependencies #-}
-#else
-{-# LANGUAGE TypeFamilies #-}
-#endif
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
 -- |
@@ -94,9 +90,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Random.GFinite (Cardinality(..), GFinite(..))
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
-#if __GLASGOW_HASKELL__ >= 800
 import Data.Kind
-#endif
 #if __GLASGOW_HASKELL__ >= 802
 import Data.ByteString.Internal (ByteString(PS))
 import GHC.ForeignPtr
@@ -301,11 +295,7 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   -- 'thawGen' and 'freezeGen'.
   --
   -- @since 1.2.0
-#if __GLASGOW_HASKELL__ >= 800
   type MutableGen f m = (g :: Type) | g -> f
-#else
-  type MutableGen f m :: *
-#endif
   -- | Saves the state of the pseudo-random number generator as a frozen seed.
   --
   -- @since 1.2.0

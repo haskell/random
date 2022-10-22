@@ -17,7 +17,6 @@ jobs:
       matrix:
         include:
           # Linux
-          - { os: ubuntu-latest,  ghc: "7.10.3" }
           - { os: ubuntu-latest,  ghc: "8.0.2"  }
           - { os: ubuntu-latest,  ghc: "8.2.2"  }
           - { os: ubuntu-latest,  ghc: "8.4.4"  }
@@ -28,7 +27,6 @@ jobs:
           - { os: ubuntu-latest,  ghc: "9.2.4"  }
           - { os: ubuntu-latest,  ghc: "9.4.1"  }
           # MacOS
-          - { os: macOS-latest,  ghc: "7.10.3" }
           - { os: macOS-latest,  ghc: "8.0.2"  }
           - { os: macOS-latest,  ghc: "8.2.2"  }
           - { os: macOS-latest,  ghc: "8.4.4"  }
@@ -39,7 +37,6 @@ jobs:
           - { os: macOS-latest,  ghc: "9.2.4"  }
           - { os: macOS-latest,  ghc: "9.4.1"  }
           # Windows
-          - { os: windows-latest,  ghc: "7.10.3" }
           - { os: windows-latest,  ghc: "8.0.2"  }
           - { os: windows-latest,  ghc: "8.2.2"  }
           - { os: windows-latest,  ghc: "8.4.4"  }
@@ -50,7 +47,8 @@ jobs:
           - { os: windows-latest,  ghc: "9.2.4"  }
           - { os: windows-latest,  ghc: "9.4.1"  }
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
@@ -59,6 +57,7 @@ jobs:
 
     - name: Update cabal package database
       run: cabal update
+
     - uses: actions/cache@v2
       name: Cache cabal stuff
       with:
@@ -66,14 +65,12 @@ jobs:
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
         key: ${{ runner.os }}-${{ matrix.ghc }}
+
     - name: Build and test
       run: |
         cabal sdist -z -o .
         cabal get random-*.tar.gz
         cd random-*/
-        if [ ${{matrix.ghc}} = 7.10.3 ]; then
-          EXTRA_FLAGS=--ghc-option="-optl-no-pie"
-        fi
         echo $EXTRA_FLAGS
         cabal $EXTRA_FLAGS configure --haddock-all --enable-tests --enable-benchmarks --benchmark-option=-l
         cabal $EXTRA_FLAGS build all --write-ghc-environment-files=always
@@ -115,7 +112,7 @@ jobs:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v4 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - uses: haskell/actions/setup@v2
       id: setup-haskell-stack
@@ -136,6 +133,7 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+
     # Executable files somehow become incompatible after restoring on MacOS from a
     # previous build, so it needs to be cleaned up. This is very inconvenient and will
     # need to be fixed.
@@ -144,6 +142,7 @@ jobs:
       run: |
         rm -r ~/.stack/setup-exe-cache
         rm -r .stack-work
+
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v2
@@ -169,6 +168,7 @@ jobs:
         # https://stackoverflow.com/questions/60906336/stack-haskell-build-cache-of-source-files-with-github-actions/61178945#61178945
         # Windows is confused about stack's default user directory
         stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
+
     - name: Tests
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
