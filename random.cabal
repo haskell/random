@@ -133,7 +133,7 @@ test-suite doctests
     build-depends:
         base,
         doctest >=0.15 && <0.21
-    if impl(ghc >= 8.2) && impl(ghc < 8.10)
+    if impl(ghc >= 8.2)
         build-depends:
             mwc-random >=0.13 && <0.16,
             primitive >=0.6 && <0.8,

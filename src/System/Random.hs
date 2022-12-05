@@ -89,6 +89,7 @@ import qualified System.Random.SplitMix as SM
 -- In pure code, use 'uniform' and 'uniformR' to generate pseudo-random values
 -- with a pure pseudo-random number generator like 'StdGen'.
 --
+-- >>> import System.Random
 -- >>> :{
 -- let rolls :: RandomGen g => Int -> g -> [Word]
 --     rolls n = take n . unfoldr (Just . uniformR (1, 6))
@@ -101,6 +102,8 @@ import qualified System.Random.SplitMix as SM
 -- To run use a /monadic/ pseudo-random computation in pure code with a pure
 -- pseudo-random number generator, use 'runStateGen' and its variants.
 --
+-- >>> import System.Random.Stateful
+-- >>> import Control.Monad (replicateM)
 -- >>> :{
 -- let rollsM :: StatefulGen g m => Int -> g -> m [Word]
 --     rollsM n = replicateM n . uniformRM (1, 6)
@@ -194,7 +197,7 @@ uniformR r g = runStateGen g (uniformRM r)
 -- ====__Examples__
 --
 -- >>> import System.Random
--- >>> import Data.ByteString
+-- >>> import Data.ByteString (unpack)
 -- >>> let pureGen = mkStdGen 137
 -- >>> unpack . fst . genByteString 10 $ pureGen
 -- [51,123,251,37,49,167,90,109,1,4]
@@ -234,8 +237,8 @@ class Random a where
   -- defined on per type basis. For example product types will treat their values
   -- independently:
   --
-  -- >>> fst $ randomR (('a', 5.0), ('z', 10.0)) $ mkStdGen 2021
-  -- ('t',6.240232662366563)
+  -- >>> fst $ randomR (('a', 5 :: Int), ('z', 10 :: Int)) $ mkStdGen 2021
+  -- ('t',9)
   --
   -- In case when a lawful range is desired `uniformR` should be used
   -- instead.
@@ -272,6 +275,13 @@ class Random a where
   -- | Plural variant of 'random', producing an infinite list of
   -- pseudo-random values instead of returning a new generator.
   --
+  -- ====__Examples__
+  --
+  -- >>> import System.Random
+  -- >>> let pureGen = mkStdGen 137
+  -- >>> (take 4 (randoms pureGen)) :: [Int]
+  -- [7879794327570578227,6883935014316540929,-1519291874655152001,2353271688382626589]
+  --
   -- @since 1.0.0
   {-# INLINE randoms #-}
   randoms  :: RandomGen g => g -> [a]
@@ -279,13 +289,6 @@ class Random a where
 
 
 -- | Produce an infinite list-equivalent of pseudo-random values.
---
--- ====__Examples__
---
--- >>> import System.Random
--- >>> let pureGen = mkStdGen 137
--- >>> (take 4 . buildRandoms (:) random $ pureGen) :: [Int]
--- [7879794327570578227,6883935014316540929,-1519291874655152001,2353271688382626589]
 --
 {-# INLINE buildRandoms #-}
 buildRandoms :: RandomGen g
@@ -521,19 +524,22 @@ newStdGen = liftIO $ atomicModifyIORef' theStdGen split
 -- returned by the function. For example, @rollDice@ produces a pseudo-random integer
 -- between 1 and 6:
 --
--- >>> rollDice = getStdRandom (randomR (1, 6))
--- >>> replicateM 10 (rollDice :: IO Int)
--- [5,6,6,1,1,6,4,2,4,1]
+-- >>> import Control.Monad (replicateM)
+-- >>> setStdGen $ mkStdGen 12345
+-- >>> rollDiceGlobal = getStdRandom (randomR (1, 6))
+-- >>> replicateM 10 (rollDiceGlobal :: IO Int)
+-- [2,5,6,5,4,3,3,2,1,6]
 --
 -- This is an outdated function and it is recommended to switch to its
 -- equivalent 'System.Random.Stateful.applyAtomicGen' instead, possibly with the
 -- 'System.Random.Stateful.globalStdGen' if relying on the global state is
 -- acceptable.
 --
--- >>> import System.Random.Stateful
--- >>> rollDice = applyAtomicGen (uniformR (1, 6)) globalStdGen
+-- >>> import System.Random.Stateful (newAtomicGenM, applyAtomicGen)
+-- >>> atomicStdGen <- newAtomicGenM $ mkStdGen 12345
+-- >>> rollDice = applyAtomicGen (uniformR (1, 6)) atomicStdGen
 -- >>> replicateM 10 (rollDice :: IO Int)
--- [4,6,1,1,4,4,3,2,1,2]
+-- [2,5,6,5,4,3,3,2,1,6]
 --
 -- @since 1.0.0
 getStdRandom :: MonadIO m => (StdGen -> (a, StdGen)) -> m a
@@ -544,19 +550,30 @@ getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
 -- | A variant of 'System.Random.Stateful.randomRM' that uses the global
 -- pseudo-random number generator 'System.Random.Stateful.globalStdGen'
 --
+-- >>> let stdGen = mkStdGen 12345
+-- >>> setStdGen stdGen
 -- >>> randomRIO (2020, 2100) :: IO Int
--- 2040
+-- 2045
+--
+-- The equivalent, but more explicit approach of using 'globalStdGen':
+--
+-- >>> import System.Random.Stateful (globalStdGen, randomRM)
+-- >>> setStdGen stdGen
+-- >>> randomRM (2020, 2100) globalStdGen :: IO Int
+-- 2045
 --
 -- Similar to 'randomIO', this function is equivalent to @'getStdRandom'
 -- 'randomR'@ and is included in this interface for historical reasons and
--- backwards compatibility. It is recommended to use
+-- backwards compatibility. That being said it is bad practice to rely on a
+-- global mutable state and arecommended to use
 -- 'System.Random.Stateful.uniformRM' instead, possibly with the
 -- 'System.Random.Stateful.globalStdGen' if relying on the global state is
 -- acceptable.
 --
 -- >>> import System.Random.Stateful
--- >>> uniformRM (2020, 2100) globalStdGen :: IO Int
--- 2079
+-- >>> atomicStdGen <- newAtomicGenM $ mkStdGen 12345
+-- >>> uniformRM (2020, 2100) atomicStdGen :: IO Int
+-- 2045
 --
 -- @since 1.0.0
 randomRIO :: (Random a, MonadIO m) => (a, a) -> m a
@@ -565,9 +582,11 @@ randomRIO range = getStdRandom (randomR range)
 -- | A variant of 'System.Random.Stateful.randomM' that uses the global
 -- pseudo-random number generator 'System.Random.Stateful.globalStdGen'.
 --
--- >>> import Data.Int
+-- >>> import Data.Int (Int32)
+-- >>> let stdGen = mkStdGen 12345
+-- >>> setStdGen stdGen
 -- >>> randomIO :: IO Int32
--- -1580093805
+-- -1801114343
 --
 -- This function is equivalent to @'getStdRandom' 'random'@ and is included in
 -- this interface for historical reasons and backwards compatibility. It is
@@ -576,8 +595,13 @@ randomRIO range = getStdRandom (randomR range)
 -- acceptable.
 --
 -- >>> import System.Random.Stateful
+-- >>> atomicStdGen <- newAtomicGenM stdGen
+-- >>> uniformM atomicStdGen :: IO Int32
+-- -1801114343
+--
+-- >>> setStdGen stdGen
 -- >>> uniformM globalStdGen :: IO Int32
--- -1649127057
+-- -1801114343
 --
 -- @since 1.0.0
 randomIO :: (Random a, MonadIO m) => m a
@@ -609,6 +633,7 @@ randomIO = getStdRandom random
 -- Suppose you want to implement a [permuted congruential
 -- generator](https://en.wikipedia.org/wiki/Permuted_congruential_generator).
 --
+-- >>> import Data.Word (Word32, Word64)
 -- >>> data PCGen = PCGen !Word64 !Word64
 --
 -- It produces a full 'Word32' of randomness per iteration.
@@ -616,10 +641,10 @@ randomIO = getStdRandom random
 -- >>> import Data.Bits
 -- >>> :{
 -- let stepGen :: PCGen -> (Word32, PCGen)
---     stepGen (PCGen state inc) = let
---       newState = state * 6364136223846793005 + (inc .|. 1)
---       xorShifted = fromIntegral (((state `shiftR` 18) `xor` state) `shiftR` 27) :: Word32
---       rot = fromIntegral (state `shiftR` 59) :: Word32
+--     stepGen (PCGen curState inc) = let
+--       newState = curState * 6364136223846793005 + (inc .|. 1)
+--       xorShifted = fromIntegral (((curState `shiftR` 18) `xor` curState) `shiftR` 27) :: Word32
+--       rot = fromIntegral (curState `shiftR` 59) :: Word32
 --       out = (xorShifted `shiftR` (fromIntegral rot)) .|. (xorShifted `shiftL` fromIntegral ((-rot) .&. 31))
 --       in (out, PCGen newState inc)
 -- :}
@@ -721,5 +746,4 @@ randomIO = getStdRandom random
 
 -- $setup
 --
--- >>> import Control.Monad (replicateM)
 -- >>> import Data.List (unfoldr)

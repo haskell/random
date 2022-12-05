@@ -1,12 +1,33 @@
 {-# LANGUAGE CPP #-}
 module Main where
 
-#if __GLASGOW_HASKELL__ >= 802 && __GLASGOW_HASKELL__ < 810
+#if __GLASGOW_HASKELL__ >= 802
 
 import Test.DocTest (doctest)
 
 main :: IO ()
-main = doctest ["src"]
+main =
+  doctest
+    [ "-XBangPatterns"
+    , "-XCPP"
+    , "-XDefaultSignatures"
+    , "-XFlexibleContexts"
+    , "-XFlexibleInstances"
+    , "-XMultiParamTypeClasses"
+    , "-XGHCForeignImportPrim"
+    , "-XGeneralizedNewtypeDeriving"
+    , "-XMagicHash"
+    , "-XRankNTypes"
+    , "-XScopedTypeVariables"
+    , "-XTrustworthy"
+    , "-XTypeOperators"
+    , "-XUnboxedTuples"
+    , "-XUndecidableInstances"
+    , "-XUnliftedFFITypes"
+    , "-XTypeFamilyDependencies"
+    , "-XHaskell2010"
+    , "src"
+    ]
 
 #else
 

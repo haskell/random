@@ -484,7 +484,7 @@ runStateGen g f = runState (f StateGenM) g
 --
 -- >>> import System.Random.Stateful
 -- >>> let pureGen = mkStdGen 137
--- >>> runStateGen_ pureGen randomM :: Int
+-- >>> runStateGen_ pureGen uniformM :: Int
 -- 7879794327570578227
 --
 -- @since 1.2.0
@@ -499,7 +499,7 @@ runStateGen_ g = fst . runStateGen g
 --
 -- >>> import System.Random.Stateful
 -- >>> let pureGen = mkStdGen 137
--- >>> runStateGenT pureGen randomM :: IO (Int, StdGen)
+-- >>> runStateGenT pureGen uniformM :: IO (Int, StdGen)
 -- (7879794327570578227,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
 --
 -- @since 1.2.0
@@ -515,7 +515,7 @@ runStateGenT g f = runStateT (f StateGenM) g
 --
 -- >>> import System.Random.Stateful
 -- >>> let pureGen = mkStdGen 137
--- >>> runStateGenT_ pureGen randomM :: IO Int
+-- >>> runStateGenT_ pureGen uniformM :: IO Int
 -- 7879794327570578227
 --
 -- @since 1.2.1
@@ -649,11 +649,11 @@ finiteUniformM = fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
 --
 -- >>> :set -XDeriveGeneric -XDeriveAnyClass
 -- >>> import GHC.Generics (Generic)
+-- >>> import Data.Word (Word8)
 -- >>> import System.Random.Stateful
 -- >>> data Triple = Triple Word8 Word8 Word8 deriving (Show, Generic, Finite)
 -- >>> instance Uniform Triple where uniformM = uniformViaFiniteM
--- >>> gen <- newIOGenM (mkStdGen 42)
--- >>> uniformListM 5 gen :: IO [Triple]
+-- >>> runStateGenT_ (mkStdGen 42) (uniformListM 5) :: IO [Triple]
 -- [Triple 60 226 48,Triple 234 194 151,Triple 112 96 95,Triple 51 251 15,Triple 6 0 208]
 --
 uniformViaFiniteM :: (StatefulGen g m, Generic a, GFinite (Rep a)) => g -> m a
@@ -689,11 +689,11 @@ class UniformRange a where
   --
   -- >>> :set -XDeriveGeneric -XDeriveAnyClass
   -- >>> import GHC.Generics (Generic)
+  -- >>> import Control.Monad (replicateM)
   -- >>> import Data.Word (Word8)
-  -- >>> import System.Random.Stateful
-  -- >>> gen <- newIOGenM (mkStdGen 42)
   -- >>> data Tuple = Tuple Bool Word8 deriving (Show, Generic, UniformRange)
-  -- >>> Control.Monad.replicateM 10 (uniformRM (Tuple False 100, Tuple True 150) gen)
+  -- >>> let genM = uniformRM (Tuple False 100, Tuple True 150)
+  -- >>> runStateGenT_ (mkStdGen 42) (replicateM 10 . genM)
   -- [Tuple False 102,Tuple True 118,Tuple False 115,Tuple True 113,Tuple True 126,Tuple False 127,Tuple True 130,Tuple False 113,Tuple False 150,Tuple False 125]
   --
   -- @since 1.2.0

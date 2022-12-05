@@ -146,6 +146,7 @@ import System.Random.Internal
 -- range @[1, 6]@ in a 'StatefulGen' context; given a /monadic/ pseudo-random
 -- number generator, you can run this probabilistic computation as follows:
 --
+-- >>> import Control.Monad (replicateM)
 -- >>> :{
 -- let rollsM :: StatefulGen g m => Int -> g -> m [Word]
 --     rollsM n = replicateM n . uniformRM (1, 6)
@@ -301,8 +302,8 @@ uniformListM n gen = replicateM n (uniformM gen)
 -- You can use type applications to disambiguate the type of the generated numbers:
 --
 -- >>> :set -XTypeApplications
--- >>> randomM @Double g
--- 0.6268211351114487
+-- >>> randomM @Float g
+-- 0.74526954
 --
 -- @since 1.2.0
 randomM :: (Random a, RandomGenM g r m) => g -> m a
@@ -355,6 +356,8 @@ newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
 -- | Global mutable standard pseudo-random number generator. This is the same
 -- generator that was historically used by `randomIO` and `randomRIO` functions.
 --
+-- >>> import System.Random.Stateful
+-- >>> import Control.Monad (replicateM)
 -- >>> replicateM 10 (uniformRM ('a', 'z') globalStdGen)
 -- "tdzxhyfvgr"
 --
@@ -691,17 +694,19 @@ applyTGen f (TGenM tvar) = do
 -- *   The result may be greater than @max a b@.
 --
 --     >>> :{
---     let (a, b, x) = (-2.13238e-29, -2.1323799e-29, 0.27736077)
---         result = x * a + (1 - x) * b :: Float
---     in (result, result > max a b)
+--     let (a, b, x) = (-2.13238e-29 :: Float, -2.1323799e-29 :: Float, 0.27736077 :: Float)
+--         result :: Float
+--         result = x * a + (1 - x) * b
+--     in (result :: Float, result > max a b)
 --     :}
 --     (-2.1323797e-29,True)
 --
 -- *   The result may be smaller than @min a b@.
 --
 --     >>> :{
---     let (a, b, x) = (-1.9087862, -1.908786, 0.4228573)
---         result = x * a + (1 - x) * b :: Float
+--     let (a, b, x) = (-1.9087862 :: Float, -1.908786 :: Float, 0.4228573 :: Float)
+--         result :: Float
+--         result = x * a + (1 - x) * b
 --     in (result, result < min a b)
 --     :}
 --     (-1.9087863,True)
@@ -714,28 +719,28 @@ applyTGen f (TGenM tvar) = do
 --
 -- *   If at least one of \(a\) or \(b\) is @NaN@, the result is @NaN@.
 --
---     >>> let (a, b, x) = (nan, 1, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (nan, 1 :: Float, 0.5 :: Float) in x * a + (1 - x) * b
 --     NaN
---     >>> let (a, b, x) = (-1, nan, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (-1 :: Float, nan, 0.5 :: Float) in x * a + (1 - x) * b
 --     NaN
 --
 -- *   If \(a\) is @-Infinity@ and \(b\) is @Infinity@, the result is @NaN@.
 --
---     >>> let (a, b, x) = (-inf, inf, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (-inf, inf, 0.5 :: Float) in x * a + (1 - x) * b
 --     NaN
 --
 -- *   Otherwise, if \(a\) is @Infinity@ or @-Infinity@, the result is \(a\).
 --
---     >>> let (a, b, x) = (inf, 1, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (inf, 1 :: Float, 0.5 :: Float) in x * a + (1 - x) * b
 --     Infinity
---     >>> let (a, b, x) = (-inf, 1, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (-inf, 1 :: Float, 0.5 :: Float) in x * a + (1 - x) * b
 --     -Infinity
 --
 -- *   Otherwise, if \(b\) is @Infinity@ or @-Infinity@, the result is \(b\).
 --
---     >>> let (a, b, x) = (1, inf, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (1 :: Float, inf, 0.5 :: Float) in x * a + (1 - x) * b
 --     Infinity
---     >>> let (a, b, x) = (1, -inf, 0.5) in x * a + (1 - x) * b
+--     >>> let (a, b, x) = (1 :: Float, -inf, 0.5 :: Float) in x * a + (1 - x) * b
 --     -Infinity
 --
 -- Note that the [GCC 10.1.0 C++ standard library](https://gcc.gnu.org/git/?p=gcc.git;a=blob;f=libstdc%2B%2B-v3/include/bits/random.h;h=19307fbc3ca401976ef6823e8fda893e4a263751;hb=63fa67847628e5f358e7e2e7edb8314f0ee31f30#l1859),
@@ -788,12 +793,13 @@ applyTGen f (TGenM tvar) = do
 --
 -- and later we can apply it to a frozen version of a stateful generator, such as `STGen`:
 --
+-- >>> import Control.Monad.ST (runST)
 -- >>> print $ runST $ myCustomRandomList (STGen (mkStdGen 217))
 -- [-50,-2,4,-8,-58,-40,24,-32,-110,24]
 --
 -- or a @Seed@ from @mwc-random@:
 --
--- >>> import Data.Vector.Primitive as P
+-- >>> import qualified Data.Vector.Primitive as P
 -- >>> print $ runST $ myCustomRandomList (MWC.toSeed (P.fromList [1,2,3]))
 -- [24,40,10,40,-8,48,-78,70,-12]
 --
@@ -812,16 +818,20 @@ applyTGen f (TGenM tvar) = do
 -- <https://doi.org/10.1145/2660193.2660195>
 
 -- $setup
+-- >>> import Data.IORef
 -- >>> import Control.Monad.Primitive
+-- >>> import System.Random.Stateful
 -- >>> import qualified System.Random.MWC as MWC
--- >>> writeIORef theStdGen $ mkStdGen 2021
+-- >>> setStdGen $ mkStdGen 2021
 --
 -- >>> :set -XFlexibleContexts
 -- >>> :set -XFlexibleInstances
 -- >>> :set -XMultiParamTypeClasses
 -- >>> :set -XTypeFamilies
+-- >>> :set -XTypeOperators
 -- >>> :set -XUndecidableInstances
 --
+-- >>> :set -Wno-orphans
 -- >>> :{
 -- instance (s ~ PrimState m, PrimMonad m) => StatefulGen (MWC.Gen s) m where
 --   uniformWord8 = MWC.uniform
