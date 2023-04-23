@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP              #-}
 {-# LANGUAGE DeriveAnyClass   #-}
 {-# LANGUAGE DeriveGeneric    #-}
 {-# LANGUAGE TemplateHaskell  #-}
@@ -43,7 +44,15 @@ inspectionTests = testGroup "Inspection" $
   [ $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniform_Word8)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniform_Int8)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniform_Char)
-  , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniform_MyAction)
+  , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoTypeClasses] 'uniform_MyAction)
+
+#if !MIN_VERSION_base(4,17,0)
+  -- Starting from GHC 9.4 and base-4.17
+  -- 'error' :: M1 C ('MetaCons "Never" 'PrefixI 'False) ..
+  -- survives. This does not really matter, because Never is uninhabited,
+  -- but fails inspection testing.
+  , $(inspectTest $ hasNoGenerics 'uniform_MyAction)
+#endif
 
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniformR_Word8)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniformR_Int8)
