@@ -26,7 +26,7 @@ main =
     , "-XUnliftedFFITypes"
     , "-XTypeFamilyDependencies"
     , "-XHaskell2010"
-    , "src"
+    , "src/System"
     ]
 
 #else
