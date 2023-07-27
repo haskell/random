@@ -1,5 +1,6 @@
 # 1.3.0
 
+* Add `uniformListRM`, `uniformList`, `uniformListR`, `uniforms` and `uniformRs`: [#154](https://github.com/haskell/random/pull/154)
 * Add compatibility with recently added `ByteArray` to `base`:
   [#153](https://github.com/haskell/random/pull/153)
   * Switch to using `ByteArray` for type class implementation instead of

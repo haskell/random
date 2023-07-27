@@ -116,8 +116,8 @@ floatTests = testGroup "(Float)"
     "Does not contain 1.0e-45"
   ]
 
-showsType :: forall t . Typeable t => Proxy t -> ShowS
-showsType px = showsTypeRep (typeRep px)
+showType :: forall t . Typeable t => Proxy t -> String
+showType px = show (typeRep px)
 
 byteStringSpec :: TestTree
 byteStringSpec =
@@ -171,7 +171,7 @@ rangeSpec ::
      (SC.Serial IO a, Typeable a, Ord a, UniformRange a, Show a)
   => Proxy a -> TestTree
 rangeSpec px =
-  testGroup ("Range (" ++ showsType px ")")
+  testGroup ("Range " ++ showType px)
   [ SC.testProperty "uniformR" $ seeded $ Range.uniformRangeWithin px
   ]
 
@@ -180,7 +180,7 @@ integralSpec ::
      (SC.Serial IO a, Typeable a, Ord a, UniformRange a, Show a)
   => Proxy a -> TestTree
 integralSpec px =
-  testGroup ("(" ++ showsType px ")")
+  testGroup (showType px)
   [ SC.testProperty "symmetric" $ seeded $ Range.symmetric px
   , SC.testProperty "bounded" $ seeded $ Range.bounded px
   , SC.testProperty "singleton" $ seeded $ Range.singleton px
@@ -199,7 +199,7 @@ floatingSpec ::
      (SC.Serial IO a, Typeable a, Num a, Ord a, Random a, UniformRange a, Read a, Show a)
   => Proxy a -> TestTree
 floatingSpec px =
-  testGroup ("(" ++ showsType px ")")
+  testGroup (showType px)
   [ SC.testProperty "uniformR" $ seeded $ Range.uniformRangeWithin px
   , testCase "r = +inf, x = 0" $ positiveInf @?= fst (uniformR (0, positiveInf) (ConstGen 0))
   , testCase "r = +inf, x = 1" $ positiveInf @?= fst (uniformR (0, positiveInf) (ConstGen 1))
@@ -218,30 +218,41 @@ randomSpec ::
   => Proxy a -> TestTree
 randomSpec px =
   testGroup
-    ("Random " ++ showsType px ")")
+    ("Random " ++ showType px)
     [ SC.testProperty "randoms" $
       seededWithLen $ \len g ->
         take len (randoms g :: [a]) == runStateGen_ g (replicateM len . randomM)
     , SC.testProperty "randomRs" $
       seededWithLen $ \len g ->
         case random g of
-          (l, g') ->
-            case random g' of
-              (h, g'') ->
-                take len (randomRs (l, h) g'' :: [a]) ==
-                runStateGen_ g'' (replicateM len . randomRM (l, h))
+          (range, g') ->
+             take len (randomRs range g' :: [a]) ==
+               runStateGen_ g' (replicateM len . randomRM range)
     ]
 
 uniformSpec ::
      forall a.
-     (Typeable a, Eq a, Random a, Uniform a, Show a)
+     (Typeable a, Eq a, Random a, Uniform a, UniformRange a, Show a)
   => Proxy a -> TestTree
 uniformSpec px =
   testGroup
-    ("Uniform " ++ showsType px ")")
-    [ SC.testProperty "uniformListM" $
+    ("Uniform " ++ showType px)
+    [ SC.testProperty "uniformList" $
       seededWithLen $ \len g ->
-        take len (randoms g :: [a]) == runStateGen_ g (uniformListM len)
+        take len (randoms g :: [a]) == fst (uniformList len g)
+    , SC.testProperty "uniformListR" $
+      seededWithLen $ \len g ->
+        case uniform g of
+          (range, g') ->
+            take len (randomRs range g' :: [a]) == fst (uniformListR len range g')
+    , SC.testProperty "uniforms" $
+      seededWithLen $ \len g ->
+        take len (randoms g :: [a]) == take len (uniforms g)
+    , SC.testProperty "uniformRs" $
+      seededWithLen $ \len g ->
+        case uniform g of
+          (range, g') ->
+            take len (randomRs range g' :: [a]) == take len (uniformRs range g')
     ]
 
 runSpec :: TestTree
@@ -252,10 +263,10 @@ runSpec = testGroup "runStateGen_ and runPrimGenIO_"
 seeded :: (StdGen -> a) -> Int -> a
 seeded f = f . mkStdGen
 
--- | Same as `seeded`, but also produces a length in range 0-255 suitable for generating
+-- | Same as `seeded`, but also produces a length in range 0-65535 suitable for generating
 -- lists and such
-seededWithLen :: (Int -> StdGen -> a) -> Word8 -> Int -> a
-seededWithLen f w8 = seeded (f (fromIntegral w8))
+seededWithLen :: (Int -> StdGen -> a) -> Word16 -> Int -> a
+seededWithLen f w16 = seeded (f (fromIntegral w16))
 
 data MyBool = MyTrue | MyFalse
   deriving (Eq, Ord, Show, Generic, Finite, Uniform)
@@ -293,4 +304,3 @@ instance Uniform Colors where
 instance UniformRange Colors where
   uniformRM = uniformEnumRM
   isInRange (lo, hi) x = isInRange (fromEnum lo, fromEnum hi) (fromEnum x)
-
