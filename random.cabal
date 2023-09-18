@@ -162,7 +162,7 @@ test-suite spec
         random,
         smallcheck >=1.2 && <1.3,
         stm,
-        tasty >=1.0 && <1.5,
+        tasty >=1.0 && <1.6,
         tasty-smallcheck >=0.8 && <0.9,
         tasty-hunit >=0.10 && <0.11,
         transformers
