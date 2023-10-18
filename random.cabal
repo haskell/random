@@ -96,7 +96,7 @@ library
 
     build-depends:
         base >=4.9 && <5,
-        bytestring >=0.10.4 && <0.12,
+        bytestring >=0.10.4 && <0.13,
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,
         splitmix >=0.1 && <0.2
