@@ -24,9 +24,10 @@ jobs:
           - { os: ubuntu-latest,  ghc: "8.8.4"  }
           - { os: ubuntu-latest,  ghc: "8.10.7" }
           - { os: ubuntu-latest,  ghc: "9.0.2"  }
-          - { os: ubuntu-latest,  ghc: "9.2.7"  }
-          - { os: ubuntu-latest,  ghc: "9.4.4"  }
-          - { os: ubuntu-latest,  ghc: "9.6.1"  }
+          - { os: ubuntu-latest,  ghc: "9.2.8"  }
+          - { os: ubuntu-latest,  ghc: "9.4.7"  }
+          - { os: ubuntu-latest,  ghc: "9.6.3"  }
+          - { os: ubuntu-latest,  ghc: "9.8.1"  }
           # MacOS
           - { os: macOS-latest,  ghc: "8.0.2"  }
           - { os: macOS-latest,  ghc: "8.2.2"  }
@@ -35,9 +36,10 @@ jobs:
           - { os: macOS-latest,  ghc: "8.8.4"  }
           - { os: macOS-latest,  ghc: "8.10.7" }
           - { os: macOS-latest,  ghc: "9.0.2"  }
-          - { os: macOS-latest,  ghc: "9.2.7"  }
-          - { os: macOS-latest,  ghc: "9.4.4"  }
-          - { os: macOS-latest,  ghc: "9.6.1"  }
+          - { os: macOS-latest,  ghc: "9.2.8"  }
+          - { os: macOS-latest,  ghc: "9.4.7"  }
+          - { os: macOS-latest,  ghc: "9.6.3"  }
+          - { os: macOS-latest,  ghc: "9.8.1"  }
           # Windows
           - { os: windows-latest,  ghc: "8.0.2"  }
           - { os: windows-latest,  ghc: "8.2.2"  }
@@ -46,9 +48,10 @@ jobs:
           - { os: windows-latest,  ghc: "8.8.4"  }
           - { os: windows-latest,  ghc: "8.10.7" }
           - { os: windows-latest,  ghc: "9.0.2"  }
-          - { os: windows-latest,  ghc: "9.2.7"  }
-          - { os: windows-latest,  ghc: "9.4.4"  }
-          - { os: windows-latest,  ghc: "9.6.1"  }
+          - { os: windows-latest,  ghc: "9.2.8"  }
+          - { os: windows-latest,  ghc: "9.4.7"  }
+          - { os: windows-latest,  ghc: "9.6.3"  }
+          - { os: windows-latest,  ghc: "9.8.1"  }
     steps:
     - uses: actions/checkout@v3
 
