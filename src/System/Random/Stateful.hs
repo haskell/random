@@ -28,7 +28,15 @@ module System.Random.Stateful
 
   -- * Mutable pseudo-random number generator interfaces
   -- $interfaces
-  , StatefulGen(..)
+  , StatefulGen
+      ( uniformWord32R
+      , uniformWord64R
+      , uniformWord8
+      , uniformWord16
+      , uniformWord32
+      , uniformWord64
+      , uniformShortByteString
+      )
   , FrozenGen(..)
   , ThawedGen(..)
   , withMutableGen
@@ -45,7 +53,7 @@ module System.Random.Stateful
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
   -- $monadicadapters
 
-  -- ** Pure adapter
+  -- ** Pure adapter in 'MonadState'
   , StateGen(..)
   , StateGenM(..)
   , runStateGen
@@ -54,7 +62,7 @@ module System.Random.Stateful
   , runStateGenT_
   , runStateGenST
   , runStateGenST_
-  -- ** Mutable adapter with atomic operations
+  -- ** Mutable thread-safe adapter in 'IO'
   , AtomicGen(..)
   , AtomicGenM(..)
   , newAtomicGenM
@@ -72,7 +80,7 @@ module System.Random.Stateful
   , applySTGen
   , runSTGen
   , runSTGen_
-  -- ** Mutable adapter in 'STM'
+  -- ** Mutable thread-safe adapter in 'STM'
   , TGen(..)
   , TGenM(..)
   , newTGenM
@@ -86,14 +94,23 @@ module System.Random.Stateful
   , uniformViaFiniteM
   , UniformRange(..)
 
-  -- * Generators for sequences of pseudo-random bytes
+  -- ** Generators for sequences of pseudo-random bytes
+  , uniformByteArrayM
+  , uniformByteStringM
+  , uniformShortByteStringM
+
+  -- * Helper functions for createing instances
+  -- ** Sequences of bytes
+  , genByteArrayST
   , genShortByteStringIO
   , genShortByteStringST
-  , uniformByteStringM
+  , defaultUnsafeUniformFillMutableByteArray
+  -- ** Floating point numbers
   , uniformDouble01M
   , uniformDoublePositive01M
   , uniformFloat01M
   , uniformFloatPositive01M
+  -- ** Enum types
   , uniformEnumM
   , uniformEnumRM
 
@@ -384,7 +401,6 @@ instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
   {-# INLINE uniformWord32 #-}
   uniformWord64 = applyAtomicGen genWord64
   {-# INLINE uniformWord64 #-}
-  uniformShortByteString n = applyAtomicGen (genShortByteString n)
 
 
 instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
@@ -466,7 +482,6 @@ instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
   {-# INLINE uniformWord32 #-}
   uniformWord64 = applyIOGen genWord64
   {-# INLINE uniformWord64 #-}
-  uniformShortByteString n = applyIOGen (genShortByteString n)
 
 
 instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
@@ -536,7 +551,6 @@ instance RandomGen g => StatefulGen (STGenM g s) (ST s) where
   {-# INLINE uniformWord32 #-}
   uniformWord64 = applySTGen genWord64
   {-# INLINE uniformWord64 #-}
-  uniformShortByteString n = applySTGen (genShortByteString n)
 
 instance RandomGen g => FrozenGen (STGen g) (ST s) where
   type MutableGen (STGen g) (ST s) = STGenM g s
@@ -640,7 +654,6 @@ instance RandomGen g => StatefulGen (TGenM g) STM where
   {-# INLINE uniformWord32 #-}
   uniformWord64 = applyTGen genWord64
   {-# INLINE uniformWord64 #-}
-  uniformShortByteString n = applyTGen (genShortByteString n)
 
 -- | @since 1.2.1
 instance RandomGen g => FrozenGen (TGen g) STM where
@@ -803,7 +816,7 @@ applyTGen f (TGenM tvar) = do
 -- >   uniformWord16 = MWC.uniform
 -- >   uniformWord32 = MWC.uniform
 -- >   uniformWord64 = MWC.uniform
--- >   uniformShortByteString n g = stToPrim (genShortByteStringST n (MWC.uniform g))
+-- >   uniformByteArrayM isPinned n g = stToPrim (genByteArrayST isPinned n (MWC.uniform g))
 --
 -- > instance PrimMonad m => FrozenGen MWC.Seed m where
 -- >   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)

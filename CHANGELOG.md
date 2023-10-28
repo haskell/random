@@ -1,5 +1,20 @@
 # 1.3.0
 
+* Add compatibility with recently added `ByteArray` to `base`:
+  [#153](https://github.com/haskell/random/pull/153)
+  * Switch to using `ByteArray` for type class implementation instead of
+    `ShortByteString`
+  * Add `unsafeUniformFillMutableByteArray` to `RandomGen` and a helper function
+    `defaultUnsafeUniformFillMutableByteArray` that makes implementation
+    for most instances easier.
+  * Add `uniformByteArray`, `uniformByteString` and `uniformFillMutableByteArray`
+  * Add `uniformByteArrayM` to `StatefulGen`
+  * Add `uniformByteStringM` and `uniformShortByteStringM`
+  * Deprecate `uniformShortByteString` in favor of `uniformShortByteStringM` for
+    consistent naming and a future plan of removing it from `StatefulGen`
+    type class
+  * Expose a helper function `genByteArrayST`, that can be used for
+    defining implementation for `uniformByteArrayM`
 * Improve `FrozenGen` interface: [#149](https://github.com/haskell/random/pull/149)
   * Move `thawGen` from `FreezeGen` into the new `ThawGen` type class. Fixes an issue with
     an unlawful instance of `StateGen` for `FreezeGen`.

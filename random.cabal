@@ -100,6 +100,8 @@ library
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,
         splitmix >=0.1 && <0.2
+    if impl(ghc < 9.4)
+      build-depends: data-array-byte
 
 test-suite legacy-test
     type:             exitcode-stdio-1.0

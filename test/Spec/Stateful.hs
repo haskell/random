@@ -155,12 +155,30 @@ frozenGenSpecFor fromStdGen toStdGen runStatefulGen =
       , testProperty "uniformWord64R/genWord64R" $
         forAll $ \w64 ->
           matchRandomGenSpec (uniformWord64R w64) (genWord64R w64) fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformShortByteString/genShortByteString" $
+      , testProperty "uniformShortByteStringM/genShortByteString" $
         forAll $ \(NonNegative n') ->
           let n = n' `mod` 100000 -- Ensure it is not too big
           in matchRandomGenSpec
-               (uniformShortByteString n)
+               (uniformShortByteStringM n)
                (genShortByteString n)
+               fromStdGen
+               toStdGen
+               runStatefulGen
+      , testProperty "uniformByteStringM/uniformByteString" $
+        forAll $ \(NonNegative n') ->
+          let n = n' `mod` 100000 -- Ensure it is not too big
+          in matchRandomGenSpec
+               (uniformByteStringM n)
+               (uniformByteString n)
+               fromStdGen
+               toStdGen
+               runStatefulGen
+      , testProperty "uniformByteArrayM/genByteArray" $
+        forAll $ \(NonNegative n', isPinned1, isPinned2) ->
+          let n = n' `mod` 100000 -- Ensure it is not too big
+          in matchRandomGenSpec
+               (uniformByteArrayM isPinned1 n)
+               (uniformByteArray isPinned2 n)
                fromStdGen
                toStdGen
                runStatefulGen
