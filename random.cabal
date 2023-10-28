@@ -70,8 +70,10 @@ tested-with:         GHC == 8.0.2
                    , GHC == 8.8.4
                    , GHC == 8.10.7
                    , GHC == 9.0.2
-                   , GHC == 9.2.4
-                   , GHC == 9.4.1
+                   , GHC == 9.2.8
+                   , GHC == 9.4.7
+                   , GHC == 9.6.3
+                   , GHC == 9.8.1
 
 source-repository head
     type:     git
@@ -90,9 +92,7 @@ library
     default-language: Haskell2010
     ghc-options:
         -Wall
-    if impl(ghc >= 8.0)
-        ghc-options:
-            -Wincomplete-record-updates -Wincomplete-uni-patterns
+        -Wincomplete-record-updates -Wincomplete-uni-patterns
 
     build-depends:
         base >=4.9 && <5,
@@ -100,9 +100,6 @@ library
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,
         splitmix >=0.1 && <0.2
-    if impl(ghc < 8.0)
-       build-depends:
-           transformers
 
 test-suite legacy-test
     type:             exitcode-stdio-1.0
@@ -116,10 +113,9 @@ test-suite legacy-test
         RangeTest
 
     default-language: Haskell2010
-    ghc-options:      -with-rtsopts=-M8M
-    if impl(ghc >= 8.0)
-        ghc-options:
-            -Wno-deprecations
+    ghc-options:
+      -with-rtsopts=-M9M
+      -Wno-deprecations
     build-depends:
         base,
         containers >=0.5 && <0.7,
@@ -170,19 +166,15 @@ test-suite spec-inspection
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
     hs-source-dirs:   test-inspection
-    build-depends:
-
     default-language: Haskell2010
     ghc-options:      -Wall
+    other-modules:
+        Spec.Inspection
     build-depends:
         base,
         random,
-        tasty >=1.0 && <1.6
-    if impl(ghc >= 8.0)
-        build-depends:
-            tasty-inspection-testing
-        other-modules:
-            Spec.Inspection
+        tasty >=1.0 && <1.6,
+        tasty-inspection-testing
 
 benchmark legacy-bench
     type:             exitcode-stdio-1.0
@@ -191,10 +183,7 @@ benchmark legacy-bench
     other-modules:    BinSearch
     default-language: Haskell2010
     ghc-options:
-        -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
-    if impl(ghc >= 8.0)
-        ghc-options:
-            -Wno-deprecations
+        -Wall -O2 -threaded -rtsopts -with-rtsopts=-N -Wno-deprecations
 
     build-depends:
         base,
