@@ -3,6 +3,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -29,11 +30,15 @@ module System.Random.Stateful
   -- $interfaces
   , StatefulGen(..)
   , FrozenGen(..)
-  , RandomGenM(..)
   , withMutableGen
   , withMutableGen_
   , randomM
   , randomRM
+  , splitGen
+  , splitMutableGen
+
+  -- ** Deprecated
+  , RandomGenM(..)
   , splitGenM
 
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
@@ -216,6 +221,8 @@ import System.Random.Internal
 -- @since 1.2.0
 class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
   applyRandomGenM :: (r -> (a, r)) -> g -> m a
+{-# DEPRECATED applyRandomGenM "In favor of `modifyGen`" #-}
+{-# DEPRECATED RandomGenM "In favor of `FrozenGen`" #-}
 
 -- | Splits a pseudo-random number generator into two. Overwrites the mutable
 -- wrapper with one of the resulting generators and returns the other.
@@ -223,6 +230,7 @@ class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
 -- @since 1.2.0
 splitGenM :: RandomGenM g r m => g -> m r
 splitGenM = applyRandomGenM split
+{-# DEPRECATED splitGenM "In favor of `splitGen`" #-}
 
 instance (RandomGen r, MonadIO m) => RandomGenM (IOGenM r) r m where
   applyRandomGenM = applyIOGen
@@ -267,7 +275,7 @@ withMutableGen fg action = do
 --
 -- @since 1.2.0
 withMutableGen_ :: FrozenGen f m => f -> (MutableGen f m -> m a) -> m a
-withMutableGen_ fg action = fst <$> withMutableGen fg action
+withMutableGen_ fg action = thawGen fg >>= action
 
 
 -- | Generates a list of pseudo-random values.
@@ -301,8 +309,8 @@ uniformListM n gen = replicateM n (uniformM gen)
 -- 0.6268211351114487
 --
 -- @since 1.2.0
-randomM :: (Random a, RandomGenM g r m) => g -> m a
-randomM = applyRandomGenM random
+randomM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => MutableGen g m -> m a
+randomM = flip modifyGen random
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
 --
@@ -321,8 +329,8 @@ randomM = applyRandomGenM random
 -- 2
 --
 -- @since 1.2.0
-randomRM :: (Random a, RandomGenM g r m) => (a, a) -> g -> m a
-randomRM r = applyRandomGenM (randomR r)
+randomRM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => (a, a) -> MutableGen g m -> m a
+randomRM r = flip modifyGen (randomR r)
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
 -- operations are performed atomically.
@@ -379,6 +387,11 @@ instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
   freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
   thawGen (AtomicGen g) = newAtomicGenM g
+  modifyGen (AtomicGenM ioRef) f =
+    liftIO $ atomicModifyIORef' ioRef $ \g ->
+      case f (AtomicGen g) of
+        (a, AtomicGen g') -> (g', a)
+  {-# INLINE modifyGen #-}
 
 -- | Atomically applies a pure operation to the wrapped pseudo-random number
 -- generator.
@@ -454,7 +467,12 @@ instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   type MutableGen (IOGen g) m = IOGenM g
   freezeGen = fmap IOGen . liftIO . readIORef . unIOGenM
   thawGen (IOGen g) = newIOGenM g
-
+  modifyGen (IOGenM ref) f = liftIO $ do
+    g <- readIORef ref
+    let (a, IOGen g') = f (IOGen g)
+    g' `seq` writeIORef ref g'
+    pure a
+  {-# INLINE modifyGen #-}
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -514,6 +532,12 @@ instance RandomGen g => FrozenGen (STGen g) (ST s) where
   type MutableGen (STGen g) (ST s) = STGenM g s
   freezeGen = fmap STGen . readSTRef . unSTGenM
   thawGen (STGen g) = newSTGenM g
+  modifyGen (STGenM ref) f = do
+    g <- readSTRef ref
+    let (a, STGen g') = f (STGen g)
+    g' `seq` writeSTRef ref g'
+    pure a
+  {-# INLINE modifyGen #-}
 
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
@@ -609,6 +633,12 @@ instance RandomGen g => FrozenGen (TGen g) STM where
   type MutableGen (TGen g) STM = TGenM g
   freezeGen = fmap TGen . readTVar . unTGenM
   thawGen (TGen g) = newTGenM g
+  modifyGen (TGenM ref) f = do
+    g <- readTVar ref
+    let (a, TGen g') = f (TGen g)
+    g' `seq` writeTVar ref g'
+    pure a
+  {-# INLINE modifyGen #-}
 
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.

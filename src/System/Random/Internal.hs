@@ -30,6 +30,8 @@ module System.Random.Internal
     RandomGen(..)
   , StatefulGen(..)
   , FrozenGen(..)
+  , splitGen
+  , splitMutableGen
 
   -- ** Standard pseudo-random number generator
   , StdGen(..)
@@ -40,7 +42,6 @@ module System.Random.Internal
   -- ** Pure adapter
   , StateGen(..)
   , StateGenM(..)
-  , splitGen
   , runStateGen
   , runStateGen_
   , runStateGenT
@@ -67,7 +68,7 @@ module System.Random.Internal
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
-import Control.Monad (when)
+import Control.Monad (when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.ST
@@ -289,6 +290,9 @@ class Monad m => StatefulGen g m where
 -- | This class is designed for stateful pseudo-random number generators that
 -- can be saved as and restored from an immutable data type.
 --
+-- It also works great on working with mutable generators that are based on a pure
+-- generator that has a `RandomGen` instance.
+--
 -- @since 1.2.0
 class StatefulGen (MutableGen f m) m => FrozenGen f m where
   -- | Represents the state of the pseudo-random number generator for use with
@@ -304,6 +308,26 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   --
   -- @since 1.2.0
   thawGen :: f -> m (MutableGen f m)
+
+  -- | Apply a pure function to the frozen generator.
+  --
+  -- @since 1.3.0
+  modifyGen :: MutableGen f m -> (f -> (a, f)) -> m a
+
+
+-- | Splits a pseudo-random number generator into two. Overwrites the mutable
+-- wrapper with one of the resulting generators and returns the other.
+--
+-- @since 1.3.0
+splitGen :: (RandomGen f, FrozenGen f m) => MutableGen f m -> m f
+splitGen = flip modifyGen split
+
+-- | Splits a pseudo-random number generator into two. Overwrites the mutable
+-- wrapper with one of the resulting generators and returns the other.
+--
+-- @since 1.3.0
+splitMutableGen :: (RandomGen f, FrozenGen f m) => MutableGen f m -> m (MutableGen f m)
+splitMutableGen = splitGen >=> thawGen
 
 
 data MBA = MBA (MutableByteArray# RealWorld)
@@ -452,14 +476,8 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   type MutableGen (StateGen g) m = StateGenM g
   freezeGen _ = fmap StateGen get
   thawGen (StateGen g) = StateGenM <$ put g
-
--- | Splits a pseudo-random number generator into two. Updates the state with
--- one of the resulting generators and returns the other.
---
--- @since 1.2.0
-splitGen :: (MonadState g m, RandomGen g) => m g
-splitGen = state split
-{-# INLINE splitGen #-}
+  modifyGen _ f = state (coerce f)
+  {-# INLINE modifyGen #-}
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.

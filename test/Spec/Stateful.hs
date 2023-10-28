@@ -36,18 +36,20 @@ instance (Monad m, Serial m g) => Serial m (StateGen g) where
 
 
 matchRandomGenSpec ::
-     forall b f m. (FrozenGen f m, Eq f, Show f, Eq b)
+     forall b f m. (RandomGen f, FrozenGen f m, Eq f, Show f, Eq b)
   => (forall a. m a -> IO a)
   -> (MutableGen f m -> m b)
-  -> (StdGen -> (b, StdGen))
+  -> (forall g. RandomGen g => g -> (b, g))
   -> (f -> StdGen)
   -> f
   -> Property IO
 matchRandomGenSpec toIO genM gen toStdGen frozen =
   monadic $ do
     (x1, fg1) <- toIO $ withMutableGen frozen genM
-    let (x2, g2) = gen $ toStdGen frozen
-    pure $ x1 == x2 && toStdGen fg1 == g2
+    (x2, fg2) <- toIO $ withMutableGen frozen (`modifyGen` gen)
+    let (x3, g3) = gen $ toStdGen frozen
+    let (x4, g4) = toStdGen <$> gen frozen
+    pure $ and [x1 == x2, x2 == x3, x3 == x4, fg1 == fg2, toStdGen fg1 == g3, g3 == g4]
 
 withMutableGenSpec ::
      forall f m. (FrozenGen f m, Eq f, Show f)
@@ -55,15 +57,27 @@ withMutableGenSpec ::
   -> f
   -> Property IO
 withMutableGenSpec toIO frozen =
-  forAll $ \n -> monadic $ do
-    let gen = uniformListM n
-    x :: ([Word], f) <- toIO $ withMutableGen frozen gen
-    y <- toIO $ withMutableGen frozen gen
-    pure $ x == y
+  forAll $ \n -> monadic $ toIO $ do
+    let action = uniformListM n
+    x@(_, _) :: ([Word], f) <- withMutableGen frozen action
+    y@(r, _) <- withMutableGen frozen action
+    r' <- withMutableGen_ frozen action
+    pure $ x == y && r == r'
 
+splitMutableGenSpec ::
+     forall f m. (RandomGen f, FrozenGen f m, Eq f, Show f)
+  => (forall a. m a -> IO a)
+  -> f
+  -> Property IO
+splitMutableGenSpec toIO frozen =
+  monadic $ toIO $ do
+    (sfg1, fg1) <- withMutableGen frozen splitGen
+    (smg2, fg2) <- withMutableGen frozen splitMutableGen
+    sfg3 <- freezeGen smg2
+    pure $ fg1 == fg2 && sfg1 == sfg3
 
 statefulSpecFor ::
-     forall f m. (FrozenGen f m, Eq f, Show f, Serial IO f, Typeable f)
+     forall f m. (RandomGen f, FrozenGen f m, Eq f, Show f, Serial IO f, Typeable f)
   => (forall a. m a -> IO a)
   -> (f -> StdGen)
   -> TestTree
@@ -72,6 +86,8 @@ statefulSpecFor toIO toStdGen =
     (showsTypeRep (typeRep (Proxy :: Proxy f)) "")
     [ testProperty "withMutableGen" $
       forAll $ \(f :: f) -> withMutableGenSpec toIO f
+    , testProperty "splitGen" $
+      forAll $ \(f :: f) -> splitMutableGenSpec toIO f
     , testGroup
         "matchRandomGenSpec"
         [ testProperty "uniformWord8/genWord8" $
