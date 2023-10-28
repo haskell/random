@@ -8,6 +8,11 @@ on:
 
 defaults: { run: { shell: bash } }
 
+# Cancel running actions when a new action on the same PR is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-cabal:
     name: CI-cabal
@@ -81,34 +86,46 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-19, lts-18, lts-16, lts-14, lts-12]
+        resolver: [nightly, lts-21, lts-20, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11]
         include:
+          - resolver: lts-11
+            ghc: '8.2.2'
+            stack-yaml: stack-old.yaml
           - resolver: lts-12
-            ghc: 8.4.4
+            ghc: '8.4.4'
             stack-yaml: stack-old.yaml
           - resolver: lts-14
-            stack-yaml: stack-coveralls.yaml
+            ghc: '8.6.5'
+            stack-yaml: stack-old.yaml
           - resolver: lts-16
-            ghc: 8.8.4
+            ghc: '8.8.4'
             stack-yaml: stack-old.yaml
           - resolver: lts-18
-            ghc: 8.10.7
+            ghc: '8.10.7'
             stack-yaml: stack.yaml
           - resolver: lts-19
-            ghc: 9.0.2
+            ghc: '9.0.2'
+            stack-yaml: stack-coveralls.yaml
+          - resolver: lts-20
+            ghc: '9.2.8'
+            stack-yaml: stack.yaml
+          - resolver: lts-21
+            ghc: '9.4.7'
             stack-yaml: stack.yaml
           - resolver: nightly
             stack-yaml: stack.yaml
           # Latest stable for MacOS: ghc-8.8.4
           - resolver: lts-16
             os: macos-latest
+            ghc: '8.8.4'
             stack-yaml: stack-old.yaml
           # Latest stable for Windows: ghc-8.6.4
           - resolver: lts-14
             os: windows-latest
-            stack-yaml: stack-coveralls.yaml
+            ghc: '8.6.5'
+            stack-yaml: stack-old.yaml
     env:
-      STACK_YAML: stack.yaml
+      STACK_YAML: '${{ matrix.stack-yaml }}'
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v4 # bump up this version to invalidate currently stored cache
     steps:
@@ -147,43 +164,39 @@ jobs:
       if: matrix.os == 'windows-latest'
       with:
         path: |
-          C:\\Users\\RUNNER~1\\AppData\\Roaming\\stack
           C:\\Users\\RUNNER~1\\AppData\\Local\\Programs\\stack
         key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
 
-    - name: Install Stack and GHC
+    - name: Reset modtime
       run: |
         set -ex
-        curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        # git-modtime.hs updates modification time of files to the latest commit time that
-        # a file was modified in. This ensures that stack does not rebuild unchanged
-        # files. More info in this SO answer:
-        # https://stackoverflow.com/questions/60906336/stack-haskell-build-cache-of-source-files-with-github-actions/61178945#61178945
-        # Windows is confused about stack's default user directory
-        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
-    - name: Tests
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/master/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        runhaskell -- git-modtime.hs -f .stack-work/tree-contents.txt
+
+    - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ]; then
-          stack $STACK_ARGS test random:spec random:legacy-test --coverage --haddock --no-haddock-deps
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+          # Inspection tests aren't compatible with coverage
+          stack $STACK_ARGS build :spec :legacy-test --coverage --test --no-run-tests --haddock --no-haddock-deps
+        else
+          stack $STACK_ARGS build --test --no-run-tests --bench --no-run-benchmarks --haddock --no-haddock-deps
+        fi
+
+    - name: Test
+      env:
+        COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      run: |
+        set -ex
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+          stack $STACK_ARGS test :spec :legacy-test --coverage --haddock --no-haddock-deps
           stack $STACK_ARGS hpc report --all
-          # Upload coverage report only when the token is available.
-          if [ -n "${COVERALLS_TOKEN}" ]; then
-            curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
-            ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
-          fi
-        elif [ "${{ matrix.resolver }}" == "lts-6" ]; then
-          # Inspection tests are not supported by pre ghc-8.0 compiler
-          stack $STACK_ARGS test  random:spec random:legacy-test --bench --no-run-benchmarks --haddock --no-haddock-deps
+          curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc
+          ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
           stack $STACK_ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
         fi
