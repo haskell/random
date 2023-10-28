@@ -114,7 +114,7 @@ test-suite legacy-test
 
     default-language: Haskell2010
     ghc-options:
-      -with-rtsopts=-M8M
+      -with-rtsopts=-M9M
       -Wno-deprecations
     build-depends:
         base,
