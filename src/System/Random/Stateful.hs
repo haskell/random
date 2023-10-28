@@ -92,6 +92,8 @@ module System.Random.Stateful
   , Uniform(..)
   , uniformViaFiniteM
   , UniformRange(..)
+  , isInRangeOrd
+  , isInRangeEnum
 
   -- ** Lists
   , uniformListM
