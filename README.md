@@ -6,7 +6,7 @@
 
 | Language | Github Actions | Coveralls |
 |:--------:|:--------------:|:---------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://github.com/haskell/random/workflows/random-CI/badge.svg)](https://github.com/haskell/random/actions) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=master)](https://coveralls.io/github/haskell/random?branch=master)
+| ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://github.com/haskell/random/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/haskell/random/actions/workflows/ci.yaml) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=master)](https://coveralls.io/github/haskell/random?branch=master)
 
 |    Github Repo     | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
