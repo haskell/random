@@ -4,9 +4,9 @@
 
 ### Status
 
-| Language | Github Actions | Drone.io | Coveralls |
-|:--------:|:--------------:|:--------:|:---------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://github.com/haskell/random/workflows/random-CI/badge.svg)](https://github.com/haskell/random/actions) | [![Build Status](https://cloud.drone.io/api/badges/haskell/random/status.svg?ref=refs/heads/master)](https://cloud.drone.io/haskell/random/) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=master)](https://coveralls.io/github/haskell/random?branch=master)
+| Language | Github Actions | Coveralls |
+|:--------:|:--------------:|:---------:|
+| ![GitHub top language](https://img.shields.io/github/languages/top/haskell/random.svg) | [![Build Status](https://github.com/haskell/random/workflows/random-CI/badge.svg)](https://github.com/haskell/random/actions) | [![Coverage Status](https://coveralls.io/repos/github/haskell/random/badge.svg?branch=master)](https://coveralls.io/github/haskell/random?branch=master)
 
 |    Github Repo     | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
