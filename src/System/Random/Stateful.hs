@@ -94,7 +94,7 @@ module System.Random.Stateful
   -- * Appendix
 
   -- ** How to implement 'StatefulGen'
-  -- $implementmonadrandom
+  -- $implemenstatefulegen
 
   -- ** Floating point number caveats #fpcaveats#
   -- $floating
@@ -142,32 +142,28 @@ import System.Random.Internal
 -- In monadic code, use the relevant 'Uniform' and 'UniformRange' instances to
 -- generate pseudo-random values via 'uniformM' and 'uniformRM', respectively.
 --
--- As an example, @rollsM@ generates @n@ pseudo-random values of @Word@ in the
--- range @[1, 6]@ in a 'StatefulGen' context; given a /monadic/ pseudo-random
--- number generator, you can run this probabilistic computation as follows:
+-- As an example, @rollsM@ generates @n@ pseudo-random values of @Word@ in the range @[1,
+-- 6]@ in a 'StatefulGen' context; given a /monadic/ pseudo-random number generator, you
+-- can run this probabilistic computation using
+-- [@mwc-random@](https://hackage.haskell.org/package/mwc-random) as follows:
 --
 -- >>> :{
 -- let rollsM :: StatefulGen g m => Int -> g -> m [Word]
 --     rollsM n = replicateM n . uniformRM (1, 6)
--- in do
---     monadicGen <- MWC.create
---     rollsM 10 monadicGen :: IO [Word]
 -- :}
--- [3,4,3,1,4,6,1,6,1,4]
 --
--- Given a /pure/ pseudo-random number generator, you can run the monadic
--- pseudo-random number computation @rollsM@ in an 'IO' or 'ST' context by
--- applying a monadic adapter like 'AtomicGenM', 'IOGenM' or 'STGenM'
--- (see [monadic-adapters](#monadicadapters)) to the pure pseudo-random number
--- generator.
+-- > import qualified System.Random.MWC as MWC
+-- > >>> monadicGen <- MWC.create
+-- > >>> rollsM 10 monadicGen :: IO [Word]
+-- > [3,4,3,1,4,6,1,6,1,4]
 --
--- >>> :{
--- let rollsM :: StatefulGen g m => Int -> g -> m [Word]
---     rollsM n = replicateM n . uniformRM (1, 6)
---     pureGen = mkStdGen 42
--- in
---     newIOGenM pureGen >>= rollsM 10 :: IO [Word]
--- :}
+-- Given a /pure/ pseudo-random number generator, you can run the monadic pseudo-random
+-- number computation @rollsM@ in 'StateT', 'IO', 'ST' or 'STM' context by applying a
+-- monadic adapter like 'StateGenM', 'AtomicGenM', 'IOGenM', 'STGenM' or 'TGenM' (see
+-- [monadic-adapters](#monadicadapters)) to the pure pseudo-random number generator.
+--
+-- >>> let pureGen = mkStdGen 42
+-- >>> newIOGenM pureGen >>= rollsM 10 :: IO [Word]
 -- [1,1,3,2,4,5,3,4,6,2]
 
 -------------------------------------------------------------------------------
@@ -183,8 +179,8 @@ import System.Random.Internal
 --
 -- ['StatefulGen': monadic pseudo-random number generators] These generators
 --     mutate their own state as they produce pseudo-random values. They
---     generally live in 'ST' or 'IO' or some transformer that implements
---     @PrimMonad@.
+--     generally live in 'StateT', 'ST', 'IO' or 'STM' or some other transformer
+--     on top of those monads.
 --
 
 -------------------------------------------------------------------------------
@@ -743,7 +739,7 @@ applyTGen f (TGenM tvar) = do
 -- and [CPython 3.8](https://github.com/python/cpython/blob/3.8/Lib/random.py#L417)
 -- use the same procedure to generate floating point values in a range.
 --
--- $implementmonadrandom
+-- $implemenstatefulegen
 --
 -- Typically, a monadic pseudo-random number generator has facilities to save
 -- and restore its internal state in addition to generating pseudo-random numbers.
@@ -756,7 +752,7 @@ applyTGen f (TGenM tvar) = do
 -- >   uniformWord16 = MWC.uniform
 -- >   uniformWord32 = MWC.uniform
 -- >   uniformWord64 = MWC.uniform
--- >   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
+-- >   uniformShortByteString n g = stToPrim (genShortByteStringST n (MWC.uniform g))
 --
 -- > instance PrimMonad m => FrozenGen MWC.Seed m where
 -- >   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)
@@ -791,12 +787,6 @@ applyTGen f (TGenM tvar) = do
 -- >>> print $ runST $ myCustomRandomList (STGen (mkStdGen 217))
 -- [-50,-2,4,-8,-58,-40,24,-32,-110,24]
 --
--- or a @Seed@ from @mwc-random@:
---
--- >>> import Data.Vector.Primitive as P
--- >>> print $ runST $ myCustomRandomList (MWC.toSeed (P.fromList [1,2,3]))
--- [24,40,10,40,-8,48,-78,70,-12]
---
 -- Alternatively, instead of discarding the final state of the generator, as it happens
 -- above, we could have used `withMutableGen`, which together with the result would give
 -- us back its frozen form. This would allow us to store the end state of our generator
@@ -812,8 +802,6 @@ applyTGen f (TGenM tvar) = do
 -- <https://doi.org/10.1145/2660193.2660195>
 
 -- $setup
--- >>> import Control.Monad.Primitive
--- >>> import qualified System.Random.MWC as MWC
 -- >>> writeIORef theStdGen $ mkStdGen 2021
 --
 -- >>> :set -XFlexibleContexts
@@ -822,16 +810,4 @@ applyTGen f (TGenM tvar) = do
 -- >>> :set -XTypeFamilies
 -- >>> :set -XUndecidableInstances
 --
--- >>> :{
--- instance (s ~ PrimState m, PrimMonad m) => StatefulGen (MWC.Gen s) m where
---   uniformWord8 = MWC.uniform
---   uniformWord16 = MWC.uniform
---   uniformWord32 = MWC.uniform
---   uniformWord64 = MWC.uniform
---   uniformShortByteString n g = unsafeSTToPrim (genShortByteStringST n (MWC.uniform g))
--- instance PrimMonad m => FrozenGen MWC.Seed m where
---   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)
---   thawGen = MWC.restore
---   freezeGen = MWC.save
--- :}
 --
