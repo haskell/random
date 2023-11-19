@@ -30,6 +30,7 @@ module System.Random.Stateful
   -- $interfaces
   , StatefulGen(..)
   , FrozenGen(..)
+  , ThawedGen(..)
   , withMutableGen
   , withMutableGen_
   , randomM
@@ -257,7 +258,7 @@ instance RandomGen r => RandomGenM (TGenM r) r STM where
 -- ([-74,37,-50,-2,3],IOGen {unIOGen = StdGen {unStdGen = SMGen 4273268533320920145 15251669095119325999}})
 --
 -- @since 1.2.0
-withMutableGen :: FrozenGen f m => f -> (MutableGen f m -> m a) -> m (a, f)
+withMutableGen :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m (a, f)
 withMutableGen fg action = do
   g <- thawGen fg
   res <- action g
@@ -274,7 +275,7 @@ withMutableGen fg action = do
 -- 4
 --
 -- @since 1.2.0
-withMutableGen_ :: FrozenGen f m => f -> (MutableGen f m -> m a) -> m a
+withMutableGen_ :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m a
 withMutableGen_ fg action = thawGen fg >>= action
 
 
@@ -311,6 +312,7 @@ uniformListM n gen = replicateM n (uniformM gen)
 -- @since 1.2.0
 randomM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => MutableGen g m -> m a
 randomM = flip modifyGen random
+{-# INLINE randomM #-}
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
 --
@@ -331,6 +333,7 @@ randomM = flip modifyGen random
 -- @since 1.2.0
 randomRM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => (a, a) -> MutableGen g m -> m a
 randomRM r = flip modifyGen (randomR r)
+{-# INLINE randomRM #-}
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
 -- operations are performed atomically.
@@ -386,12 +389,14 @@ instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
 instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
   freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
-  thawGen (AtomicGen g) = newAtomicGenM g
   modifyGen (AtomicGenM ioRef) f =
     liftIO $ atomicModifyIORef' ioRef $ \g ->
       case f (AtomicGen g) of
         (a, AtomicGen g') -> (g', a)
   {-# INLINE modifyGen #-}
+
+instance (RandomGen g, MonadIO m) => ThawedGen (AtomicGen g) m where
+  thawGen (AtomicGen g) = newAtomicGenM g
 
 -- | Atomically applies a pure operation to the wrapped pseudo-random number
 -- generator.
@@ -466,7 +471,6 @@ instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
 instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   type MutableGen (IOGen g) m = IOGenM g
   freezeGen = fmap IOGen . liftIO . readIORef . unIOGenM
-  thawGen (IOGen g) = newIOGenM g
   modifyGen (IOGenM ref) f = liftIO $ do
     g <- readIORef ref
     let (a, IOGen g') = f (IOGen g)
@@ -475,6 +479,9 @@ instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   {-# INLINE modifyGen #-}
   overwriteGen (IOGenM ref) = liftIO . writeIORef ref . unIOGen
   {-# INLINE overwriteGen #-}
+
+instance (RandomGen g, MonadIO m) => ThawedGen (IOGen g) m where
+  thawGen (IOGen g) = newIOGenM g
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -533,7 +540,6 @@ instance RandomGen g => StatefulGen (STGenM g s) (ST s) where
 instance RandomGen g => FrozenGen (STGen g) (ST s) where
   type MutableGen (STGen g) (ST s) = STGenM g s
   freezeGen = fmap STGen . readSTRef . unSTGenM
-  thawGen (STGen g) = newSTGenM g
   modifyGen (STGenM ref) f = do
     g <- readSTRef ref
     let (a, STGen g') = f (STGen g)
@@ -542,6 +548,9 @@ instance RandomGen g => FrozenGen (STGen g) (ST s) where
   {-# INLINE modifyGen #-}
   overwriteGen (STGenM ref) = writeSTRef ref . unSTGen
   {-# INLINE overwriteGen #-}
+
+instance RandomGen g => ThawedGen (STGen g) (ST s) where
+  thawGen (STGen g) = newSTGenM g
 
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
@@ -636,7 +645,6 @@ instance RandomGen g => StatefulGen (TGenM g) STM where
 instance RandomGen g => FrozenGen (TGen g) STM where
   type MutableGen (TGen g) STM = TGenM g
   freezeGen = fmap TGen . readTVar . unTGenM
-  thawGen (TGen g) = newTGenM g
   modifyGen (TGenM ref) f = do
     g <- readTVar ref
     let (a, TGen g') = f (TGen g)
@@ -645,6 +653,9 @@ instance RandomGen g => FrozenGen (TGen g) STM where
   {-# INLINE modifyGen #-}
   overwriteGen (TGenM ref) = writeTVar ref . unTGen
   {-# INLINE overwriteGen #-}
+
+instance RandomGen g => ThawedGen (TGen g) STM where
+  thawGen (TGen g) = newTGenM g
 
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
@@ -797,19 +808,17 @@ applyTGen f (TGenM tvar) = do
 --
 -- === @FrozenGen@
 --
--- `FrozenGen` gives us ability to use any stateful pseudo-random number generator in its
--- immutable form, if one exists that is. This concept is commonly known as a seed, which
--- allows us to save and restore the actual mutable state of a pseudo-random number
--- generator. The biggest benefit that can be drawn from a polymorphic access to a
--- stateful pseudo-random number generator in a frozen form is the ability to serialize,
--- deserialize and possibly even use the stateful generator in a pure setting without
--- knowing the actual type of a generator ahead of time. For example we can write a
--- function that accepts a frozen state of some pseudo-random number generator and
--- produces a short list with random even integers.
+-- `FrozenGen` gives us ability to use most of stateful pseudo-random number generator in
+-- its immutable form, if one exists that is.  The biggest benefit that can be drawn from
+-- a polymorphic access to a stateful pseudo-random number generator in a frozen form is
+-- the ability to serialize, deserialize and possibly even use the stateful generator in a
+-- pure setting without knowing the actual type of a generator ahead of time. For example
+-- we can write a function that accepts a frozen state of some pseudo-random number
+-- generator and produces a short list with random even integers.
 --
 -- >>> import Data.Int (Int8)
 -- >>> :{
--- myCustomRandomList :: FrozenGen f m => f -> m [Int8]
+-- myCustomRandomList :: ThawedGen f m => f -> m [Int8]
 -- myCustomRandomList f =
 --   withMutableGen_ f $ \gen -> do
 --     len <- uniformRM (5, 10) gen

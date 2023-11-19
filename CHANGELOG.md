@@ -1,5 +1,7 @@
 # 1.3.0
 
+* Move `thawGen` from `FreezeGen` into the new `ThawGen` type class. Fixes an issue with
+  an unlawful instance of `StateGen` for `FreezeGen`.
 * Add `modifyGen` and `overwriteGen` to the `FrozenGen` type class
 * Add `splitGen` and `splitMutableGen`
 * Switch `randomM` and `randomRM` to use `FrozenGen` instead of `RandomGenM`

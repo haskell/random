@@ -7,8 +7,8 @@
 module Spec.Stateful where
 
 import Control.Concurrent.STM
+import Control.Monad
 import Control.Monad.ST
-import Control.Monad.Trans.State.Strict
 import Data.Proxy
 import Data.Typeable
 import System.Random.Stateful
@@ -36,23 +36,24 @@ instance (Monad m, Serial m g) => Serial m (StateGen g) where
 
 
 matchRandomGenSpec ::
-     forall b f m. (RandomGen f, FrozenGen f m, Eq f, Show f, Eq b)
-  => (forall a. m a -> IO a)
-  -> (MutableGen f m -> m b)
-  -> (forall g. RandomGen g => g -> (b, g))
+     forall f a sg m. (StatefulGen sg m, RandomGen f, Eq f, Show f, Eq a)
+  => (forall g n. StatefulGen g n => g -> n a)
+  -> (forall g. RandomGen g => g -> (a, g))
+  -> (StdGen -> f)
   -> (f -> StdGen)
-  -> f
+  -> (f -> (sg -> m a) -> IO (a, f))
   -> Property IO
-matchRandomGenSpec toIO genM gen toStdGen frozen =
-  monadic $ do
-    (x1, fg1) <- toIO $ withMutableGen frozen genM
-    (x2, fg2) <- toIO $ withMutableGen frozen (`modifyGen` gen)
-    let (x3, g3) = gen $ toStdGen frozen
-    let (x4, g4) = toStdGen <$> gen frozen
-    pure $ and [x1 == x2, x2 == x3, x3 == x4, fg1 == fg2, toStdGen fg1 == g3, g3 == g4]
+matchRandomGenSpec genM gen fromStdGen toStdGen runStatefulGen =
+  forAll $ \seed -> monadic $ do
+    let stdGen = mkStdGen seed
+        g = fromStdGen stdGen
+        (x1, g1) = gen stdGen
+        (x2, g2) = gen g
+    (x3, g3) <- runStatefulGen g genM
+    pure $ and [x1 == x2, x2 == x3, g1 == toStdGen g2, g1 == toStdGen g3, g2 == g3]
 
 withMutableGenSpec ::
-     forall f m. (FrozenGen f m, Eq f, Show f)
+     forall f m. (ThawedGen f m, Eq f, Show f)
   => (forall a. m a -> IO a)
   -> f
   -> Property IO
@@ -65,7 +66,7 @@ withMutableGenSpec toIO frozen =
     pure $ x == y && r == r'
 
 overwriteMutableGenSpec ::
-     forall f m. (FrozenGen f m, Eq f, Show f)
+     forall f m. (ThawedGen f m, Eq f, Show f)
   => (forall a. m a -> IO a)
   -> f
   -> Property IO
@@ -80,8 +81,27 @@ overwriteMutableGenSpec toIO frozen =
       pure (r1, r2)
     pure $ r1 == r2 && frozen == frozen'
 
+indepMutableGenSpec ::
+     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f)
+  => (forall a. m a -> IO a) -> [f] -> Property IO
+indepMutableGenSpec toIO fgs =
+  monadic $ toIO $ do
+    (fgs ==) <$> (mapM freezeGen =<< mapM thawGen fgs)
+
+immutableFrozenGenSpec ::
+     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f)
+  => (forall a. m a -> IO a) -> f -> Property IO
+immutableFrozenGenSpec toIO frozen =
+  forAll $ \n -> monadic $ toIO $ do
+    let action = do
+          mg <- thawGen frozen
+          (,) <$> uniformWord8 mg <*> freezeGen mg
+    x <- action
+    xs <- replicateM n action
+    pure $ all (x ==) xs
+
 splitMutableGenSpec ::
-     forall f m. (RandomGen f, FrozenGen f m, Eq f, Show f)
+     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f)
   => (forall a. m a -> IO a)
   -> f
   -> Property IO
@@ -92,56 +112,94 @@ splitMutableGenSpec toIO frozen =
     sfg3 <- freezeGen smg2
     pure $ fg1 == fg2 && sfg1 == sfg3
 
-statefulSpecFor ::
-     forall f m. (RandomGen f, FrozenGen f m, Eq f, Show f, Serial IO f, Typeable f)
+thawedGenSpecFor ::
+     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f, Serial IO f, Typeable f)
   => (forall a. m a -> IO a)
-  -> (f -> StdGen)
+  -> Proxy f
   -> TestTree
-statefulSpecFor toIO toStdGen =
+thawedGenSpecFor toIO px =
   testGroup
-    (showsTypeRep (typeRep (Proxy :: Proxy f)) "")
+    (showsTypeRep (typeRep px) "")
     [ testProperty "withMutableGen" $
       forAll $ \(f :: f) -> withMutableGenSpec toIO f
     , testProperty "overwriteGen" $
       forAll $ \(f :: f) -> overwriteMutableGenSpec toIO f
+    , testProperty "independent mutable generators" $
+      forAll $ \(fs :: [f]) -> indepMutableGenSpec toIO fs
+    , testProperty "immutable frozen generators" $
+      forAll $ \(f :: f) -> immutableFrozenGenSpec toIO f
     , testProperty "splitGen" $
       forAll $ \(f :: f) -> splitMutableGenSpec toIO f
-    , testGroup
-        "matchRandomGenSpec"
-        [ testProperty "uniformWord8/genWord8" $
-          forAll $ \(f :: f) ->
-            matchRandomGenSpec toIO uniformWord8 genWord8 toStdGen f
-        , testProperty "uniformWord16/genWord16" $
-          forAll $ \(f :: f) ->
-            matchRandomGenSpec toIO uniformWord16 genWord16 toStdGen f
-        , testProperty "uniformWord32/genWord32" $
-          forAll $ \(f :: f) ->
-            matchRandomGenSpec toIO uniformWord32 genWord32 toStdGen f
-        , testProperty "uniformWord64/genWord64" $
-          forAll $ \(f :: f) ->
-            matchRandomGenSpec toIO uniformWord64 genWord64 toStdGen f
-        , testProperty "uniformWord32R/genWord32R" $
-          forAll $ \(w32, f :: f) ->
-            matchRandomGenSpec toIO (uniformWord32R w32) (genWord32R w32) toStdGen f
-        , testProperty "uniformWord64R/genWord64R" $
-          forAll $ \(w64, f :: f) ->
-            matchRandomGenSpec toIO (uniformWord64R w64) (genWord64R w64) toStdGen f
-        , testProperty "uniformShortByteString/genShortByteString" $
-          forAll $ \(n', f :: f) ->
-            let n = abs n' `mod` 1000 -- Ensure it is not too big
-            in matchRandomGenSpec toIO (uniformShortByteString n) (genShortByteString n) toStdGen f
-        ]
+    ]
+
+frozenGenSpecFor ::
+     forall f sg m. (RandomGen f, StatefulGen sg m, Eq f, Show f, Typeable f)
+  => (StdGen -> f)
+  -> (f -> StdGen)
+  -> (forall a. f -> (sg -> m a) -> IO (a, f))
+  -> TestTree
+frozenGenSpecFor fromStdGen toStdGen runStatefulGen =
+    testGroup (showsTypeRep (typeRep (Proxy :: Proxy f)) "")
+    [ testGroup "matchRandomGenSpec"
+      [ testProperty "uniformWord8/genWord8" $
+          matchRandomGenSpec uniformWord8 genWord8 fromStdGen toStdGen runStatefulGen
+      , testProperty "uniformWord16/genWord16" $
+          matchRandomGenSpec uniformWord16 genWord16 fromStdGen toStdGen runStatefulGen
+      , testProperty "uniformWord32/genWord32" $
+          matchRandomGenSpec uniformWord32 genWord32 fromStdGen toStdGen runStatefulGen
+      , testProperty "uniformWord64/genWord64" $
+          matchRandomGenSpec uniformWord64 genWord64 fromStdGen toStdGen runStatefulGen
+      , testProperty "uniformWord32R/genWord32R" $
+        forAll $ \w32 ->
+          matchRandomGenSpec (uniformWord32R w32) (genWord32R w32) fromStdGen toStdGen runStatefulGen
+      , testProperty "uniformWord64R/genWord64R" $
+        forAll $ \w64 ->
+          matchRandomGenSpec (uniformWord64R w64) (genWord64R w64) fromStdGen toStdGen runStatefulGen
+      , testProperty "uniformShortByteString/genShortByteString" $
+        forAll $ \(NonNegative n') ->
+          let n = n' `mod` 100000 -- Ensure it is not too big
+          in matchRandomGenSpec
+               (uniformShortByteString n)
+               (genShortByteString n)
+               fromStdGen
+               toStdGen
+               runStatefulGen
+      ]
     ]
 
 
-statefulSpec :: TestTree
-statefulSpec =
+statefulGenSpec :: TestTree
+statefulGenSpec =
   testGroup
-    "Stateful"
-    [ statefulSpecFor id unIOGen
-    , statefulSpecFor id unAtomicGen
-    , statefulSpecFor stToIO unSTGen
-    , statefulSpecFor atomically unTGen
-    , statefulSpecFor (`evalStateT` mkStdGen 0) unStateGen
+    "StatefulGen"
+    [ testGroup "ThawedGen"
+        [ thawedGenSpecFor id (Proxy :: Proxy (IOGen StdGen))
+        , thawedGenSpecFor id (Proxy :: Proxy (AtomicGen StdGen))
+        , thawedGenSpecFor stToIO (Proxy :: Proxy (STGen StdGen))
+        , thawedGenSpecFor atomically (Proxy :: Proxy (TGen StdGen))
+        ]
+    , testGroup "FrozenGen"
+        [ frozenGenSpecFor StateGen unStateGen runStateGenT
+        , frozenGenSpecFor IOGen unIOGen $ \g action -> do
+            mg <- newIOGenM (unIOGen g)
+            res <- action mg
+            g' <- freezeGen mg
+            pure (res, g')
+        , frozenGenSpecFor AtomicGen unAtomicGen $ \g action -> do
+            mg <- newAtomicGenM (unAtomicGen g)
+            res <- action mg
+            g' <- freezeGen mg
+            pure (res, g')
+        , frozenGenSpecFor STGen unSTGen $ \g action -> stToIO $ do
+            mg <- newSTGenM (unSTGen g)
+            res <- action mg
+            g' <- freezeGen mg
+            pure (res, g')
+        , frozenGenSpecFor TGen unTGen $ \g action -> atomically $ do
+            mg <- newTGenM (unTGen g)
+            res <- action mg
+            g' <- freezeGen mg
+            pure (res, g')
+        ]
     ]
 

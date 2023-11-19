@@ -94,7 +94,7 @@ main =
     , uniformSpec (Proxy :: Proxy (Word8, Word16, Word32, Word64, Word))
     , uniformSpec (Proxy :: Proxy (Int8, Word8, Word16, Word32, Word64, Word))
     , uniformSpec (Proxy :: Proxy (Int8, Int16, Word8, Word16, Word32, Word64, Word))
-    , Stateful.statefulSpec
+    , Stateful.statefulGenSpec
     ]
 
 floatTests :: TestTree
