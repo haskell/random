@@ -473,6 +473,8 @@ instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
     g' `seq` writeIORef ref g'
     pure a
   {-# INLINE modifyGen #-}
+  overwriteGen (IOGenM ref) = liftIO . writeIORef ref . unIOGen
+  {-# INLINE overwriteGen #-}
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -538,6 +540,8 @@ instance RandomGen g => FrozenGen (STGen g) (ST s) where
     g' `seq` writeSTRef ref g'
     pure a
   {-# INLINE modifyGen #-}
+  overwriteGen (STGenM ref) = writeSTRef ref . unSTGen
+  {-# INLINE overwriteGen #-}
 
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
@@ -639,6 +643,8 @@ instance RandomGen g => FrozenGen (TGen g) STM where
     g' `seq` writeTVar ref g'
     pure a
   {-# INLINE modifyGen #-}
+  overwriteGen (TGenM ref) = writeTVar ref . unTGen
+  {-# INLINE overwriteGen #-}
 
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.

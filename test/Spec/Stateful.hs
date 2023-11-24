@@ -64,6 +64,22 @@ withMutableGenSpec toIO frozen =
     r' <- withMutableGen_ frozen action
     pure $ x == y && r == r'
 
+overwriteMutableGenSpec ::
+     forall f m. (FrozenGen f m, Eq f, Show f)
+  => (forall a. m a -> IO a)
+  -> f
+  -> Property IO
+overwriteMutableGenSpec toIO frozen =
+  forAll $ \n -> monadic $ toIO $ do
+    let action = uniformListM (abs n + 1) -- Non-empty
+    ((r1, r2), frozen') :: ((String, String), f) <- withMutableGen frozen $ \mutable -> do
+      r1 <- action mutable
+      overwriteGen mutable frozen
+      r2 <- action mutable
+      modifyGen mutable (const ((), frozen))
+      pure (r1, r2)
+    pure $ r1 == r2 && frozen == frozen'
+
 splitMutableGenSpec ::
      forall f m. (RandomGen f, FrozenGen f m, Eq f, Show f)
   => (forall a. m a -> IO a)
@@ -86,6 +102,8 @@ statefulSpecFor toIO toStdGen =
     (showsTypeRep (typeRep (Proxy :: Proxy f)) "")
     [ testProperty "withMutableGen" $
       forAll $ \(f :: f) -> withMutableGenSpec toIO f
+    , testProperty "overwriteGen" $
+      forAll $ \(f :: f) -> overwriteMutableGenSpec toIO f
     , testProperty "splitGen" $
       forAll $ \(f :: f) -> splitMutableGenSpec toIO f
     , testGroup

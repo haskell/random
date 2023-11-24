@@ -309,11 +309,17 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   -- @since 1.2.0
   thawGen :: f -> m (MutableGen f m)
 
-  -- | Apply a pure function to the frozen generator.
+  -- | Apply a pure function to the frozen pseudo-random number generator.
   --
   -- @since 1.3.0
   modifyGen :: MutableGen f m -> (f -> (a, f)) -> m a
 
+  -- | Overwrite contents of the mutable pseudo-random number generator with the
+  -- supplied frozen one
+  --
+  -- @since 1.3.0
+  overwriteGen :: MutableGen f m -> f -> m ()
+  overwriteGen mg fg = modifyGen mg (const ((), fg))
 
 -- | Splits a pseudo-random number generator into two. Overwrites the mutable
 -- wrapper with one of the resulting generators and returns the other.
@@ -478,6 +484,8 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   thawGen (StateGen g) = StateGenM <$ put g
   modifyGen _ f = state (coerce f)
   {-# INLINE modifyGen #-}
+  overwriteGen _ f = put (coerce f)
+  {-# INLINE overwriteGen #-}
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.

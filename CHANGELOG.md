@@ -1,6 +1,6 @@
 # 1.3.0
 
-* Add `modifyGen` to the `FrozenGen` type class
+* Add `modifyGen` and `overwriteGen` to the `FrozenGen` type class
 * Add `splitGen` and `splitMutableGen`
 * Switch `randomM` and `randomRM` to use `FrozenGen` instead of `RandomGenM`
 * Deprecate `RandomGenM` in favor of a more powerful `FrozenGen`
