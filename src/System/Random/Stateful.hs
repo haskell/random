@@ -164,9 +164,10 @@ import System.Random.Internal
 -- > [3,4,3,1,4,6,1,6,1,4]
 --
 -- Given a /pure/ pseudo-random number generator, you can run the monadic pseudo-random
--- number computation @rollsM@ in 'StateT', 'IO', 'ST' or 'STM' context by applying a
--- monadic adapter like 'StateGenM', 'AtomicGenM', 'IOGenM', 'STGenM' or 'TGenM' (see
--- [monadic-adapters](#monadicadapters)) to the pure pseudo-random number generator.
+-- number computation @rollsM@ in 'Control.Monad.State.Strict.StateT', 'IO', 'ST' or 'STM'
+-- context by applying a monadic adapter like 'StateGenM', 'AtomicGenM', 'IOGenM',
+-- 'STGenM' or 'TGenM' (see [monadic-adapters](#monadicadapters)) to the pure
+-- pseudo-random number generator.
 --
 -- >>> let pureGen = mkStdGen 42
 -- >>> newIOGenM pureGen >>= rollsM 10 :: IO [Word]
@@ -183,9 +184,9 @@ import System.Random.Internal
 -- ['System.Random.RandomGen': pure pseudo-random number generators]
 --     See "System.Random" module.
 --
--- ['StatefulGen': monadic pseudo-random number generators] These generators
---     mutate their own state as they produce pseudo-random values. They
---     generally live in 'StateT', 'ST', 'IO' or 'STM' or some other transformer
+-- ['StatefulGen': monadic pseudo-random number generators] These generators mutate their
+--     own state as they produce pseudo-random values. They generally live in
+--     'Control.Monad.State.Strict.StateT', 'ST', 'IO' or 'STM' or some other transformer
 --     on top of those monads.
 --
 
@@ -198,10 +199,10 @@ import System.Random.Internal
 -- Pure pseudo-random number generators can be used in monadic code via the
 -- adapters 'StateGenM', 'AtomicGenM', 'IOGenM', 'STGenM' and 'TGenM'
 --
--- *   'StateGenM' can be used in any state monad. With strict 'StateT' there is
---     no performance overhead compared to using the 'RandomGen' instance
---     directly. 'StateGenM' is /not/ safe to use in the presence of exceptions
---     and concurrency.
+-- * 'StateGenM' can be used in any state monad. With strict
+--     'Control.Monad.State.Strict.StateT' there is no performance overhead compared to
+--     using the 'RandomGen' instance directly. 'StateGenM' is /not/ safe to use in the
+--     presence of exceptions and concurrency.
 --
 -- *   'AtomicGenM' is safe in the presence of exceptions and concurrency since
 --     it performs all actions atomically.
