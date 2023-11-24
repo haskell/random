@@ -1,5 +1,11 @@
 # 1.3.0
 
+* Move `thawGen` from `FreezeGen` into the new `ThawGen` type class. Fixes an issue with
+  an unlawful instance of `StateGen` for `FreezeGen`.
+* Add `modifyGen` and `overwriteGen` to the `FrozenGen` type class
+* Add `splitGen` and `splitMutableGen`
+* Switch `randomM` and `randomRM` to use `FrozenGen` instead of `RandomGenM`
+* Deprecate `RandomGenM` in favor of a more powerful `FrozenGen`
 * Add `isInRange` to `UniformRange`: [#78](https://github.com/haskell/random/pull/78)
 * Add default implementation for `uniformRM` using `Generics`:
   [#92](https://github.com/haskell/random/pull/92)

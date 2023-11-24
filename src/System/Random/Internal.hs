@@ -30,6 +30,9 @@ module System.Random.Internal
     RandomGen(..)
   , StatefulGen(..)
   , FrozenGen(..)
+  , ThawedGen(..)
+  , splitGen
+  , splitMutableGen
 
   -- ** Standard pseudo-random number generator
   , StdGen(..)
@@ -40,7 +43,6 @@ module System.Random.Internal
   -- ** Pure adapter
   , StateGen(..)
   , StateGenM(..)
-  , splitGen
   , runStateGen
   , runStateGen_
   , runStateGenT
@@ -67,7 +69,7 @@ module System.Random.Internal
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
-import Control.Monad (when)
+import Control.Monad (when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.ST
@@ -285,25 +287,100 @@ class Monad m => StatefulGen g m where
   {-# INLINE uniformShortByteString #-}
 
 
-
--- | This class is designed for stateful pseudo-random number generators that
--- can be saved as and restored from an immutable data type.
+-- | This class is designed for mutable pseudo-random number generators that have a frozen
+-- imutable counterpart that can be manipulated in pure code.
+--
+-- It also works great with frozen generators that are based on pure generators that have
+-- a `RandomGen` instance.
+--
+-- Here are a few laws, which are important for this type class:
+--
+-- * Roundtrip and complete destruction on overwrite:
+--
+-- @
+-- overwriteGen mg fg >> freezeGen mg = pure fg
+-- @
+--
+-- * Modification of a mutable generator:
+--
+-- @
+-- overwriteGen mg fg = modifyGen mg (const ((), fg)
+-- @
+--
+-- * Freezing of a mutable generator:
+--
+-- @
+-- freezeGen mg = modifyGen mg (\fg -> (fg, fg))
+-- @
 --
 -- @since 1.2.0
 class StatefulGen (MutableGen f m) m => FrozenGen f m where
+  {-# MINIMAL (modifyGen|(freezeGen,overwriteGen)) #-}
   -- | Represents the state of the pseudo-random number generator for use with
   -- 'thawGen' and 'freezeGen'.
   --
   -- @since 1.2.0
   type MutableGen f m = (g :: Type) | g -> f
+
   -- | Saves the state of the pseudo-random number generator as a frozen seed.
   --
   -- @since 1.2.0
   freezeGen :: MutableGen f m -> m f
-  -- | Restores the pseudo-random number generator from its frozen seed.
+  freezeGen mg = modifyGen mg (\fg -> (fg, fg))
+  {-# INLINE freezeGen #-}
+
+  -- | Apply a pure function to the frozen pseudo-random number generator.
+  --
+  -- @since 1.3.0
+  modifyGen :: MutableGen f m -> (f -> (a, f)) -> m a
+  modifyGen mg f = do
+    fg <- freezeGen mg
+    case f fg of
+      (a, !fg') -> a <$ overwriteGen mg fg'
+  {-# INLINE modifyGen #-}
+
+  -- | Overwrite contents of the mutable pseudo-random number generator with the
+  -- supplied frozen one
+  --
+  -- @since 1.3.0
+  overwriteGen :: MutableGen f m -> f -> m ()
+  overwriteGen mg fg = modifyGen mg (const ((), fg))
+  {-# INLINE overwriteGen #-}
+
+-- | Functionality for thawing frozen generators is not part of the `FrozenGen` class,
+-- becase not all mutable generators support functionality of creating new mutable
+-- generators, which is what thawing is in its essence. For this reason `StateGen` does
+-- not have an instance for this type class, but it has one for `FrozenGen`.
+--
+-- Here is an important law that relates this type class to `FrozenGen`
+--
+-- * Roundtrip and independence of mutable generators:
+--
+-- @
+-- traverse thawGen fgs >>= traverse freezeGen = pure fgs
+-- @
+--
+-- @since 1.3.0
+class FrozenGen f m => ThawedGen f m where
+  -- | Create a new mutable pseudo-random number generator from its frozen state.
   --
   -- @since 1.2.0
   thawGen :: f -> m (MutableGen f m)
+
+-- | Splits a pseudo-random number generator into two. Overwrites the mutable
+-- pseudo-random number generator with one of the immutable pseudo-random number
+-- generators produced by a `split` function and returns the other.
+--
+-- @since 1.3.0
+splitGen :: (RandomGen f, FrozenGen f m) => MutableGen f m -> m f
+splitGen = flip modifyGen split
+
+-- | Splits a pseudo-random number generator into two. Overwrites the mutable wrapper with
+-- one of the resulting generators and returns the other as a new mutable generator.
+--
+-- @since 1.3.0
+splitMutableGen :: (RandomGen f, ThawedGen f m) => MutableGen f m -> m (MutableGen f m)
+splitMutableGen = splitGen >=> thawGen
 
 
 data MBA = MBA (MutableByteArray# RealWorld)
@@ -451,15 +528,10 @@ instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
 instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   type MutableGen (StateGen g) m = StateGenM g
   freezeGen _ = fmap StateGen get
-  thawGen (StateGen g) = StateGenM <$ put g
-
--- | Splits a pseudo-random number generator into two. Updates the state with
--- one of the resulting generators and returns the other.
---
--- @since 1.2.0
-splitGen :: (MonadState g m, RandomGen g) => m g
-splitGen = state split
-{-# INLINE splitGen #-}
+  modifyGen _ f = state (coerce f)
+  {-# INLINE modifyGen #-}
+  overwriteGen _ f = put (coerce f)
+  {-# INLINE overwriteGen #-}
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.
