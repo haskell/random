@@ -795,6 +795,9 @@ applyTGen f (TGenM tvar) = do
 -- Here is an example instance for the monadic pseudo-random number generator
 -- from the @mwc-random@ package:
 --
+-- > import qualified System.Random.MWC as MWC
+-- > import qualified Data.Vector.Generic as G
+--
 -- > instance (s ~ PrimState m, PrimMonad m) => StatefulGen (MWC.Gen s) m where
 -- >   uniformWord8 = MWC.uniform
 -- >   uniformWord16 = MWC.uniform
@@ -804,8 +807,11 @@ applyTGen f (TGenM tvar) = do
 --
 -- > instance PrimMonad m => FrozenGen MWC.Seed m where
 -- >   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)
--- >   thawGen = MWC.restore
 -- >   freezeGen = MWC.save
+-- >   overwriteGen (Gen mv) (Seed v) = G.copy mv v
+--
+-- > instance PrimMonad m => ThawedGen MWC.Seed m where
+-- >   thawGen = MWC.restore
 --
 -- === @FrozenGen@
 --
