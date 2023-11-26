@@ -60,6 +60,8 @@ module System.Random.Internal
   , uniformFloatPositive01M
   , uniformEnumM
   , uniformEnumRM
+  , uniformListM
+  , uniformListRM
 
   -- * Generators for sequences of pseudo-random bytes
   , uniformByteStringM
@@ -80,7 +82,7 @@ module System.Random.Internal
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
-import Control.Monad (when, (>=>))
+import Control.Monad (replicateM, when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import Control.Monad.ST
@@ -810,6 +812,38 @@ runStateGenST_ g action = runST $ runStateGenT_ g action
 {-# INLINE runStateGenST_ #-}
 
 
+-- | Generates a list of pseudo-random values.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> g <- newIOGenM pureGen
+-- >>> uniformListM 10 g :: IO [Bool]
+-- [True,True,True,True,False,True,True,False,False,False]
+--
+-- @since 1.2.0
+uniformListM :: (StatefulGen g m, Uniform a) => Int -> g -> m [a]
+uniformListM n gen = replicateM n (uniformM gen)
+{-# INLINE uniformListM #-}
+
+
+-- | Generates a list of pseudo-random values in a specified range.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> g <- newIOGenM pureGen
+-- >>> uniformListRM 10 (20, 30) g :: IO [Int]
+-- [23,21,28,25,28,28,26,25,29,27]
+--
+-- @since 1.3.0
+uniformListRM :: (StatefulGen g m, UniformRange a) => Int -> (a, a) -> g -> m [a]
+uniformListRM n range gen = replicateM n (uniformRM range gen)
+{-# INLINE uniformListRM #-}
+
+
 -- | The standard pseudo-random number generator.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
   deriving (Show, RandomGen, NFData)
@@ -964,10 +998,11 @@ class UniformRange a where
   -- >>> :set -XDeriveGeneric -XDeriveAnyClass
   -- >>> import GHC.Generics (Generic)
   -- >>> import Data.Word (Word8)
+  -- >>> import Control.Monad (replicateM)
   -- >>> import System.Random.Stateful
   -- >>> gen <- newIOGenM (mkStdGen 42)
   -- >>> data Tuple = Tuple Bool Word8 deriving (Show, Generic, UniformRange)
-  -- >>> Control.Monad.replicateM 10 (uniformRM (Tuple False 100, Tuple True 150) gen)
+  -- >>> replicateM 10 (uniformRM (Tuple False 100, Tuple True 150) gen)
   -- [Tuple False 102,Tuple True 118,Tuple False 115,Tuple True 113,Tuple True 126,Tuple False 127,Tuple True 130,Tuple False 113,Tuple False 150,Tuple False 125]
   --
   -- @since 1.2.0

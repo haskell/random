@@ -37,6 +37,12 @@ module System.Random
   , UniformRange
   , Finite
   -- * Generators for sequences of pseudo-random bytes
+  -- ** Lists
+  , uniforms
+  , uniformRs
+  , uniformList
+  , uniformListR
+  -- ** Bytes
   , uniformByteArray
   , uniformByteString
   , uniformFillMutableByteArray
@@ -203,6 +209,84 @@ uniform g = runStateGen g uniformM
 uniformR :: (UniformRange a, RandomGen g) => (a, a) -> g -> (a, g)
 uniformR r g = runStateGen g (uniformRM r)
 {-# INLINE uniformR #-}
+
+-- | Produce an infinite list of pseudo-random values. Integrates nicely with list
+-- fusion. Naturally, there is no way to recover the final generator, therefore either use
+-- `split` before calling `uniforms` or use `uniformList` instead.
+--
+-- Similar to `randoms`, except it relies on `Uniform` type class instead of `Random`
+--
+-- ====__Examples__
+--
+-- >>> let gen = mkStdGen 2023
+-- >>> import Data.Word (Word16)
+-- >>> take 5 $ uniforms gen :: [Word16]
+-- [56342,15850,25292,14347,13919]
+--
+-- @since 1.3.0
+uniforms :: (Uniform a, RandomGen g) => g -> [a]
+uniforms g0 =
+  build $ \cons _nil ->
+    let go g =
+          case uniform g of
+            (x, g') -> x `seq` (x `cons` go g')
+     in go g0
+{-# INLINE uniforms #-}
+
+-- | Produce an infinite list of pseudo-random values in a specified range. Same as
+-- `uniforms`, integrates nicely with list fusion. There is no way to recover the final
+-- generator, therefore either use `split` before calling `uniformRs` or use
+-- `uniformListR` instead.
+--
+-- Similar to `randomRs`, except it relies on `UniformRange` type class instead of
+-- `Random`.
+--
+-- ====__Examples__
+--
+-- >>> let gen = mkStdGen 2023
+-- >>> take 5 $ uniformRs (10, 100) gen :: [Int]
+-- [32,86,21,57,39]
+--
+-- @since 1.3.0
+uniformRs :: (UniformRange a, RandomGen g) => (a, a) -> g -> [a]
+uniformRs range g0 =
+  build $ \cons _nil ->
+    let go g =
+          case uniformR range g of
+            (x, g') -> x `seq` (x `cons` go g')
+     in go g0
+{-# INLINE uniformRs #-}
+
+-- | Produce a list of the supplied length with elements generated uniformly.
+--
+-- See `uniformListM` for a stateful counterpart.
+--
+-- ====__Examples__
+--
+-- >>> let gen = mkStdGen 2023
+-- >>> import Data.Word (Word16)
+-- >>> uniformList 5 gen :: ([Word16], StdGen)
+-- ([56342,15850,25292,14347,13919],StdGen {unStdGen = SMGen 6446154349414395371 1920468677557965761})
+--
+-- @since 1.3.0
+uniformList :: (Uniform a, RandomGen g) => Int -> g -> ([a], g)
+uniformList n g = runStateGen g (uniformListM n)
+{-# INLINE uniformList #-}
+
+-- | Produce a list of the supplied length with elements generated uniformly.
+--
+-- See `uniformListM` for a stateful counterpart.
+--
+-- ====__Examples__
+--
+-- >>> let gen = mkStdGen 2023
+-- >>> uniformListR 10 (20, 30) gen :: ([Int], StdGen)
+-- ([26,30,27,24,30,25,27,21,27,27],StdGen {unStdGen = SMGen 12965503083958398648 1920468677557965761})
+--
+-- @since 1.3.0
+uniformListR :: (UniformRange a, RandomGen g) => Int -> (a, a) -> g -> ([a], g)
+uniformListR n r g = runStateGen g (uniformListRM n r)
+{-# INLINE uniformListR #-}
 
 -- | Generates a 'ByteString' of the specified size using a pure pseudo-random
 -- number generator. See 'uniformByteStringM' for the monadic version.
