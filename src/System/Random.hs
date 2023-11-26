@@ -114,7 +114,7 @@ import qualified System.Random.SplitMix as SM
 --
 -- >>> :{
 -- let rolls :: RandomGen g => Int -> g -> [Word]
---     rolls n = take n . unfoldr (Just . uniformR (1, 6))
+--     rolls n = fst . uniformListR n (1, 6)
 --     pureGen = mkStdGen 137
 -- in
 --     rolls 10 pureGen :: [Word]
@@ -126,7 +126,7 @@ import qualified System.Random.SplitMix as SM
 --
 -- >>> :{
 -- let rollsM :: StatefulGen g m => Int -> g -> m [Word]
---     rollsM n = replicateM n . uniformRM (1, 6)
+--     rollsM n = uniformListRM n (1, 6)
 --     pureGen = mkStdGen 137
 -- in
 --     runStateGen_ pureGen (rollsM 10) :: [Word]
