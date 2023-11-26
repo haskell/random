@@ -52,6 +52,7 @@ module System.Random
   -- ** Standard pseudo-random number generator
   , StdGen
   , mkStdGen
+  , mkStdGen64
   , initStdGen
 
   -- ** Global standard pseudo-random number generator
