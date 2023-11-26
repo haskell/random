@@ -9,6 +9,7 @@
 module Main (main) where
 
 import Control.Monad (replicateM, forM_)
+import Control.Monad.ST (runST)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Int
@@ -17,12 +18,17 @@ import Data.Void
 import Data.Word
 import Foreign.C.Types
 import GHC.Generics
+import GHC.Exts (fromList)
 import Numeric.Natural (Natural)
 import System.Random.Stateful
+import System.Random.Internal (newMutableByteArray, freezeMutableByteArray, writeWord8)
 import Test.SmallCheck.Series as SC
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.SmallCheck as SC
+#if __GLASGOW_HASKELL__ < 804
+import Data.Monoid ((<>))
+#endif
 
 import qualified Spec.Range as Range
 import qualified Spec.Run as Run
@@ -80,6 +86,7 @@ main =
     , runSpec
     , floatTests
     , byteStringSpec
+    , fillMutableByteArraySpec
     , SC.testProperty "uniformRangeWithinExcludedF" $ seeded Range.uniformRangeWithinExcludedF
     , SC.testProperty "uniformRangeWithinExcludedD" $ seeded Range.uniformRangeWithinExcludedD
     , randomSpec (Proxy :: Proxy (CFloat, CDouble))
@@ -125,12 +132,39 @@ byteStringSpec =
         let g = mkStdGen 2021
             bs = [78,232,117,189,13,237,63,84,228,82,19,36,191,5,128,192] :: [Word8]
         forM_ [0 .. length bs - 1] $ \ n -> do
-          xs <- SBS.unpack <$> runStateGenT_ g (uniformShortByteString n)
+          xs <- SBS.unpack <$> runStateGenT_ g (uniformShortByteStringM n)
           xs @?= take n bs
           ys <- BS.unpack <$> runStateGenT_ g (uniformByteStringM n)
           ys @?= xs
     ]
 
+fillMutableByteArraySpec :: TestTree
+fillMutableByteArraySpec =
+  testGroup
+    "MutableByteArray"
+    [ SC.testProperty "Same as uniformByteArray" $
+        forAll $ \isPinned -> seededWithLen $ \n g ->
+          let baFilled = runST $ do
+                mba <- newMutableByteArray n
+                g' <- uniformFillMutableByteArray mba 0 n g
+                ba <- freezeMutableByteArray mba
+                pure (ba, g')
+          in baFilled == uniformByteArray isPinned n g
+    , SC.testProperty "Safe uniformFillMutableByteArray" $
+        forAll $ \isPinned offset count -> seededWithLen $ \sz g ->
+          let (baFilled, gf) = runST $ do
+                mba <- newMutableByteArray sz
+                forM_ [0 .. sz - 1] (\i -> writeWord8 mba i 0)
+                g' <- uniformFillMutableByteArray mba offset count g
+                ba <- freezeMutableByteArray mba
+                pure (ba, g')
+              (baGen, gu) = uniformByteArray isPinned count' g
+              offset' = min sz (max 0 offset)
+              count' = min (sz - offset') (max 0 count)
+              prefix = replicate offset' 0
+              suffix = replicate (sz - (count' + offset')) 0
+          in gf == gu && baFilled == fromList prefix <> baGen <> fromList suffix
+    ]
 
 rangeSpec ::
      forall a.

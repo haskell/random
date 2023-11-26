@@ -25,6 +25,8 @@ seed = 1337
 main :: IO ()
 main = do
   let !sz = 100000
+      !sz100MiB = 100 * 1024 * 1024
+      genLengths :: ([Int], StdGen)
       genLengths =
         -- create 5000 small lengths that are needed for ShortByteString generation
         runStateGen (mkStdGen 2020) $ \g -> replicateM 5000 (uniformRM (16 + 1, 16 + 7) g)
@@ -243,16 +245,18 @@ main = do
                 sz
             ]
           ]
-        , bgroup "ShortByteString"
-          [ env (pure genLengths) $ \ ~(ns, gen) ->
-              bench "genShortByteString" $
-              nfIO $ runStateGenT gen $ \g -> mapM (`uniformShortByteString` g) ns
-          ]
-        , bgroup "ByteString"
-          [ env getStdGen $ \gen ->
-              bench "genByteString 100MB" $
-              nfIO $ runStateGenT gen $ uniformByteStringM 100000000
-          ]
+        ]
+      , bgroup "Bytes"
+        [ env (pure genLengths) $ \ ~(ns, gen) ->
+            bench "uniformShortByteStringM" $
+            nfIO $ runStateGenT gen $ \g -> mapM (`uniformShortByteStringM` g) ns
+        , env getStdGen $ \gen ->
+            bench "uniformByteStringM 100MB" $
+            nf (runStateGen gen . uniformByteStringM) sz100MiB
+        , env getStdGen $ \gen ->
+            bench "uniformByteArray 100MB" $ nf (\n -> uniformByteArray False n gen) sz100MiB
+        , env getStdGen $ \gen ->
+            bench "genByteString 100MB" $ nf (\k -> genByteString k gen) sz100MiB
         ]
       ]
     ]

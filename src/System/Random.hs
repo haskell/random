@@ -20,14 +20,28 @@ module System.Random
 
   -- * Pure number generator interface
   -- $interfaces
-    RandomGen(..)
+    RandomGen
+      ( split
+      , genWord8
+      , genWord16
+      , genWord32
+      , genWord64
+      , genWord32R
+      , genWord64R
+      , unsafeUniformFillMutableByteArray
+      )
   , uniform
   , uniformR
-  , genByteString
   , Random(..)
   , Uniform
   , UniformRange
   , Finite
+  -- * Generators for sequences of pseudo-random bytes
+  , uniformByteArray
+  , uniformByteString
+  , uniformFillMutableByteArray
+  , genByteString
+  , genShortByteString
 
   -- ** Standard pseudo-random number generator
   , StdGen
@@ -45,6 +59,8 @@ module System.Random
 
   -- * Compatibility and reproducibility
   -- ** Backwards compatibility and deprecations
+  , genRange
+  , next
   -- $deprecations
 
   -- ** Reproducibility
@@ -198,6 +214,9 @@ uniformR r g = runStateGen g (uniformRM r)
 -- >>> let pureGen = mkStdGen 137
 -- >>> unpack . fst . genByteString 10 $ pureGen
 -- [51,123,251,37,49,167,90,109,1,4]
+--
+-- /Note/ - This function is equivalet to `uniformByteString` and will be deprecated in
+-- the next major release.
 --
 -- @since 1.2.0
 genByteString :: RandomGen g => Int -> g -> (ByteString, g)
