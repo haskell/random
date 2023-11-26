@@ -62,6 +62,8 @@ module System.Random.Internal
   , uniformEnumRM
   , uniformListM
   , uniformListRM
+  , isInRangeOrd
+  , isInRangeEnum
 
   -- * Generators for sequences of pseudo-random bytes
   , uniformByteStringM
@@ -1032,7 +1034,9 @@ class UniformRange a where
   -- > isInRange (lo, hi) lo' && isInRange (lo, hi) hi' && isInRange (lo', hi') x
   -- > ==> isInRange (lo, hi) x
   --
-  -- There is a default implementation of 'isInRange' via 'Generic'.
+  -- There is a default implementation of 'isInRange' via 'Generic'. Other helper function
+  -- that can be used for implementing this function are `isInRangeOrd` and
+  -- `isInRangeEnum`
   --
   -- @since 1.3.0
   isInRange :: (a, a) -> a -> Bool
@@ -1071,8 +1075,19 @@ instance (GUniformRange f, GUniformRange g) => GUniformRange (f :*: g) where
   gisInRange (x1 :*: y1, x2 :*: y2) (x3 :*: y3) =
     gisInRange (x1, x2) x3 && gisInRange (y1, y2) y3
 
+-- | Utilize `Ord` instance to decide if a value is within the range. Designed to be used
+-- for implementing `isInRange`
+--
+-- @since 1.3.0
 isInRangeOrd :: Ord a => (a, a) -> a -> Bool
 isInRangeOrd (a, b) x = min a b <= x && x <= max a b
+
+-- | Utilize `Enum` instance to decide if a value is within the range. Designed to be used
+-- for implementing `isInRange`
+--
+-- @since 1.3.0
+isInRangeEnum :: Enum a => (a, a) -> a -> Bool
+isInRangeEnum (a, b) x = isInRangeOrd (fromEnum a, fromEnum b) (fromEnum x)
 
 instance UniformRange Integer where
   uniformRM = uniformIntegralM

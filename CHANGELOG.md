@@ -23,6 +23,8 @@
   * Add `splitGen` and `splitMutableGen`
   * Switch `randomM` and `randomRM` to use `FrozenGen` instead of `RandomGenM`
   * Deprecate `RandomGenM` in favor of a more powerful `FrozenGen`
+* Add `isInRangeOrd` and `isInRangeEnum` that can be used for implementing `isInRange`:
+  [#148](https://github.com/haskell/random/pull/148)
 * Add `isInRange` to `UniformRange`: [#78](https://github.com/haskell/random/pull/78)
 * Add default implementation for `uniformRM` using `Generics`:
   [#92](https://github.com/haskell/random/pull/92)
