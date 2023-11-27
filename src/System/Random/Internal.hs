@@ -37,6 +37,7 @@ module System.Random.Internal
   -- ** Standard pseudo-random number generator
   , StdGen(..)
   , mkStdGen
+  , mkStdGen64
   , theStdGen
 
   -- * Monadic adapters for pure pseudo-random number generators
@@ -881,6 +882,16 @@ instance RandomGen SM32.SMGen where
 -- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen
 mkStdGen = StdGen . SM.mkSMGen . fromIntegral
+
+-- | Constructs a 'StdGen' deterministically from a `Word64` seed.
+--
+-- The difference between `mkStdGen` is that `mkStdGen64` will work the same on 64-bit and
+-- 32-bit architectures, while the former can only use 32-bit of information for
+-- initializing the psuedo-random number generator on 32-bit operating systems
+--
+-- @since 1.3.0
+mkStdGen64 :: Word64 -> StdGen
+mkStdGen64 = StdGen . SM.mkSMGen
 
 -- | Global mutable veriable with `StdGen`
 theStdGen :: IORef StdGen
