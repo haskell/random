@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -143,6 +144,10 @@ import Data.STRef
 import Foreign.Storable
 import System.Random
 import System.Random.Internal
+#if __GLASGOW_HASKELL__ >= 808
+import GHC.IORef (atomicModifyIORef2Lazy)
+#endif
+
 
 -- $introduction
 --
@@ -414,7 +419,7 @@ instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
   freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
   modifyGen (AtomicGenM ioRef) f =
-    liftIO $ atomicModifyIORef' ioRef $ \g ->
+    liftIO $ atomicModifyIORefHS ioRef $ \g ->
       case f (AtomicGen g) of
         (a, AtomicGen g') -> (g', a)
   {-# INLINE modifyGen #-}
@@ -436,10 +441,26 @@ instance (RandomGen g, MonadIO m) => ThawedGen (AtomicGen g) m where
 -- @since 1.2.0
 applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGenM g -> m a
 applyAtomicGen op (AtomicGenM gVar) =
-  liftIO $ atomicModifyIORef' gVar $ \g ->
+  liftIO $ atomicModifyIORefHS gVar $ \g ->
     case op g of
       (a, g') -> (g', a)
 {-# INLINE applyAtomicGen #-}
+
+-- HalfStrict version of atomicModifyIORef, i.e. strict in the modifcation of the contents
+-- of the IORef, but not in the result produced.
+atomicModifyIORefHS :: IORef a -> (a -> (a, b)) -> IO b
+atomicModifyIORefHS ref f = do
+#if __GLASGOW_HASKELL__ >= 808
+  (_old, (_new, res)) <- atomicModifyIORef2Lazy ref $ \old ->
+    case f old of
+      r@(!_new, _res) -> r
+  pure res
+#else
+  atomicModifyIORef ref $ \old ->
+    case f old of
+      r@(!_new, _res) -> r
+#endif
+{-# INLINE atomicModifyIORefHS #-}
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator.
 --
