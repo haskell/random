@@ -30,8 +30,8 @@ jobs:
           - { os: ubuntu-latest,  ghc: "8.10.7" }
           - { os: ubuntu-latest,  ghc: "9.0.2"  }
           - { os: ubuntu-latest,  ghc: "9.2.8"  }
-          - { os: ubuntu-latest,  ghc: "9.4.7"  }
-          - { os: ubuntu-latest,  ghc: "9.6.3"  }
+          - { os: ubuntu-latest,  ghc: "9.4.8"  }
+          - { os: ubuntu-latest,  ghc: "9.6.4"  }
           - { os: ubuntu-latest,  ghc: "9.8.1"  }
           # MacOS
           - { os: macOS-latest,  ghc: "8.0.2"  }
@@ -42,8 +42,8 @@ jobs:
           - { os: macOS-latest,  ghc: "8.10.7" }
           - { os: macOS-latest,  ghc: "9.0.2"  }
           - { os: macOS-latest,  ghc: "9.2.8"  }
-          - { os: macOS-latest,  ghc: "9.4.7"  }
-          - { os: macOS-latest,  ghc: "9.6.3"  }
+          - { os: macOS-latest,  ghc: "9.4.8"  }
+          - { os: macOS-latest,  ghc: "9.6.4"  }
           - { os: macOS-latest,  ghc: "9.8.1"  }
           # Windows
           - { os: windows-latest,  ghc: "8.0.2"  }
@@ -54,8 +54,8 @@ jobs:
           - { os: windows-latest,  ghc: "8.10.7" }
           - { os: windows-latest,  ghc: "9.0.2"  }
           - { os: windows-latest,  ghc: "9.2.8"  }
-          - { os: windows-latest,  ghc: "9.4.7"  }
-          - { os: windows-latest,  ghc: "9.6.3"  }
+          - { os: windows-latest,  ghc: "9.4.8"  }
+          - { os: windows-latest,  ghc: "9.6.4"  }
           - { os: windows-latest,  ghc: "9.8.1"  }
     steps:
     - uses: actions/checkout@v3
@@ -92,7 +92,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-21, lts-20, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11]
+        resolver: [nightly, lts-22, lts-21, lts-20, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11]
         include:
           - resolver: lts-11
             ghc: '8.2.2'
@@ -116,7 +116,10 @@ jobs:
             ghc: '9.2.8'
             stack-yaml: stack.yaml
           - resolver: lts-21
-            ghc: '9.4.7'
+            ghc: '9.4.8'
+            stack-yaml: stack.yaml
+          - resolver: lts-22
+            ghc: '9.6.4'
             stack-yaml: stack.yaml
           - resolver: nightly
             stack-yaml: stack.yaml
