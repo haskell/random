@@ -1,5 +1,6 @@
 # 1.3.0
 
+* Add `SplitGen` and `splitGen`
 * Add `shuffleList` and `shuffleListM`: [#140](https://github.com/haskell/random/pull/140)
 * Add `mkStdGen64`: [#155](https://github.com/haskell/random/pull/155)
 * Add `uniformListRM`, `uniformList`, `uniformListR`, `uniforms` and `uniformRs`:
@@ -23,7 +24,8 @@
   * Move `thawGen` from `FreezeGen` into the new `ThawGen` type class. Fixes an issue with
     an unlawful instance of `StateGen` for `FreezeGen`.
   * Add `modifyGen` and `overwriteGen` to the `FrozenGen` type class
-  * Add `splitGen` and `splitMutableGen`
+  * Switch `splitGenM` to use `SplitGen` and `FrozenGen` instead of deprecated `RandomGenM`
+  * Add `splitMutableGenM`
   * Switch `randomM` and `randomRM` to use `FrozenGen` instead of `RandomGenM`
   * Deprecate `RandomGenM` in favor of a more powerful `FrozenGen`
 * Add `isInRangeOrd` and `isInRangeEnum` that can be used for implementing `isInRange`:

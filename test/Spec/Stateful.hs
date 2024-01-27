@@ -101,19 +101,19 @@ immutableFrozenGenSpec toIO frozen =
     pure $ all (x ==) xs
 
 splitMutableGenSpec ::
-     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f)
+     forall f m. (SplitGen f, ThawedGen f m, Eq f, Show f)
   => (forall a. m a -> IO a)
   -> f
   -> Property IO
 splitMutableGenSpec toIO frozen =
   monadic $ toIO $ do
-    (sfg1, fg1) <- withMutableGen frozen splitGen
-    (smg2, fg2) <- withMutableGen frozen splitMutableGen
+    (sfg1, fg1) <- withMutableGen frozen splitGenM
+    (smg2, fg2) <- withMutableGen frozen splitMutableGenM
     sfg3 <- freezeGen smg2
     pure $ fg1 == fg2 && sfg1 == sfg3
 
 thawedGenSpecFor ::
-     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f, Serial IO f, Typeable f)
+     forall f m. (SplitGen f, ThawedGen f m, Eq f, Show f, Serial IO f, Typeable f)
   => (forall a. m a -> IO a)
   -> Proxy f
   -> TestTree
