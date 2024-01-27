@@ -98,6 +98,7 @@ module System.Random.Stateful
   -- ** Lists
   , uniformListM
   , uniformListRM
+  , shuffleListM
 
   -- ** Generators for sequences of pseudo-random bytes
   , uniformByteArrayM

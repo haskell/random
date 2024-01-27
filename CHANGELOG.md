@@ -1,5 +1,6 @@
 # 1.3.0
 
+* Add `shuffleList` and `shuffleListM`: [#140](https://github.com/haskell/random/pull/140)
 * Add `mkStdGen64`: [#155](https://github.com/haskell/random/pull/155)
 * Add `uniformListRM`, `uniformList`, `uniformListR`, `uniforms` and `uniformRs`:
   [#154](https://github.com/haskell/random/pull/154)
