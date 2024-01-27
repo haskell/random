@@ -28,11 +28,12 @@
 module System.Random.Internal
   (-- * Pure and monadic pseudo-random number generator interfaces
     RandomGen(..)
+  , SplitGen(..)
   , StatefulGen(..)
   , FrozenGen(..)
   , ThawedGen(..)
-  , splitGen
-  , splitMutableGen
+  , splitGenM
+  , splitMutableGenM
 
   -- ** Standard pseudo-random number generator
   , StdGen(..)
@@ -131,7 +132,7 @@ import Data.ByteString (ByteString)
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
 class RandomGen g where
-  {-# MINIMAL split,(genWord32|genWord64|(next,genRange)) #-}
+  {-# MINIMAL (genWord32|genWord64|(next,genRange)) #-}
   -- | Returns an 'Int' that is uniformly distributed over the range returned by
   -- 'genRange' (including both end points), and a new generator. Using 'next'
   -- is inefficient as all operations go via 'Integer'. See
@@ -251,7 +252,29 @@ class RandomGen g where
   --
   -- @since 1.0.0
   split :: g -> (g, g)
+  default split :: SplitGen g => g -> (g, g)
+  split = splitGen
 
+{-# DEPRECATED split "In favor of `splitGen`" #-}
+
+-- | Pseudo-random generators that can be split into two separate and independent
+-- psuedo-random generators can have an instance for this type class.
+--
+-- Historically this functionality was included in the `RandomGen` type class in the
+-- `split` function, however, few pseudo-random generators posses this property of
+-- splittability. This lead the old `split` function being usually implemented in terms of
+-- `error`.
+--
+-- @since 1.3.0
+class RandomGen g => SplitGen g where
+
+  -- | Returns two distinct pseudo-random number generators.
+  --
+  -- Implementations should take care to ensure that the resulting generators
+  -- are not correlated.
+  --
+  -- @since 1.3.0
+  splitGen :: g -> (g, g)
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
 --
@@ -427,15 +450,15 @@ class FrozenGen f m => ThawedGen f m where
 -- generators produced by a `split` function and returns the other.
 --
 -- @since 1.3.0
-splitGen :: (RandomGen f, FrozenGen f m) => MutableGen f m -> m f
-splitGen = flip modifyGen split
+splitGenM :: (SplitGen f, FrozenGen f m) => MutableGen f m -> m f
+splitGenM = flip modifyGen splitGen
 
 -- | Splits a pseudo-random number generator into two. Overwrites the mutable wrapper with
 -- one of the resulting generators and returns the other as a new mutable generator.
 --
 -- @since 1.3.0
-splitMutableGen :: (RandomGen f, ThawedGen f m) => MutableGen f m -> m (MutableGen f m)
-splitMutableGen = splitGen >=> thawGen
+splitMutableGenM :: (SplitGen f, ThawedGen f m) => MutableGen f m -> m (MutableGen f m)
+splitMutableGenM = splitGenM >=> thawGen
 
 -- | Efficiently generates a sequence of pseudo-random bytes in a platform
 -- independent manner.
@@ -869,7 +892,7 @@ shuffleListM xs gen = do
 
 -- | The standard pseudo-random number generator.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
-  deriving (Show, RandomGen, NFData)
+  deriving (Show, RandomGen, SplitGen, NFData)
 
 instance Eq StdGen where
   StdGen x1 == StdGen x2 = SM.unseedSMGen x1 == SM.unseedSMGen x2
@@ -881,13 +904,15 @@ instance RandomGen SM.SMGen where
   {-# INLINE genWord32 #-}
   genWord64 = SM.nextWord64
   {-# INLINE genWord64 #-}
-  split = SM.splitSMGen
-  {-# INLINE split #-}
   -- Despite that this is the same default implementation as in the type class definition,
   -- for some mysterious reason without this overwrite, performance of ByteArray generation
   -- slows down by a factor of x4:
   unsafeUniformFillMutableByteArray = defaultUnsafeUniformFillMutableByteArray
   {-# INLINE unsafeUniformFillMutableByteArray #-}
+
+instance SplitGen SM.SMGen where
+  splitGen = SM.splitSMGen
+  {-# INLINE splitGen #-}
 
 instance RandomGen SM32.SMGen where
   next = SM32.nextInt
@@ -896,8 +921,10 @@ instance RandomGen SM32.SMGen where
   {-# INLINE genWord32 #-}
   genWord64 = SM32.nextWord64
   {-# INLINE genWord64 #-}
-  split = SM32.splitSMGen
-  {-# INLINE split #-}
+
+instance SplitGen SM32.SMGen where
+  splitGen = SM32.splitSMGen
+  {-# INLINE splitGen #-}
 
 -- | Constructs a 'StdGen' deterministically.
 mkStdGen :: Int -> StdGen

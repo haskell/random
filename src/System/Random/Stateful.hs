@@ -43,12 +43,11 @@ module System.Random.Stateful
   , withMutableGen_
   , randomM
   , randomRM
-  , splitGen
-  , splitMutableGen
+  , splitGenM
+  , splitMutableGenM
 
   -- ** Deprecated
   , RandomGenM(..)
-  , splitGenM
 
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
   -- $monadicadapters
@@ -249,14 +248,6 @@ class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
 {-# DEPRECATED applyRandomGenM "In favor of `modifyGen`" #-}
 {-# DEPRECATED RandomGenM "In favor of `FrozenGen`" #-}
 
--- | Splits a pseudo-random number generator into two. Overwrites the mutable
--- wrapper with one of the resulting generators and returns the other.
---
--- @since 1.2.0
-splitGenM :: RandomGenM g r m => g -> m r
-splitGenM = applyRandomGenM split
-{-# DEPRECATED splitGenM "In favor of `splitGen`" #-}
-
 instance (RandomGen r, MonadIO m) => RandomGenM (IOGenM r) r m where
   applyRandomGenM = applyIOGen
 
@@ -360,7 +351,7 @@ newtype AtomicGenM g = AtomicGenM { unAtomicGenM :: IORef g}
 --
 -- @since 1.2.0
 newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
-  deriving (Eq, Ord, Show, RandomGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -451,7 +442,7 @@ newtype IOGenM g = IOGenM { unIOGenM :: IORef g }
 --
 -- @since 1.2.0
 newtype IOGen g = IOGen { unIOGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 
 -- | Creates a new 'IOGenM'.
@@ -522,7 +513,7 @@ newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
 --
 -- @since 1.2.0
 newtype STGen g = STGen { unSTGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- | Creates a new 'STGenM'.
 --
@@ -617,7 +608,7 @@ newtype TGenM g = TGenM { unTGenM :: TVar g }
 --
 -- @since 1.2.1
 newtype TGen g = TGen { unTGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- | Creates a new 'TGenM' in `STM`.
 --

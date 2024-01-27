@@ -30,6 +30,7 @@ module System.Random
       , genWord64R
       , unsafeUniformFillMutableByteArray
       )
+  , SplitGen (splitGen)
   , uniform
   , uniformR
   , Random(..)
@@ -632,7 +633,7 @@ getStdGen = liftIO $ readIORef theStdGen
 --
 -- @since 1.0.0
 newStdGen :: MonadIO m => m StdGen
-newStdGen = liftIO $ atomicModifyIORef' theStdGen split
+newStdGen = liftIO $ atomicModifyIORef' theStdGen splitGen
 
 -- | Uses the supplied function to get a value from the current global
 -- random generator, and updates the global generator with the new generator

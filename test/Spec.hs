@@ -299,7 +299,8 @@ newtype ConstGen = ConstGen Word64
 
 instance RandomGen ConstGen where
   genWord64 g@(ConstGen c) = (c, g)
-  split g = (g, g)
+instance SplitGen ConstGen where
+  splitGen g = (g, g)
 
 data Colors = Red | Green | Blue | Purple | Yellow | Black | White | Orange
   deriving (Eq, Ord, Show, Generic, Enum, Bounded)
