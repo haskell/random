@@ -526,7 +526,7 @@ applyIOGen :: MonadIO m => (g -> (a, g)) -> IOGenM g -> m a
 applyIOGen f (IOGenM ref) = liftIO $ do
   g <- readIORef ref
   case f g of
-    (!a, !g') -> a <$ writeIORef ref g'
+    (a, !g') -> a <$ writeIORef ref g'
 {-# INLINE applyIOGen #-}
 
 -- | Wraps an 'STRef' that holds a pure pseudo-random number generator.
@@ -600,7 +600,7 @@ applySTGen :: (g -> (a, g)) -> STGenM g s -> ST s a
 applySTGen f (STGenM ref) = do
   g <- readSTRef ref
   case f g of
-    (!a, !g') -> a <$ writeSTRef ref g'
+    (a, !g') -> a <$ writeSTRef ref g'
 {-# INLINE applySTGen #-}
 
 -- | Runs a monadic generating action in the `ST` monad using a pure
