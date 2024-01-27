@@ -13,6 +13,7 @@ import Control.Monad.ST (runST)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Int
+import Data.List (sortOn)
 import Data.Typeable
 import Data.Void
 import Data.Word
@@ -245,6 +246,12 @@ uniformSpec px =
         case uniform g of
           (range, g') ->
             take len (randomRs range g' :: [a]) == fst (uniformListR len range g')
+    , SC.testProperty "shuffleList" $
+      seededWithLen $ \len g ->
+        case uniformList len g of
+          (xs, g') ->
+            let xs' = zip [0 :: Int ..] (xs :: [a])
+            in sortOn fst (fst (shuffleList xs' g')) == xs'
     , SC.testProperty "uniforms" $
       seededWithLen $ \len g ->
         take len (randoms g :: [a]) == take len (uniforms g)

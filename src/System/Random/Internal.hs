@@ -63,6 +63,7 @@ module System.Random.Internal
   , uniformEnumRM
   , uniformListM
   , uniformListRM
+  , shuffleListM
   , isInRangeOrd
   , isInRangeEnum
 
@@ -96,6 +97,7 @@ import Data.Bits
 import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
 import Data.IORef (IORef, newIORef)
 import Data.Int
+import Data.List (sortOn)
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
@@ -846,6 +848,24 @@ uniformListRM :: (StatefulGen g m, UniformRange a) => Int -> (a, a) -> g -> m [a
 uniformListRM n range gen = replicateM n (uniformRM range gen)
 {-# INLINE uniformListRM #-}
 
+-- | Shuffle elements of a list in a random order.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 2023
+-- >>> g <- newIOGenM pureGen
+-- >>> shuffleListM ['a'..'z'] g :: IO String
+-- "renlhfqmgptwksdiyavbxojzcu"
+--
+-- @since 1.3.0
+shuffleListM :: StatefulGen g m => [a] -> g -> m [a]
+shuffleListM xs gen = do
+  is <- uniformListM n gen
+  pure $ map snd $ sortOn fst $ zip (is :: [Int]) xs
+  where
+    !n = length xs
+{-# INLINE shuffleListM #-}
 
 -- | The standard pseudo-random number generator.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
