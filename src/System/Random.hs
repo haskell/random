@@ -30,6 +30,11 @@ module System.Random
       , genWord64R
       , unsafeUniformFillMutableByteArray
       )
+  , SeedGen (..)
+  , Seed
+  , mkSeed
+  , unSeed
+  , seedSize
   , SplitGen (splitGen)
   , uniform
   , uniformR

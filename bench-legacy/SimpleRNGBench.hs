@@ -1,8 +1,13 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 -- | A simple script to do some very basic timing of the RNGs.
-
 module Main where
 
 import System.Exit (exitSuccess, exitFailure)
@@ -80,13 +85,18 @@ measureFreq = do
 
 -- Test overheads without actually generating any random numbers:
 data NoopRNG = NoopRNG
+instance SeedGen NoopRNG where
+  type SeedSize NoopRNG = 1
+  seedGen = error "NoopRNG"
+  unseedGen = error "NoopRNG"
 instance RandomGen NoopRNG where
   next g = (0, g)
   genRange _ = (0, 0)
   split g = (g, g)
 
 -- An RNG generating only 0 or 1:
-data BinRNG = BinRNG StdGen
+newtype BinRNG = BinRNG StdGen
+  deriving (SeedGen)
 instance RandomGen BinRNG where
   next (BinRNG g) = (x `mod` 2, BinRNG g')
     where

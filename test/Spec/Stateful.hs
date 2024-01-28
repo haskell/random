@@ -174,7 +174,7 @@ frozenGenSpecFor fromStdGen toStdGen runStatefulGen =
                toStdGen
                runStatefulGen
       , testProperty "uniformByteArrayM/genByteArray" $
-        forAll $ \(NonNegative n', isPinned1, isPinned2) ->
+        forAll $ \(NonNegative n', isPinned1 :: Bool, isPinned2 :: Bool) ->
           let n = n' `mod` 100000 -- Ensure it is not too big
           in matchRandomGenSpec
                (uniformByteArrayM isPinned1 n)

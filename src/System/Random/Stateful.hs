@@ -7,7 +7,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-
+{-# LANGUAGE UndecidableSuperClasses #-}
 -- |
 -- Module      :  System.Random.Stateful
 -- Copyright   :  (c) The University of Glasgow 2001
@@ -351,7 +351,7 @@ newtype AtomicGenM g = AtomicGenM { unAtomicGenM :: IORef g}
 --
 -- @since 1.2.0
 newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
-  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -442,7 +442,7 @@ newtype IOGenM g = IOGenM { unIOGenM :: IORef g }
 --
 -- @since 1.2.0
 newtype IOGen g = IOGen { unIOGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
 
 
 -- | Creates a new 'IOGenM'.
@@ -513,7 +513,7 @@ newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
 --
 -- @since 1.2.0
 newtype STGen g = STGen { unSTGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
 
 -- | Creates a new 'STGenM'.
 --
@@ -608,7 +608,7 @@ newtype TGenM g = TGenM { unTGenM :: TVar g }
 --
 -- @since 1.2.1
 newtype TGen g = TGen { unTGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
 
 -- | Creates a new 'TGenM' in `STM`.
 --

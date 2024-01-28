@@ -1,6 +1,8 @@
 # 1.3.0
 
 * Add `Uniform` instance for `Maybe` and `Either`: [#167](https://github.com/haskell/random/pull/167)
+* Add `Seed`, `SeedGen`, `seedSize`, `mkSeed` and `unSeed`:
+  [#162](https://github.com/haskell/random/pull/162)
 * Add `SplitGen` and `splitGen`: [#160](https://github.com/haskell/random/pull/160)
 * Add `shuffleList` and `shuffleListM`: [#140](https://github.com/haskell/random/pull/140)
 * Add `mkStdGen64`: [#155](https://github.com/haskell/random/pull/155)
