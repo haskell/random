@@ -744,7 +744,7 @@ byteArrayToShortByteString (ByteArray ba#) = SBS ba#
 shortByteStringToByteString :: ShortByteString -> ByteString
 shortByteStringToByteString ba =
 #if __GLASGOW_HASKELL__ < 802
-  fromShort ba
+  SBS.fromShort ba
 #else
   let !(SBS ba#) = ba in
   if isTrue# (isByteArrayPinned# ba#)
