@@ -229,7 +229,8 @@ mkSeed ba = do
 -- ====__Example__
 --
 -- >>> :set -XTypeApplications
--- >>> withSeed (nonEmptyToSeed (pure 2024) :: Seed StdGen) (random @Int)
+-- >>> import System.Random
+-- >>> withSeed (nonEmptyToSeed (pure 2024) :: Seed StdGen) (uniform @Int)
 -- (1039666877624726199,Seed [0xe9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
 --
 -- @since 1.3.0
