@@ -137,6 +137,7 @@ import Control.Monad.IO.Class
 import Control.Monad.ST
 import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
 import Control.Monad.State.Strict (MonadState, state)
+import Data.Coerce
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
@@ -369,7 +370,13 @@ newtype AtomicGenM g = AtomicGenM { unAtomicGenM :: IORef g}
 --
 -- @since 1.2.0
 newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
-  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (AtomicGen g) where
+  type SeedSize (AtomicGen g) = SeedSize g
+  seedGen = seedGen . coerce
+  unseedGen = coerce . unseedGen
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -460,8 +467,13 @@ newtype IOGenM g = IOGenM { unIOGenM :: IORef g }
 --
 -- @since 1.2.0
 newtype IOGen g = IOGen { unIOGen :: g }
-  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (IOGen g) where
+  type SeedSize (IOGen g) = SeedSize g
+  seedGen = seedGen . coerce
+  unseedGen = coerce . unseedGen
 
 -- | Creates a new 'IOGenM'.
 --
@@ -531,7 +543,13 @@ newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
 --
 -- @since 1.2.0
 newtype STGen g = STGen { unSTGen :: g }
-  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (STGen g) where
+  type SeedSize (STGen g) = SeedSize g
+  seedGen = seedGen . coerce
+  unseedGen = coerce . unseedGen
 
 -- | Creates a new 'STGenM'.
 --
@@ -626,7 +644,13 @@ newtype TGenM g = TGenM { unTGenM :: TVar g }
 --
 -- @since 1.2.1
 newtype TGen g = TGen { unTGen :: g }
-  deriving (Eq, Ord, Show, SeedGen, RandomGen, SplitGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (TGen g) where
+  type SeedSize (TGen g) = SeedSize g
+  seedGen = seedGen . coerce
+  unseedGen = coerce . unseedGen
 
 -- | Creates a new 'TGenM' in `STM`.
 --

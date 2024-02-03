@@ -22,6 +22,7 @@ import Control.Concurrent
 import Control.Monad
 import Control.Exception
 
+import Data.Coerce
 import Data.IORef
 import Data.Word
 import Data.List hiding (last,sum)
@@ -96,7 +97,10 @@ instance RandomGen NoopRNG where
 
 -- An RNG generating only 0 or 1:
 newtype BinRNG = BinRNG StdGen
-  deriving (SeedGen)
+instance SeedGen BinRNG where
+  type SeedSize BinRNG = SeedSize StdGen
+  seedGen  = seedGen . coerce
+  unseedGen = coerce . unseedGen
 instance RandomGen BinRNG where
   next (BinRNG g) = (x `mod` 2, BinRNG g')
     where
