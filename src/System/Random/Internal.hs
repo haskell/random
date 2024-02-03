@@ -139,8 +139,8 @@ import Data.ByteString (ByteString)
 -- over the network, etc.
 --
 -- Constructor is not exported, becasue it is important for implementation to enforce the
--- invariant of the unrelying byte array being of exact same length as the generator has
--- specified in `System.Random.Seed.SeedSize`. Used `System.Random.Seed.mkSize` and
+-- invariant of the underlying byte array being of the exact same length as the generator has
+-- specified in `System.Random.Seed.SeedSize`. Use `System.Random.Seed.mkSize` and
 -- `System.Random.Seed.unSize` to get access to the raw bytes in a safe manner.
 --
 -- @since 1.3.0
@@ -299,8 +299,6 @@ class RandomGen g => SplitGen g where
   --
   -- @since 1.3.0
   splitGen :: g -> (g, g)
-
-
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
 --

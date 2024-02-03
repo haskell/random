@@ -52,17 +52,39 @@ import qualified System.Random.SplitMix32 as SM32
 
 
 
--- | Interface for coverting a pure pseudo-random number generator to and from non-empty
--- sequence of bytes/words. Seeds are stored in Little-Endian order regardless of the platform
--- it is being used on, which provides inter-platform compatibility, while providing
--- optimal performance for most common platforms.
+-- | Interface for converting a pure pseudo-random number generator to and from non-empty
+-- sequence of bytes. Seeds are stored in Little-Endian order regardless of the platform
+-- it is being used on, which provides cross-platform compatibility, while providing
+-- optimal performance for the most common platform type.
 --
 -- Conversion to and from a `Seed` serves as a building block for implementing
--- serialization for any pure or frozen pseudo-random number generator
+-- serialization for any pure or frozen pseudo-random number generator.
 --
 -- It is not trivial to implement platform independence. For this reason this type class
--- has two alternative ways of dealing with binary sequence. Whenever a user provides
--- functionality for converting to and from a list with `Word64`
+-- has two alternative ways of creating an instance for this class. The easiest way for
+-- constructing a platform indepent seed is by converting the inner state of a generator
+-- to and from a list of 64 bit words using `unseedGen64` and `seedGen64` respectively. In
+-- that case cross-platform support will be handled automaticaly.
+--
+-- >>> import Data.Word
+-- >>> import Data.List.NonEmpty (NonEmpty ((:|)))
+-- >>> newtype OneByteGen = OneByteGen Word8 deriving Show
+-- >>> :{
+-- instance SeedGen OneByteGen where
+--   type SeedSize OneByteGen = 1
+--   seedGen64 (x :| _) = OneByteGen (fromIntegral x)
+--   unseedGen64 (OneByteGen x) = fromIntegral x :| []
+-- :}
+-- >>> unseedGen (OneByteGen 0x80)
+-- Seed [0x80]
+-- >>> unseedGen64 (OneByteGen 0x80)
+-- 128 :| []
+-- >>> seedGen (unseedGen (OneByteGen 0x80))
+-- OneByteGen 128
+--
+-- However, when performance is of utmost importance or default handling of cross platform
+-- independence is not sufficient, then an adventurous developer can try implementing
+-- conversion into bytes directly with `unseedGen` and `seedGen`.
 --
 -- @since 1.3.0
 class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
@@ -167,11 +189,11 @@ mkSeed :: forall g m. (SeedGen g, F.MonadFail m) => ByteArray -> m (Seed g)
 mkSeed ba = do
   unless (sizeOfByteArray ba == seedSize @g) $ do
     F.fail $ "Unexpected number of bytes: "
-        <> show (sizeOfByteArray ba)
-        <> ". Exactly "
-        <> show (seedSize @g)
-        <> " bytes is required by the "
-        <> show (genTypeName @g)
+        ++ show (sizeOfByteArray ba)
+        ++ ". Exactly "
+        ++ show (seedSize @g)
+        ++ " bytes is required by the "
+        ++ show (genTypeName @g)
   pure $ Seed ba
 
 
