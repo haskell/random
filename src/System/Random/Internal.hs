@@ -39,8 +39,10 @@ module System.Random.Internal
   , Seed(..)
   , seedSize
   , mkSeed
-  , mkSeedFromByteString
   , unSeed
+  , mkSeedFromByteString
+  , unSeedToByteString
+  , withSeedFile
   , nonEmptyToSeed
   , nonEmptyFromSeed
   -- * Stateful
@@ -106,10 +108,12 @@ import Control.Monad (replicateM, when, unless, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import Control.Monad.ST
+import Control.Monad.IO.Class
 import Control.Monad.State.Strict (MonadState(..), State, StateT(..), execStateT, runState)
 import Control.Monad.Trans (lift, MonadTrans)
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
 import Data.Bits
+import qualified Data.ByteString as BS
 import Data.ByteString.Short.Internal (ShortByteString(SBS))
 import qualified Data.ByteString.Short as SBS (fromShort, toShort)
 import Data.IORef (IORef, newIORef)
@@ -150,7 +154,7 @@ import Data.ByteString (ByteString)
 -- @since 1.0.0
 {-# DEPRECATED next "No longer used" #-}
 {-# DEPRECATED genRange "No longer used" #-}
-class SeedGen g => RandomGen g where
+class RandomGen g where
   {-# MINIMAL (genWord32|genWord64|(next,genRange)) #-}
   -- | Returns an 'Int' that is uniformly distributed over the range returned by
   -- 'genRange' (including both end points), and a new generator. Using 'next'
@@ -323,7 +327,7 @@ mkSeed ba = do
         <> show (genTypeName @g)
   pure $ Seed ba
 
--- | Just like `mkSeed`, but uses `ByteString` as argument.
+-- | Just like `mkSeed`, but uses `ByteString` as argument. Results in a memcopy of the seed.
 --
 -- @since 1.3.0
 mkSeedFromByteString :: (SeedGen g, MonadFail m) => ByteString -> m (Seed g)
@@ -334,6 +338,27 @@ mkSeedFromByteString = mkSeed . shortByteStringToByteArray . SBS.toShort
 -- @since 1.3.0
 unSeed :: Seed g -> ByteArray
 unSeed (Seed ba) = ba
+
+-- | Just like `unSeed`, but produced a `ByteString`. Results in a memcopy of the seed.
+--
+-- @since 1.3.0
+unSeedToByteString :: Seed g -> ByteString
+unSeedToByteString = SBS.fromShort . byteArrayToShortByteString . unSeed
+
+
+-- | Read the seed from a file and use it for constructing a pseudo-random number
+-- generator. After supplied action has been applied to the constructed generator, the
+-- resulting generator will be converted back to a seed and written to the same file.
+--
+-- @since 1.3.0
+withSeedFile :: (SeedGen g, MonadIO m) => FilePath -> (g -> m (a, g)) -> m a
+withSeedFile fileName f = do
+  bs <- liftIO $ BS.readFile fileName
+  seed <- liftIO $ mkSeedFromByteString bs
+  (res, gen) <- f $ seedGen seed
+  liftIO $ BS.writeFile fileName $ unSeedToByteString $ unseedGen gen
+  pure res
+
 
 nonEmptyToSeed :: forall g. SeedGen g => NonEmpty Word64 -> Seed g
 nonEmptyToSeed xs = Seed $ runST $ do
@@ -376,7 +401,7 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g) => SeedGen g where
   type SeedSize g :: Nat
   {-# MINIMAL (seedGen, unseedGen)|(seedGen64, unseedGen64) #-}
 
-  -- |
+  -- | Convert from a binary representation to a pseudo-random number generator
   --
   -- @since 1.3.0
   seedGen :: Seed g -> g
@@ -524,7 +549,7 @@ class Monad m => StatefulGen g m where
 -- @
 --
 -- @since 1.2.0
-class (SeedGen f, StatefulGen (MutableGen f m) m) => FrozenGen f m where
+class StatefulGen (MutableGen f m) m => FrozenGen f m where
   {-# MINIMAL (modifyGen|(freezeGen,overwriteGen)) #-}
   -- | Represents the state of the pseudo-random number generator for use with
   -- 'thawGen' and 'freezeGen'.

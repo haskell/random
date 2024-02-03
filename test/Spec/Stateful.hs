@@ -220,4 +220,3 @@ statefulGenSpec =
             pure (res, g')
         ]
     ]
-

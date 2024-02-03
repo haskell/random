@@ -41,6 +41,8 @@ module System.Random.Stateful
   , ThawedGen(..)
   , withMutableGen
   , withMutableGen_
+  , withMutableSeedGen
+  , withMutableSeedGen_
   , randomM
   , randomRM
   , splitGenM
@@ -292,6 +294,23 @@ withMutableGen fg action = do
 -- @since 1.2.0
 withMutableGen_ :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m a
 withMutableGen_ fg action = thawGen fg >>= action
+
+
+-- | Just like `withMutableGen`, except uses a `Seed` instead of a frozen generator.
+--
+-- @since 1.3.0
+withMutableSeedGen :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
+withMutableSeedGen seed f = do
+  (res, frozenGen) <- withMutableGen (seedGen seed) f
+  pure (res, unseedGen frozenGen)
+
+-- | Just like `withMutableSeedGen`, except it doesn't return the final generator, only
+-- the resulting value. This is slightly more efficient, since it doesn't incur overhead
+-- from freezeing the mutable generator
+--
+-- @since 1.3.0
+withMutableSeedGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
+withMutableSeedGen_ seed = withMutableGen_ (seedGen seed)
 
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
