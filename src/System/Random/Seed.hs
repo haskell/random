@@ -66,6 +66,7 @@ import qualified System.Random.SplitMix32 as SM32
 -- to and from a list of 64 bit words using `unseedGen64` and `seedGen64` respectively. In
 -- that case cross-platform support will be handled automaticaly.
 --
+-- >>> :set -XDataKinds -XTypeFamilies
 -- >>> import Data.Word
 -- >>> import Data.List.NonEmpty (NonEmpty ((:|)))
 -- >>> newtype OneByteGen = OneByteGen Word8 deriving Show
