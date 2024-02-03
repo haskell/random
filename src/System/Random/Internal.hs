@@ -39,6 +39,7 @@ module System.Random.Internal
   , Seed(..)
   , seedSize
   , mkSeed
+  , mkSeedFromByteString
   , unSeed
   , nonEmptyToSeed
   , nonEmptyFromSeed
@@ -101,7 +102,7 @@ module System.Random.Internal
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
-import Control.Monad (guard, replicateM, when, (>=>))
+import Control.Monad (replicateM, when, unless, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import Control.Monad.ST
@@ -109,12 +110,13 @@ import Control.Monad.State.Strict (MonadState(..), State, StateT(..), execStateT
 import Control.Monad.Trans (lift, MonadTrans)
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
 import Data.Bits
-import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
+import Data.ByteString.Short.Internal (ShortByteString(SBS))
+import qualified Data.ByteString.Short as SBS (fromShort, toShort)
 import Data.IORef (IORef, newIORef)
 import Data.Int
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import Data.Proxy (Proxy(..))
+import Data.Typeable
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
@@ -310,10 +312,22 @@ seedSize = fromIntegral $ natVal (Proxy :: Proxy (SeedSize g))
 -- return `Nothing`
 --
 -- @since 1.3.0
-mkSeed :: forall g. SeedGen g => ByteArray -> Maybe (Seed g)
+mkSeed :: forall g m. (SeedGen g, MonadFail m) => ByteArray -> m (Seed g)
 mkSeed ba = do
-  guard (sizeOfByteArray ba == seedSize @g)
-  Just $ Seed ba
+  unless (sizeOfByteArray ba == seedSize @g) $ do
+    fail $ "Unexpected number of bytes: "
+        <> show (sizeOfByteArray ba)
+        <> ". Exactly "
+        <> show (seedSize @g)
+        <> " bytes is required by the "
+        <> show (genTypeName @g)
+  pure $ Seed ba
+
+-- | Just like `mkSeed`, but uses `ByteString` as argument.
+--
+-- @since 1.3.0
+mkSeedFromByteString :: (SeedGen g, MonadFail m) => ByteString -> m (Seed g)
+mkSeedFromByteString = mkSeed . shortByteStringToByteArray . SBS.toShort
 
 -- | Unwrap the `Seed` and get the underlying `ByteArray`
 --
@@ -385,6 +399,13 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g) => SeedGen g where
   -- @since 1.3.0
   unseedGen64 :: g -> NonEmpty Word64
   unseedGen64 = nonEmptyFromSeed . unseedGen
+
+  -- | This is a function that shows the name of the generator type, which is useful for
+  -- error reporting. If you need to avoid the `Typeable` constraint then feel free to
+  -- override the default definition.
+  genTypeName :: String
+  default genTypeName :: Typeable g => String
+  genTypeName = show (typeOf (Proxy @g))
 
 
 -- | 'StatefulGen' is an interface to monadic pseudo-random number generators.
@@ -818,6 +839,10 @@ getSizeOfMutableByteArray (MutableByteArray mba#) =
 #endif
 {-# INLINE getSizeOfMutableByteArray #-}
 
+shortByteStringToByteArray :: ShortByteString -> ByteArray
+shortByteStringToByteArray (SBS ba#) = ByteArray ba#
+{-# INLINE shortByteStringToByteArray #-}
+
 byteArrayToShortByteString :: ByteArray -> ShortByteString
 byteArrayToShortByteString (ByteArray ba#) = SBS ba#
 {-# INLINE byteArrayToShortByteString #-}
@@ -832,7 +857,7 @@ shortByteStringToByteString ba =
   let !(SBS ba#) = ba in
   if isTrue# (isByteArrayPinned# ba#)
     then pinnedByteArrayToByteString ba#
-    else fromShort ba
+    else SBS.fromShort ba
 {-# INLINE shortByteStringToByteString #-}
 
 pinnedByteArrayToByteString :: ByteArray# -> ByteString

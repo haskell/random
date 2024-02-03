@@ -33,6 +33,7 @@ module System.Random
   , SeedGen (..)
   , Seed
   , mkSeed
+  , mkSeedFromByteString
   , unSeed
   , seedSize
   , SplitGen (splitGen)
