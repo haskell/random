@@ -7,7 +7,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 -- |
 -- Module      :  System.Random.Stateful
 -- Copyright   :  (c) The University of Glasgow 2001
