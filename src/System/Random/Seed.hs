@@ -50,7 +50,14 @@ import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
 
+data FiveByteGen = FiveByteGen Word8 Word32 deriving Show
 
+instance SeedGen FiveByteGen where
+  type SeedSize FiveByteGen = 5
+  seedGen64 (w64 :| _) = FiveByteGen (fromIntegral (w64 `shiftR` 32)) (fromIntegral w64)
+  unseedGen64 (FiveByteGen x1 x4) =
+    let w64 = (fromIntegral x1 `shiftL` 32) .|. fromIntegral x4
+    in (w64 :| [])
 
 -- | Interface for converting a pure pseudo-random number generator to and from non-empty
 -- sequence of bytes. Seeds are stored in Little-Endian order regardless of the platform
@@ -67,22 +74,28 @@ import qualified System.Random.SplitMix32 as SM32
 -- that case cross-platform support will be handled automaticaly.
 --
 -- >>> :set -XDataKinds -XTypeFamilies
--- >>> import Data.Word
+-- >>> import Data.Word (Word8, Word32)
+-- >>> import Data.Bits ((.|.), shiftR, shiftL)
 -- >>> import Data.List.NonEmpty (NonEmpty ((:|)))
--- >>> newtype OneByteGen = OneByteGen Word8 deriving Show
+-- >>> data FiveByteGen = FiveByteGen Word8 Word32 deriving Show
 -- >>> :{
--- instance SeedGen OneByteGen where
---   type SeedSize OneByteGen = 1
---   seedGen64 (x :| _) = OneByteGen (fromIntegral x)
---   unseedGen64 (OneByteGen x) = fromIntegral x :| []
+-- instance SeedGen FiveByteGen where
+--   type SeedSize FiveByteGen = 5
+--   seedGen64 (w64 :| _) =
+--     FiveByteGen (fromIntegral (w64 `shiftR` 32)) (fromIntegral w64)
+--   unseedGen64 (FiveByteGen x1 x4) =
+--     let w64 = (fromIntegral x1 `shiftL` 32) .|. fromIntegral x4
+--      in (w64 :| [])
 -- :}
 --
--- >>> unseedGen (OneByteGen 0x80)
--- Seed [0x80]
--- >>> unseedGen64 (OneByteGen 0x80)
--- 128 :| []
--- >>> seedGen (unseedGen (OneByteGen 0x80))
--- OneByteGen 128
+-- >>> FiveByteGen 0x80 0x01020304
+-- FiveByteGen 128 16909060
+-- >>> seedGen (unseedGen (FiveByteGen 0x80 0x01020304))
+-- FiveByteGen 128 16909060
+-- >>> unseedGen (FiveByteGen 0x80 0x01020304)
+-- Seed [0x04, 0x03, 0x02, 0x01, 0x80]
+-- >>> unseedGen64 (FiveByteGen 0x80 0x01020304)
+-- 549772722948 :| []
 --
 -- However, when performance is of utmost importance or default handling of cross platform
 -- independence is not sufficient, then an adventurous developer can try implementing
