@@ -94,11 +94,11 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
   -- number generator. It should be big enough to satisfy the roundtrip properies:
   --
   -- @
-  -- prop> seedGen (unseedGen gen) == gen
+  -- > seedGen (unseedGen gen) == gen
   -- @
   --
   -- @
-  -- prop> unseedGen (seedGen seed) == seed
+  -- > unseedGen (seedGen seed) == seed
   -- @
   type SeedSize g :: Nat
   {-# MINIMAL (seedGen, unseedGen)|(seedGen64, unseedGen64) #-}
