@@ -76,6 +76,7 @@ import qualified System.Random.SplitMix32 as SM32
 --   seedGen64 (x :| _) = OneByteGen (fromIntegral x)
 --   unseedGen64 (OneByteGen x) = fromIntegral x :| []
 -- :}
+--
 -- >>> unseedGen (OneByteGen 0x80)
 -- Seed [0x80]
 -- >>> unseedGen64 (OneByteGen 0x80)
