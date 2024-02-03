@@ -300,9 +300,7 @@ withMutableGen_ fg action = thawGen fg >>= action
 --
 -- @since 1.3.0
 withMutableSeedGen :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
-withMutableSeedGen seed f = do
-  (res, frozenGen) <- withMutableGen (seedGen seed) f
-  pure (res, unseedGen frozenGen)
+withMutableSeedGen seed f = withSeedM seed (`withMutableGen` f)
 
 -- | Just like `withMutableSeedGen`, except it doesn't return the final generator, only
 -- the resulting value. This is slightly more efficient, since it doesn't incur overhead
@@ -375,8 +373,8 @@ newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (AtomicGen g) where
   type SeedSize (AtomicGen g) = SeedSize g
-  seedGen = seedGen . coerce
-  unseedGen = coerce . unseedGen
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -472,8 +470,8 @@ newtype IOGen g = IOGen { unIOGen :: g }
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (IOGen g) where
   type SeedSize (IOGen g) = SeedSize g
-  seedGen = seedGen . coerce
-  unseedGen = coerce . unseedGen
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'IOGenM'.
 --
@@ -548,8 +546,8 @@ newtype STGen g = STGen { unSTGen :: g }
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (STGen g) where
   type SeedSize (STGen g) = SeedSize g
-  seedGen = seedGen . coerce
-  unseedGen = coerce . unseedGen
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'STGenM'.
 --
@@ -649,8 +647,8 @@ newtype TGen g = TGen { unTGen :: g }
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (TGen g) where
   type SeedSize (TGen g) = SeedSize g
-  seedGen = seedGen . coerce
-  unseedGen = coerce . unseedGen
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'TGenM' in `STM`.
 --
