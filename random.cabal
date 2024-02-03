@@ -132,6 +132,7 @@ test-suite spec
     other-modules:
         Spec.Range
         Spec.Run
+        Spec.Seed
         Spec.Stateful
 
     default-language: Haskell2010

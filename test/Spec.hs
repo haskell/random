@@ -36,6 +36,7 @@ import Data.Monoid ((<>))
 
 import qualified Spec.Range as Range
 import qualified Spec.Run as Run
+import qualified Spec.Seed as Seed
 import qualified Spec.Stateful as Stateful
 
 main :: IO ()
@@ -106,6 +107,7 @@ main =
     , uniformSpec (Proxy :: Proxy (Int8, Word8, Word16, Word32, Word64, Word))
     , uniformSpec (Proxy :: Proxy (Int8, Int16, Word8, Word16, Word32, Word64, Word))
     , Stateful.statefulGenSpec
+    , Seed.spec
     ]
 
 floatTests :: TestTree

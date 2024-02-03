@@ -11,6 +11,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- |
 -- Module      :  System.Random.Seed
 -- Copyright   :  (c) Alexey Kuleshevich 2024
@@ -30,6 +31,7 @@ module System.Random.Seed
   , withSeed
   , withSeedM
   , withSeedFile
+  , seedGenTypeName
   , nonEmptyToSeed
   , nonEmptyFromSeed
   ) where
@@ -95,6 +97,23 @@ import qualified System.Random.SplitMix32 as SM32
 -- However, when performance is of utmost importance or default handling of cross platform
 -- independence is not sufficient, then an adventurous developer can try implementing
 -- conversion into bytes directly with `unseedGen` and `seedGen`.
+--
+-- Properties that must hold:
+--
+-- @
+-- > seedGen (unseedGen gen) == gen
+-- @
+--
+-- @
+-- > seedGen64 (unseedGen64 gen) == gen
+-- @
+--
+-- Note, that there is no requirement for every `Seed` to roundtrip, eg. this proprty does
+-- not even hold for `StdGen`:
+--
+-- >>> let seed = nonEmptyToSeed (0xab :| [0xff00]) :: Seed StdGen
+-- >>> seed == unseedGen (seedGen seed)
+-- False
 --
 -- @since 1.3.0
 class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
@@ -200,7 +219,7 @@ mkSeed ba = do
         ++ ". Exactly "
         ++ show (seedSize @g)
         ++ " bytes is required by the "
-        ++ show (genTypeName @g)
+        ++ show (seedGenTypeName @g)
   pure $ Seed ba
 
 -- | Helper function that allows for operating directly on the `Seed`, while supplying a
@@ -230,8 +249,8 @@ withSeedM seed f = fmap unseedGen <$> f (seedGen seed)
 -- error reporting.
 --
 -- @since 1.3.0
-genTypeName :: forall g. SeedGen g => String
-genTypeName = show (typeOf (Proxy @g))
+seedGenTypeName :: forall g. SeedGen g => String
+seedGenTypeName = show (typeOf (Proxy @g))
 
 
 -- | Just like `mkSeed`, but uses `ByteString` as argument. Results in a memcopy of the seed.
@@ -289,7 +308,7 @@ nonEmptyFromSeed (Seed ba) =
     Just ne -> ne
     Nothing -> -- Seed is at least 1 byte in size, so it can't be empty
       error $ "Impossible: Seed for "
-           ++ genTypeName @g
+           ++ seedGenTypeName @g
            ++ " must be at least: "
            ++ show (seedSize @g)
            ++ " bytes, but got "
