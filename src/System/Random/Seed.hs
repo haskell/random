@@ -40,7 +40,7 @@ import Control.Monad.State.Strict (get, put, runStateT)
 import Data.Array.Byte (ByteArray(..))
 import Data.Bits
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS (fromShort, toShort)
+import qualified Data.ByteString.Short.Internal as SBS (fromShort, toShort)
 import Data.Coerce
 import Data.List.NonEmpty as NE (NonEmpty(..), nonEmpty, toList)
 import Data.Typeable

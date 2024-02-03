@@ -106,7 +106,7 @@ import Control.Monad.Trans (lift, MonadTrans)
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
 import Data.Bits
 import Data.ByteString.Short.Internal (ShortByteString(SBS))
-import qualified Data.ByteString.Short as SBS (fromShort)
+import qualified Data.ByteString.Short.Internal as SBS (fromShort)
 import Data.IORef (IORef, newIORef)
 import Data.Int
 import Data.List (sortOn)
