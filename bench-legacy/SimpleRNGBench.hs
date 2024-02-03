@@ -1,10 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 -- | A simple script to do some very basic timing of the RNGs.
@@ -22,7 +18,6 @@ import Control.Concurrent
 import Control.Monad
 import Control.Exception
 
-import Data.Coerce
 import Data.IORef
 import Data.Word
 import Data.List hiding (last,sum)
@@ -86,10 +81,6 @@ measureFreq = do
 
 -- Test overheads without actually generating any random numbers:
 data NoopRNG = NoopRNG
-instance SeedGen NoopRNG where
-  type SeedSize NoopRNG = 1
-  seedGen = error "NoopRNG"
-  unseedGen = error "NoopRNG"
 instance RandomGen NoopRNG where
   next g = (0, g)
   genRange _ = (0, 0)
@@ -97,10 +88,6 @@ instance RandomGen NoopRNG where
 
 -- An RNG generating only 0 or 1:
 newtype BinRNG = BinRNG StdGen
-instance SeedGen BinRNG where
-  type SeedSize BinRNG = SeedSize StdGen
-  seedGen  = seedGen . coerce
-  unseedGen = coerce . unseedGen
 instance RandomGen BinRNG where
   next (BinRNG g) = (x `mod` 2, BinRNG g')
     where
