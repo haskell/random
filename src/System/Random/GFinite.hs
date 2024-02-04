@@ -1,10 +1,3 @@
--- |
--- Module      :  System.Random.GFinite
--- Copyright   :  (c) Andrew Lelechenko 2020
--- License     :  BSD-style (see the file LICENSE in the 'random' repository)
--- Maintainer  :  libraries@haskell.org
---
-
 {-# LANGUAGE DefaultSignatures    #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE LambdaCase           #-}
@@ -12,6 +5,12 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeOperators        #-}
 
+-- |
+-- Module      :  System.Random.GFinite
+-- Copyright   :  (c) Andrew Lelechenko 2020
+-- License     :  BSD-style (see the file LICENSE in the 'random' repository)
+-- Maintainer  :  libraries@haskell.org
+--
 module System.Random.GFinite
   ( Cardinality(..)
   , Finite(..)

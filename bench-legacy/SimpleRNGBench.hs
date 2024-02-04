@@ -1,8 +1,9 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 -- | A simple script to do some very basic timing of the RNGs.
-
 module Main where
 
 import System.Exit (exitSuccess, exitFailure)
@@ -86,7 +87,7 @@ instance RandomGen NoopRNG where
   split g = (g, g)
 
 -- An RNG generating only 0 or 1:
-data BinRNG = BinRNG StdGen
+newtype BinRNG = BinRNG StdGen
 instance RandomGen BinRNG where
   next (BinRNG g) = (x `mod` 2, BinRNG g')
     where
