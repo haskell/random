@@ -49,7 +49,7 @@ jobs:
           - { cabal: "3.6", os: windows-latest,  ghc: "9.0.2"  }
           - { cabal: "3.6", os: windows-latest,  ghc: "9.2.2"  }
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -58,7 +58,7 @@ jobs:
         cabal-version: ${{ matrix.cabal }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       name: Cache cabal stuff
       with:
         path: |
@@ -123,7 +123,7 @@ jobs:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v4 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-stack
@@ -136,7 +136,7 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: |
           ~/.stack
@@ -154,7 +154,7 @@ jobs:
         rm -r .stack-work
     - name: Windows Cache
       id: cache-windows
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
       with:
         path: |
