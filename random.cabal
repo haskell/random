@@ -63,9 +63,7 @@ build-type:         Simple
 extra-source-files:
     README.md
     CHANGELOG.md
-tested-with:         GHC == 7.10.2
-                   , GHC == 7.10.3
-                   , GHC == 8.0.2
+tested-with:         GHC == 8.0.2
                    , GHC == 8.2.2
                    , GHC == 8.4.3
                    , GHC == 8.4.4
