@@ -199,6 +199,8 @@ instance SeedGen SM32.SMGen where
         writeWord64LE mba 0 w64
         freezeMutableByteArray mba
 
+instance SeedGen g => Uniform (Seed g) where
+  uniformM = fmap Seed . uniformByteArrayM False (seedSize @g)
 
 -- | Get the expected size of the `Seed` in number bytes
 --
