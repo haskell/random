@@ -84,6 +84,7 @@ library
     exposed-modules:
         System.Random
         System.Random.Internal
+        System.Random.Seed
         System.Random.Stateful
     other-modules:
         System.Random.GFinite
@@ -146,6 +147,7 @@ test-suite spec
     other-modules:
         Spec.Range
         Spec.Run
+        Spec.Seed
         Spec.Stateful
 
     default-language: Haskell2010

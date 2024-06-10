@@ -1,11 +1,13 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 module Main (main) where
 
 import Control.Monad (replicateM, forM_)
@@ -14,6 +16,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Int
 import Data.List (sortOn)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Typeable
 import Data.Void
 import Data.Word
@@ -33,6 +36,7 @@ import Data.Monoid ((<>))
 
 import qualified Spec.Range as Range
 import qualified Spec.Run as Run
+import qualified Spec.Seed as Seed
 import qualified Spec.Stateful as Stateful
 
 main :: IO ()
@@ -103,6 +107,7 @@ main =
     , uniformSpec (Proxy :: Proxy (Int8, Word8, Word16, Word32, Word64, Word))
     , uniformSpec (Proxy :: Proxy (Int8, Int16, Word8, Word16, Word32, Word64, Word))
     , Stateful.statefulGenSpec
+    , Seed.spec
     ]
 
 floatTests :: TestTree
@@ -296,6 +301,11 @@ data Foo
 instance Monad m => Serial m Foo
 
 newtype ConstGen = ConstGen Word64
+
+instance SeedGen ConstGen where
+  type SeedSize ConstGen = 8
+  seedGen64 (w :| _) = ConstGen w
+  unseedGen64 (ConstGen w) = pure w
 
 instance RandomGen ConstGen where
   genWord64 g@(ConstGen c) = (c, g)
