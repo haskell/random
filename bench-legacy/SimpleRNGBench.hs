@@ -87,7 +87,7 @@ instance RandomGen NoopRNG where
   split g = (g, g)
 
 -- An RNG generating only 0 or 1:
-newtype BinRNG = BinRNG StdGen
+data BinRNG = BinRNG StdGen
 instance RandomGen BinRNG where
   next (BinRNG g) = (x `mod` 2, BinRNG g')
     where
