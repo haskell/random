@@ -171,7 +171,7 @@ import qualified System.Random.SplitMix as SM
 --
 -- You can use type applications to disambiguate the type of the generated numbers:
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> uniform @Bool pureGen
 -- (True,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
 --
@@ -204,7 +204,7 @@ uniform g = runStateGen g uniformM
 --
 -- You can use type applications to disambiguate the type of the generated numbers:
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> uniformR @Int (1, 4) pureGen
 -- (4,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
 --
@@ -354,7 +354,7 @@ class Random a where
   -- independently:
   --
   -- >>> fst $ randomR (('a', 5.0), ('z', 10.0)) $ mkStdGen 2021
-  -- ('t',6.240232662366563)
+  -- ('t',6.240232662366564)
   --
   -- In case when a lawful range is desired `uniformR` should be used
   -- instead.
@@ -642,7 +642,7 @@ newStdGen = liftIO $ atomicModifyIORef' theStdGen splitGen
 --
 -- >>> rollDice = getStdRandom (randomR (1, 6))
 -- >>> replicateM 10 (rollDice :: IO Int)
--- [5,6,6,1,1,6,4,2,4,1]
+-- [1,1,1,4,5,6,1,2,2,5]
 --
 -- This is an outdated function and it is recommended to switch to its
 -- equivalent 'System.Random.Stateful.applyAtomicGen' instead, possibly with the
@@ -652,7 +652,7 @@ newStdGen = liftIO $ atomicModifyIORef' theStdGen splitGen
 -- >>> import System.Random.Stateful
 -- >>> rollDice = applyAtomicGen (uniformR (1, 6)) globalStdGen
 -- >>> replicateM 10 (rollDice :: IO Int)
--- [4,6,1,1,4,4,3,2,1,2]
+-- [2,1,1,5,4,3,6,6,3,2]
 --
 -- @since 1.0.0
 getStdRandom :: MonadIO m => (StdGen -> (a, StdGen)) -> m a
@@ -664,7 +664,7 @@ getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
 -- pseudo-random number generator 'System.Random.Stateful.globalStdGen'
 --
 -- >>> randomRIO (2020, 2100) :: IO Int
--- 2040
+-- 2028
 --
 -- Similar to 'randomIO', this function is equivalent to @'getStdRandom'
 -- 'randomR'@ and is included in this interface for historical reasons and
@@ -675,7 +675,7 @@ getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
 --
 -- >>> import System.Random.Stateful
 -- >>> uniformRM (2020, 2100) globalStdGen :: IO Int
--- 2079
+-- 2044
 --
 -- @since 1.0.0
 randomRIO :: (Random a, MonadIO m) => (a, a) -> m a
@@ -686,7 +686,7 @@ randomRIO range = getStdRandom (randomR range)
 --
 -- >>> import Data.Int
 -- >>> randomIO :: IO Int32
--- -1580093805
+-- 114794456
 --
 -- This function is equivalent to @'getStdRandom' 'random'@ and is included in
 -- this interface for historical reasons and backwards compatibility. It is
@@ -696,7 +696,7 @@ randomRIO range = getStdRandom (randomR range)
 --
 -- >>> import System.Random.Stateful
 -- >>> uniformM globalStdGen :: IO Int32
--- -1649127057
+-- -1768545016
 --
 -- @since 1.0.0
 randomIO :: (Random a, MonadIO m) => m a
@@ -842,3 +842,4 @@ randomIO = getStdRandom random
 --
 -- >>> import Control.Monad (replicateM)
 -- >>> import Data.List (unfoldr)
+-- >>> setStdGen (mkStdGen 0)

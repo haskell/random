@@ -1,0 +1,18 @@
+name: doctest
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  doctest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: cabal update
+
+      # NOTE: We can't use `cabal doctest` here, as `cabal doctest` uses
+      # `--build-depends=QuickCheck`, which results in a dependency cycle.
+      - run: cabal install doctest --ignore-project --overwrite-policy=always && cabal build && cabal repl --build-depends=unliftio --with-compiler=doctest --repl-options='-w -Wdefault'
