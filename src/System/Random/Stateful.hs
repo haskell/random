@@ -306,9 +306,9 @@ withMutableGen_ fg action = thawGen fg >>= action
 --
 -- You can use type applications to disambiguate the type of the generated numbers:
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> randomM @Double g
--- 0.6268211351114487
+-- 0.6268211351114488
 --
 -- @since 1.2.0
 randomM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => MutableGen g m -> m a
@@ -327,7 +327,7 @@ randomM = flip modifyGen random
 --
 -- You can use type applications to disambiguate the type of the generated numbers:
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> randomRM @Int (1, 100) g
 -- 2
 --
@@ -854,10 +854,10 @@ applyTGen f (TGenM tvar) = do
 -- $setup
 -- >>> writeIORef theStdGen $ mkStdGen 2021
 --
--- >>> :set -XFlexibleContexts
--- >>> :set -XFlexibleInstances
--- >>> :set -XMultiParamTypeClasses
--- >>> :set -XTypeFamilies
--- >>> :set -XUndecidableInstances
+-- >>> :seti -XFlexibleContexts
+-- >>> :seti -XFlexibleInstances
+-- >>> :seti -XMultiParamTypeClasses
+-- >>> :seti -XTypeFamilies
+-- >>> :seti -XUndecidableInstances
 --
 --

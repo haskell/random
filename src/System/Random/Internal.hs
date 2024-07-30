@@ -956,7 +956,7 @@ class Uniform a where
   --
   -- There is a default implementation via 'Generic':
   --
-  -- >>> :set -XDeriveGeneric -XDeriveAnyClass
+  -- >>> :seti -XDeriveGeneric -XDeriveAnyClass
   -- >>> import GHC.Generics (Generic)
   -- >>> import System.Random.Stateful
   -- >>> data MyBool = MyTrue | MyFalse deriving (Show, Generic, Finite, Uniform)
@@ -1015,7 +1015,7 @@ finiteUniformM = fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
 -- If your data has several fields of sub-'Word' cardinality,
 -- this instance may be more efficient than one, derived via 'Generic' and 'GUniform'.
 --
--- >>> :set -XDeriveGeneric -XDeriveAnyClass
+-- >>> :seti -XDeriveGeneric -XDeriveAnyClass
 -- >>> import GHC.Generics (Generic)
 -- >>> import System.Random.Stateful
 -- >>> data Triple = Triple Word8 Word8 Word8 deriving (Show, Generic, Finite)
@@ -1055,7 +1055,7 @@ class UniformRange a where
   --
   -- There is a default implementation via 'Generic':
   --
-  -- >>> :set -XDeriveGeneric -XDeriveAnyClass
+  -- >>> :seti -XDeriveGeneric -XDeriveAnyClass
   -- >>> import GHC.Generics (Generic)
   -- >>> import Data.Word (Word8)
   -- >>> import Control.Monad (replicateM)

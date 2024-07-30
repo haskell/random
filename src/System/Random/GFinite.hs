@@ -84,7 +84,7 @@ instance Integral Cardinality where
 -- Users are not supposed to write instances of 'Finite' manually.
 -- There is a default implementation in terms of 'Generic' instead.
 --
--- >>> :set -XDeriveGeneric -XDeriveAnyClass
+-- >>> :seti -XDeriveGeneric -XDeriveAnyClass
 -- >>> import GHC.Generics (Generic)
 -- >>> data MyBool = MyTrue | MyFalse deriving (Generic, Finite)
 -- >>> data Action = Code MyBool | Eat (Maybe Bool) | Sleep deriving (Generic, Finite)
