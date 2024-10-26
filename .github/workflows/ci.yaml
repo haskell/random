@@ -88,6 +88,12 @@ jobs:
         echo $EXTRA_FLAGS
         cabal $EXTRA_FLAGS configure --haddock-all --enable-tests --enable-benchmarks --benchmark-option=-l
         cabal $EXTRA_FLAGS build all --write-ghc-environment-files=always
+
+    - name: Doctest
+      run: |
+        cabal install doctest --ignore-project --overwrite-policy=always
+        cabal repl --build-depends=unliftio --with-compiler=doctest --repl-options='-w -Wdefault'
+
   build-stack:
     name: CI-stack
     runs-on: ${{ matrix.os }}
@@ -169,8 +175,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
-        stack-version: 'latest'
-        cabal-version: '3.10'
+        stack-version: ${{ matrix.resolver == 'lts-11' && '2.15.5' || 'latest' }}
 
     - name: Cache
       id: cache
@@ -236,7 +241,7 @@ jobs:
         apt-get update -y
         apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
         curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v1
     - name: Test
       run: |
         source ~/.ghcup/env
