@@ -161,6 +161,8 @@ test-suite spec-inspection
         random,
         tasty >=1.0 && <1.6,
         tasty-inspection-testing
+    if impl(ghc >=9.10)
+        buildable: False
 
 benchmark legacy-bench
     type:             exitcode-stdio-1.0
