@@ -299,16 +299,16 @@ withMutableGen_ fg action = thawGen fg >>= action
 -- ====__Examples__
 --
 -- >>> import System.Random.Stateful
--- >>> let pureGen = mkStdGen 137
+-- >>> let pureGen = mkStdGen 139
 -- >>> g <- newIOGenM pureGen
 -- >>> randomM g :: IO Double
--- 0.5728354935654512
+-- 0.33775117339631733
 --
 -- You can use type applications to disambiguate the type of the generated numbers:
 --
 -- >>> :seti -XTypeApplications
 -- >>> randomM @Double g
--- 0.6268211351114488
+-- 0.9156875994165681
 --
 -- @since 1.2.0
 randomM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => MutableGen g m -> m a
