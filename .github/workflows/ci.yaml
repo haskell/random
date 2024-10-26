@@ -61,7 +61,7 @@ jobs:
           - { os: windows-latest,  ghc: "9.8.2"  }
           - { os: windows-latest,  ghc: "9.10.1"  }
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -72,7 +72,7 @@ jobs:
     - name: Update cabal package database
       run: cabal update
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache cabal stuff
       with:
         path: |
@@ -161,7 +161,7 @@ jobs:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v5 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-stack
@@ -174,7 +174,7 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.stack
@@ -194,7 +194,7 @@ jobs:
 
     - name: Windows Cache
       id: cache-windows
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
       with:
         path: |
@@ -245,7 +245,7 @@ jobs:
         apt-get update -y
         apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
         curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Test
       run: |
         source ~/.ghcup/env
@@ -266,7 +266,7 @@ jobs:
           args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - if: matrix.arch == 'arm32v7'
         uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
@@ -288,7 +288,7 @@ jobs:
   s390x:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: uraimo/run-on-arch-action@v2.8.1
       timeout-minutes: 60
       with:
