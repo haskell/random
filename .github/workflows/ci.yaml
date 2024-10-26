@@ -134,15 +134,15 @@ jobs:
             stack-yaml: stack.yaml
           # MacOS-latest
           - resolver: lts-20
-            os: macos-latest
+            os: macos-13
             ghc: '9.2.8'
             stack-yaml: stack.yaml
           - resolver: lts-21
-            os: macos-latest
+            os: macos-13
             ghc: '9.4.8'
             stack-yaml: stack.yaml
           - resolver: lts-22
-            os: macos-latest
+            os: macos-13
             ghc: '9.6.6'
             stack-yaml: stack.yaml
           # Windows-latest
