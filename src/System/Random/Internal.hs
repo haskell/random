@@ -109,7 +109,7 @@ import GHC.ST (ST(..))
 import GHC.Word
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
-import System.Random.GFinite (Cardinality(..), GFinite(..))
+import System.Random.GFinite (Cardinality(..), GFinite(..), Finite)
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
 import Data.Kind
@@ -1473,6 +1473,10 @@ instance UniformRange Bool where
   uniformRM _               g = uniformM g
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
+
+instance (Finite a, Uniform a) => Uniform (Maybe a)
+
+instance (Finite a, Uniform a, Finite b, Uniform b) => Uniform (Either a b)
 
 -- | See [Floating point number caveats](System-Random-Stateful.html#fpcaveats).
 instance UniformRange Double where

@@ -1,5 +1,6 @@
 # 1.3.0
 
+* Add `Uniform` instance for `Maybe` and `Either`
 * Add `SplitGen` and `splitGen`
 * Add `shuffleList` and `shuffleListM`: [#140](https://github.com/haskell/random/pull/140)
 * Add `mkStdGen64`: [#155](https://github.com/haskell/random/pull/155)

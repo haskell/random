@@ -31,8 +31,9 @@ jobs:
           - { os: ubuntu-latest,  ghc: "9.0.2"  }
           - { os: ubuntu-latest,  ghc: "9.2.8"  }
           - { os: ubuntu-latest,  ghc: "9.4.8"  }
-          - { os: ubuntu-latest,  ghc: "9.6.4"  }
-          - { os: ubuntu-latest,  ghc: "9.8.1"  }
+          - { os: ubuntu-latest,  ghc: "9.6.6"  }
+          - { os: ubuntu-latest,  ghc: "9.8.2"  }
+          - { os: ubuntu-latest,  ghc: "9.10.1"  }
           # MacOS
           - { os: macOS-latest,  ghc: "8.0.2"  }
           - { os: macOS-latest,  ghc: "8.2.2"  }
@@ -43,8 +44,9 @@ jobs:
           - { os: macOS-latest,  ghc: "9.0.2"  }
           - { os: macOS-latest,  ghc: "9.2.8"  }
           - { os: macOS-latest,  ghc: "9.4.8"  }
-          - { os: macOS-latest,  ghc: "9.6.4"  }
-          - { os: macOS-latest,  ghc: "9.8.1"  }
+          - { os: macOS-latest,  ghc: "9.6.6"  }
+          - { os: macOS-latest,  ghc: "9.8.2"  }
+          - { os: macOS-latest,  ghc: "9.10.1"  }
           # Windows
           - { os: windows-latest,  ghc: "8.0.2"  }
           - { os: windows-latest,  ghc: "8.2.2"  }
@@ -55,10 +57,11 @@ jobs:
           - { os: windows-latest,  ghc: "9.0.2"  }
           - { os: windows-latest,  ghc: "9.2.8"  }
           - { os: windows-latest,  ghc: "9.4.8"  }
-          - { os: windows-latest,  ghc: "9.6.4"  }
-          - { os: windows-latest,  ghc: "9.8.1"  }
+          - { os: windows-latest,  ghc: "9.6.6"  }
+          - { os: windows-latest,  ghc: "9.8.2"  }
+          - { os: windows-latest,  ghc: "9.10.1"  }
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -69,7 +72,7 @@ jobs:
     - name: Update cabal package database
       run: cabal update
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache cabal stuff
       with:
         path: |
@@ -85,6 +88,12 @@ jobs:
         echo $EXTRA_FLAGS
         cabal $EXTRA_FLAGS configure --haddock-all --enable-tests --enable-benchmarks --benchmark-option=-l
         cabal $EXTRA_FLAGS build all --write-ghc-environment-files=always
+
+    - name: Doctest
+      run: |
+        cabal install doctest --ignore-project --overwrite-policy=always
+        cabal repl --build-depends=unliftio --with-compiler=doctest --repl-options='-w -Wdefault'
+
   build-stack:
     name: CI-stack
     runs-on: ${{ matrix.os }}
@@ -119,26 +128,46 @@ jobs:
             ghc: '9.4.8'
             stack-yaml: stack.yaml
           - resolver: lts-22
-            ghc: '9.6.4'
+            ghc: '9.6.6'
             stack-yaml: stack.yaml
           - resolver: nightly
             stack-yaml: stack.yaml
-          # Latest stable for MacOS: ghc-8.8.4
-          - resolver: lts-16
-            os: macos-latest
-            ghc: '8.8.4'
-            stack-yaml: stack-old.yaml
-          # Latest stable for Windows: ghc-8.6.4
+          # MacOS-latest
+          - resolver: lts-20
+            os: macos-13
+            ghc: '9.2.8'
+            stack-yaml: stack.yaml
+          - resolver: lts-21
+            os: macos-13
+            ghc: '9.4.8'
+            stack-yaml: stack.yaml
+          - resolver: lts-22
+            os: macos-13
+            ghc: '9.6.6'
+            stack-yaml: stack.yaml
+          # Windows-latest
           - resolver: lts-14
             os: windows-latest
             ghc: '8.6.5'
             stack-yaml: stack-old.yaml
+          - resolver: lts-20
+            os: windows-latest
+            ghc: '9.2.8'
+            stack-yaml: stack.yaml
+          - resolver: lts-21
+            os: windows-latest
+            ghc: '9.4.8'
+            stack-yaml: stack.yaml
+          - resolver: lts-22
+            os: windows-latest
+            ghc: '9.6.6'
+            stack-yaml: stack.yaml
     env:
       STACK_YAML: '${{ matrix.stack-yaml }}'
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v5 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-stack
@@ -146,12 +175,11 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
-        stack-version: 'latest'
-        cabal-version: '3.10'
+        stack-version: ${{ matrix.resolver == 'lts-11' && '2.15.5' || 'latest' }}
 
     - name: Cache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.stack
@@ -160,18 +188,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
 
-    # Executable files somehow become incompatible after restoring on MacOS from a
-    # previous build, so it needs to be cleaned up. This is very inconvenient and will
-    # need to be fixed.
-    - name: MacOS workaround for failure due to setup-exe-cache
-      if: steps.cache.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
-      run: |
-        rm -r ~/.stack/setup-exe-cache
-        rm -r .stack-work
-
     - name: Windows Cache
       id: cache-windows
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
       with:
         path: |
@@ -243,7 +262,7 @@ jobs:
           args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - if: matrix.arch == 'arm32v7'
         uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
@@ -265,8 +284,8 @@ jobs:
   s390x:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: uraimo/run-on-arch-action@v2.5.0
+    - uses: actions/checkout@v4
+    - uses: uraimo/run-on-arch-action@v2.8.1
       timeout-minutes: 60
       with:
         arch: s390x
