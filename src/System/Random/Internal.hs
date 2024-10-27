@@ -3,18 +3,18 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GHCForeignImportPrim #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnliftedFFITypes #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
 -- |
@@ -29,6 +29,8 @@ module System.Random.Internal
   (-- * Pure and monadic pseudo-random number generator interfaces
     RandomGen(..)
   , SplitGen(..)
+  , Seed(..)
+  -- * Stateful
   , StatefulGen(..)
   , FrozenGen(..)
   , ThawedGen(..)
@@ -77,12 +79,20 @@ module System.Random.Internal
   , genByteArrayST
   , genShortByteStringIO
   , genShortByteStringST
+  , defaultUnsafeFillMutableByteArrayT
   , defaultUnsafeUniformFillMutableByteArray
   -- ** Helpers for dealing with MutableByteArray
   , newMutableByteArray
   , newPinnedMutableByteArray
   , freezeMutableByteArray
   , writeWord8
+  , writeWord64LE
+  , indexWord8
+  , indexWord64LE
+  , indexByteSliceWord64LE
+  , sizeOfByteArray
+  , shortByteStringToByteArray
+  , byteArrayToShortByteString
   ) where
 
 import Control.Arrow
@@ -95,7 +105,8 @@ import Control.Monad.State.Strict (MonadState(..), State, StateT(..), execStateT
 import Control.Monad.Trans (lift, MonadTrans)
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
 import Data.Bits
-import Data.ByteString.Short.Internal (ShortByteString(SBS), fromShort)
+import Data.ByteString.Short.Internal (ShortByteString(SBS))
+import qualified Data.ByteString.Short.Internal as SBS (fromShort)
 import Data.IORef (IORef, newIORef)
 import Data.Int
 import Data.List (sortOn)
@@ -122,6 +133,19 @@ import Data.ByteString (ByteString)
 
 -- Needed for WORDS_BIGENDIAN
 #include "MachDeps.h"
+
+-- | This is a binary form of pseudo-random number generator's state. It is designed to be
+-- safe and easy to use for input/output operations like restoring from file, transmitting
+-- over the network, etc.
+--
+-- Constructor is not exported, becasue it is important for implementation to enforce the
+-- invariant of the underlying byte array being of the exact same length as the generator has
+-- specified in `System.Random.Seed.SeedSize`. Use `System.Random.Seed.mkSize` and
+-- `System.Random.Seed.unSize` to get access to the raw bytes in a safe manner.
+--
+-- @since 1.3.0
+newtype Seed g = Seed ByteArray
+  deriving (Eq, Ord, Show)
 
 
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
@@ -280,7 +304,7 @@ class RandomGen g => SplitGen g where
 --
 -- @since 1.2.0
 class Monad m => StatefulGen g m where
-  {-# MINIMAL (uniformWord32|uniformWord64) #-}
+  {-# MINIMAL uniformWord32|uniformWord64 #-}
   -- | @uniformWord32R upperBound g@ generates a 'Word32' that is uniformly
   -- distributed over the range @[0, upperBound]@.
   --
@@ -492,7 +516,7 @@ genByteArrayST isPinned n0 action = do
   mba <- if isPinned
     then newPinnedMutableByteArray n
     else newMutableByteArray n
-  runIdentityT $ defaultUnsafeUniformFillMutableByteArrayT mba 0 n (lift action)
+  runIdentityT $ defaultUnsafeFillMutableByteArrayT mba 0 n (lift action)
   freezeMutableByteArray mba
 {-# INLINE genByteArrayST #-}
 
@@ -520,14 +544,14 @@ uniformFillMutableByteArray mba i0 n g = do
   unsafeUniformFillMutableByteArray mba offset numBytes g
 {-# INLINE uniformFillMutableByteArray #-}
 
-defaultUnsafeUniformFillMutableByteArrayT ::
+defaultUnsafeFillMutableByteArrayT ::
      (Monad (t (ST s)), MonadTrans t)
   => MutableByteArray s
   -> Int
   -> Int
   -> t (ST s) Word64
   -> t (ST s) ()
-defaultUnsafeUniformFillMutableByteArrayT mba offset n gen64 = do
+defaultUnsafeFillMutableByteArrayT mba offset n gen64 = do
   let !n64 = n `quot` 8
       !endIx64 = offset + n64 * 8
       !nrem = n `rem` 8
@@ -547,14 +571,14 @@ defaultUnsafeUniformFillMutableByteArrayT mba offset n gen64 = do
     -- still need using smaller generators (eg. uniformWord8), but that would
     -- result in inconsistent tail when total length is slightly varied.
     lift $ writeByteSliceWord64LE mba (endIx - nrem) endIx w64
-{-# INLINEABLE defaultUnsafeUniformFillMutableByteArrayT #-}
-{-# SPECIALIZE defaultUnsafeUniformFillMutableByteArrayT
+{-# INLINEABLE defaultUnsafeFillMutableByteArrayT #-}
+{-# SPECIALIZE defaultUnsafeFillMutableByteArrayT
   :: MutableByteArray s
   -> Int
   -> Int
   -> IdentityT (ST s) Word64
   -> IdentityT (ST s) () #-}
-{-# SPECIALIZE defaultUnsafeUniformFillMutableByteArrayT
+{-# SPECIALIZE defaultUnsafeFillMutableByteArrayT
   :: MutableByteArray s
   -> Int
   -> Int
@@ -574,7 +598,7 @@ defaultUnsafeUniformFillMutableByteArray ::
   -> ST s g
 defaultUnsafeUniformFillMutableByteArray mba i0 n g =
   flip execStateT g
-    $ defaultUnsafeUniformFillMutableByteArrayT mba i0 n (state genWord64)
+    $ defaultUnsafeFillMutableByteArrayT mba i0 n (state genWord64)
 {-# INLINE defaultUnsafeUniformFillMutableByteArray #-}
 
 
@@ -589,6 +613,9 @@ uniformByteString n g =
 {-# INLINE uniformByteString #-}
 
 -- Architecture independent helpers:
+
+sizeOfByteArray :: ByteArray -> Int
+sizeOfByteArray (ByteArray ba#) = I# (sizeofByteArray# ba#)
 
 st_ :: (State# s -> State# s) -> ST s ()
 st_ m# = ST $ \s# -> (# m# s#, () #)
@@ -631,12 +658,54 @@ writeByteSliceWord64LE mba fromByteIx toByteIx = go fromByteIx
         go (i + 1) (z `shiftR` 8)
 {-# INLINE writeByteSliceWord64LE #-}
 
+indexWord8 ::
+     ByteArray
+  -> Int -- ^ Offset into immutable byte array in number of bytes
+  -> Word8
+indexWord8 (ByteArray ba#) (I# i#) =
+  W8# (indexWord8Array# ba# i#)
+{-# INLINE indexWord8 #-}
+
+indexWord64LE ::
+     ByteArray
+  -> Int -- ^ Offset into immutable byte array in number of bytes
+  -> Word64
+#if defined WORDS_BIGENDIAN || !(__GLASGOW_HASKELL__ >= 806)
+indexWord64LE ba i = indexByteSliceWord64LE ba i (i + 8)
+#else
+indexWord64LE (ByteArray ba#) (I# i#)
+  | wordSizeInBits == 64 = W64# (indexWord8ArrayAsWord64# ba# i#)
+  | otherwise =
+    let !w32l = W32# (indexWord8ArrayAsWord32# ba# i#)
+        !w32u = W32# (indexWord8ArrayAsWord32# ba# (i# +# 4#))
+    in (fromIntegral w32u `shiftL` 32) .|. fromIntegral w32l
+#endif
+{-# INLINE indexWord64LE #-}
+
+indexByteSliceWord64LE ::
+     ByteArray
+  -> Int -- ^ Starting offset in number of bytes
+  -> Int -- ^ Ending offset in number of bytes
+  -> Word64
+indexByteSliceWord64LE ba fromByteIx toByteIx = goWord8 fromByteIx 0
+  where
+    r = (toByteIx - fromByteIx) `rem` 8
+    nPadBits = if r == 0 then 0 else 8 * (8 - r)
+    goWord8 i !w64
+      | i < toByteIx = goWord8 (i + 1) (shiftL w64 8 .|. fromIntegral (indexWord8 ba i))
+      | otherwise = byteSwap64 (shiftL w64 nPadBits)
+{-# INLINE indexByteSliceWord64LE #-}
+
 -- On big endian machines we need to write one byte at a time for consistency with little
 -- endian machines. Also for GHC versions prior to 8.6 we don't have primops that can
 -- write with byte offset, eg. writeWord8ArrayAsWord64# and writeWord8ArrayAsWord32#, so we
 -- also must fallback to writing one byte a time. Such fallback results in about 3 times
 -- slow down, which is not the end of the world.
-writeWord64LE :: MutableByteArray s -> Int -> Word64 -> ST s ()
+writeWord64LE ::
+     MutableByteArray s
+  -> Int -- ^ Offset into mutable byte array in number of bytes
+  -> Word64 -- ^ 8 bytes that will be written into the supplied array
+  -> ST s ()
 #if defined WORDS_BIGENDIAN || !(__GLASGOW_HASKELL__ >= 806)
 writeWord64LE mba i w64 =
   writeByteSliceWord64LE mba i (i + 8) w64
@@ -662,6 +731,10 @@ getSizeOfMutableByteArray (MutableByteArray mba#) =
 #endif
 {-# INLINE getSizeOfMutableByteArray #-}
 
+shortByteStringToByteArray :: ShortByteString -> ByteArray
+shortByteStringToByteArray (SBS ba#) = ByteArray ba#
+{-# INLINE shortByteStringToByteArray #-}
+
 byteArrayToShortByteString :: ByteArray -> ShortByteString
 byteArrayToShortByteString (ByteArray ba#) = SBS ba#
 {-# INLINE byteArrayToShortByteString #-}
@@ -671,12 +744,12 @@ byteArrayToShortByteString (ByteArray ba#) = SBS ba#
 shortByteStringToByteString :: ShortByteString -> ByteString
 shortByteStringToByteString ba =
 #if __GLASGOW_HASKELL__ < 802
-  fromShort ba
+  SBS.fromShort ba
 #else
   let !(SBS ba#) = ba in
   if isTrue# (isByteArrayPinned# ba#)
     then pinnedByteArrayToByteString ba#
-    else fromShort ba
+    else SBS.fromShort ba
 {-# INLINE shortByteStringToByteString #-}
 
 pinnedByteArrayToByteString :: ByteArray# -> ByteString

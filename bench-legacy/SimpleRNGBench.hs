@@ -1,8 +1,9 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 -- | A simple script to do some very basic timing of the RNGs.
-
 module Main where
 
 import System.Exit (exitSuccess, exitFailure)

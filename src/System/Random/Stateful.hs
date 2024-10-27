@@ -7,7 +7,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-
 -- |
 -- Module      :  System.Random.Stateful
 -- Copyright   :  (c) The University of Glasgow 2001
@@ -41,6 +40,8 @@ module System.Random.Stateful
   , ThawedGen(..)
   , withMutableGen
   , withMutableGen_
+  , withMutableSeedGen
+  , withMutableSeedGen_
   , randomM
   , randomRM
   , splitGenM
@@ -136,6 +137,7 @@ import Control.Monad.IO.Class
 import Control.Monad.ST
 import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
 import Control.Monad.State.Strict (MonadState, state)
+import Data.Coerce
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
@@ -294,6 +296,21 @@ withMutableGen_ :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m a
 withMutableGen_ fg action = thawGen fg >>= action
 
 
+-- | Just like `withMutableGen`, except uses a `Seed` instead of a frozen generator.
+--
+-- @since 1.3.0
+withMutableSeedGen :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
+withMutableSeedGen seed f = withSeedM seed (`withMutableGen` f)
+
+-- | Just like `withMutableSeedGen`, except it doesn't return the final generator, only
+-- the resulting value. This is slightly more efficient, since it doesn't incur overhead
+-- from freezeing the mutable generator
+--
+-- @since 1.3.0
+withMutableSeedGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
+withMutableSeedGen_ seed = withMutableGen_ (seedGen seed)
+
+
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
 --
 -- ====__Examples__
@@ -352,6 +369,12 @@ newtype AtomicGenM g = AtomicGenM { unAtomicGenM :: IORef g}
 -- @since 1.2.0
 newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (AtomicGen g) where
+  type SeedSize (AtomicGen g) = SeedSize g
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -444,6 +467,11 @@ newtype IOGenM g = IOGenM { unIOGenM :: IORef g }
 newtype IOGen g = IOGen { unIOGen :: g }
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (IOGen g) where
+  type SeedSize (IOGen g) = SeedSize g
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'IOGenM'.
 --
@@ -514,6 +542,12 @@ newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
 -- @since 1.2.0
 newtype STGen g = STGen { unSTGen :: g }
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (STGen g) where
+  type SeedSize (STGen g) = SeedSize g
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'STGenM'.
 --
@@ -609,6 +643,12 @@ newtype TGenM g = TGenM { unTGenM :: TVar g }
 -- @since 1.2.1
 newtype TGen g = TGen { unTGen :: g }
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
+instance SeedGen g => SeedGen (TGen g) where
+  type SeedSize (TGen g) = SeedSize g
+  seedGen = coerce (seedGen :: Seed g -> g)
+  unseedGen = coerce (unseedGen :: g -> Seed g)
 
 -- | Creates a new 'TGenM' in `STM`.
 --

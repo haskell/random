@@ -37,6 +37,8 @@ module System.Random
   , Uniform
   , UniformRange
   , Finite
+  -- ** Seed
+  , module System.Random.Seed
   -- * Generators for sequences of pseudo-random bytes
   -- ** Lists
   , uniforms
@@ -94,6 +96,7 @@ import Foreign.C.Types
 import GHC.Exts
 import System.Random.GFinite (Finite)
 import System.Random.Internal
+import System.Random.Seed
 import qualified System.Random.SplitMix as SM
 
 -- $introduction
