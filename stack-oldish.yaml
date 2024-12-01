@@ -1,6 +1,0 @@
-resolver: lts-18.28
-packages:
-- .
-extra-deps:
-- data-array-byte-0.1.0.1@sha256:2ef1bd3511e82ba56f7f23cd793dd2da84338a1e7c2cbea5b151417afe3baada,1989
-- primitive-0.9.0.0@sha256:de20bf4eff1f972088854c8efda6eaca2d3147aff62232c3707f059152638759,3203
