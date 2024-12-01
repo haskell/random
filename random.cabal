@@ -88,6 +88,7 @@ library
         System.Random.Seed
         System.Random.Stateful
     other-modules:
+        System.Random.Array
         System.Random.GFinite
 
     hs-source-dirs:   src
