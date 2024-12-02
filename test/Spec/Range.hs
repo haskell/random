@@ -7,7 +7,6 @@ module Spec.Range
   , uniformRangeWithinExcludedD
   ) where
 
-import System.Random.Internal
 import System.Random.Stateful
 import Data.Proxy
 
