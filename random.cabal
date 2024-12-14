@@ -123,7 +123,7 @@ test-suite legacy-test
             -Wno-deprecations
     build-depends:
         base,
-        containers >=0.5 && <0.7,
+        containers >=0.5 && <0.8,
         random
 
 test-suite doctests
