@@ -2,9 +2,9 @@ name: random-CI
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ "master", "release/**" ]
   pull_request:
-    branches: [ master ]
+    branches: [ "**" ]
 
 defaults: { run: { shell: bash } }
 
@@ -239,8 +239,10 @@ jobs:
     - name: Install
       run: |
         apt-get update -y
-        apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
-        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
+        apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev wget
+        wget https://get-ghcup.haskell.org -O ghcup.sh -t 10 --retry-connrefused
+        chmod a+x ghcup.sh
+        BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 ./ghcup.sh
     - uses: actions/checkout@v1
     - name: Test
       run: |
