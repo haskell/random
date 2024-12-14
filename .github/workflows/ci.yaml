@@ -2,9 +2,9 @@ name: random-CI
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ "master", "release/**" ]
   pull_request:
-    branches: [ master ]
+    branches: [ "**" ]
 
 defaults: { run: { shell: bash } }
 
@@ -22,8 +22,9 @@ jobs:
       matrix:
         include:
           # Linux
-          - { os: ubuntu-latest,  ghc: "8.0.2"  }
-          - { os: ubuntu-latest,  ghc: "8.2.2"  }
+           # haskell-actions/setup is having trouble installing from hvr/ppa for ghc-8.0 and 8.2
+          # - { os: ubuntu-latest,  ghc: "8.0.2"  }
+          # - { os: ubuntu-latest,  ghc: "8.2.2"  }
           - { os: ubuntu-latest,  ghc: "8.4.4"  }
           - { os: ubuntu-latest,  ghc: "8.6.5"  }
           - { os: ubuntu-latest,  ghc: "8.8.4"  }
@@ -35,8 +36,8 @@ jobs:
           - { os: ubuntu-latest,  ghc: "9.8.2"  }
           - { os: ubuntu-latest,  ghc: "9.10.1"  }
           # MacOS
-          - { os: macOS-latest,  ghc: "8.0.2"  }
-          - { os: macOS-latest,  ghc: "8.2.2"  }
+          # - { os: macOS-latest,  ghc: "8.0.2"  }
+          # - { os: macOS-latest,  ghc: "8.2.2"  }
           - { os: macOS-latest,  ghc: "8.4.4"  }
           - { os: macOS-latest,  ghc: "8.6.5"  }
           - { os: macOS-latest,  ghc: "8.8.4"  }
@@ -48,8 +49,8 @@ jobs:
           - { os: macOS-latest,  ghc: "9.8.2"  }
           - { os: macOS-latest,  ghc: "9.10.1"  }
           # Windows
-          - { os: windows-latest,  ghc: "8.0.2"  }
-          - { os: windows-latest,  ghc: "8.2.2"  }
+          # - { os: windows-latest,  ghc: "8.0.2"  }
+          # - { os: windows-latest,  ghc: "8.2.2"  }
           - { os: windows-latest,  ghc: "8.4.4"  }
           - { os: windows-latest,  ghc: "8.6.5"  }
           - { os: windows-latest,  ghc: "8.8.4"  }
@@ -101,11 +102,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-22, lts-21, lts-20, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11]
+        resolver: [nightly, lts-22, lts-21, lts-20, lts-19, lts-18, lts-16, lts-14, lts-12, lts-11, lts-9]
         include:
+          - resolver: lts-9
+            stack-yaml: stack-custom.yaml
           - resolver: lts-11
-            ghc: '8.2.2'
-            stack-yaml: stack-old.yaml
+            stack-yaml: stack-custom.yaml
           - resolver: lts-12
             ghc: '8.4.4'
             stack-yaml: stack-old.yaml
@@ -164,7 +166,7 @@ jobs:
             stack-yaml: stack.yaml
     env:
       STACK_YAML: '${{ matrix.stack-yaml }}'
-      STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
+      STACK_ARGS: '--resolver ${{ matrix.resolver }}'
       cache-version: v5 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v4
@@ -175,7 +177,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
-        stack-version: ${{ matrix.resolver == 'lts-11' && '2.15.5' || 'latest' }}
+        stack-version: ${{ (matrix.resolver == 'lts-9' || matrix.resolver == 'lts-11') && '2.15.5' || 'latest' }}
 
     - name: Cache
       id: cache
@@ -239,8 +241,10 @@ jobs:
     - name: Install
       run: |
         apt-get update -y
-        apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
-        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
+        apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev wget
+        wget https://get-ghcup.haskell.org -O ghcup.sh -t 10 --retry-connrefused
+        chmod a+x ghcup.sh
+        BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 ./ghcup.sh
     - uses: actions/checkout@v1
     - name: Test
       run: |

@@ -102,6 +102,7 @@ library
         bytestring >=0.10.4 && <0.13,
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,
+        transformers >=0.4 && <0.7,
         splitmix >=0.1 && <0.2
     if impl(ghc < 9.4)
       build-depends: data-array-byte
@@ -123,7 +124,7 @@ test-suite legacy-test
       -Wno-deprecations
     build-depends:
         base,
-        containers >=0.5 && <0.7,
+        containers >=0.5 && <0.8,
         random
 
 test-suite spec
@@ -192,7 +193,7 @@ benchmark bench
     build-depends:
         base,
         mtl,
-        primitive >= 0.7.1,
+        primitive,
         random,
         splitmix >=0.1 && <0.2,
         tasty-bench
