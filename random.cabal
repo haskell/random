@@ -102,6 +102,7 @@ library
         bytestring >=0.10.4 && <0.13,
         deepseq >=1.1 && <2,
         mtl >=2.2 && <2.4,
+        transformers >=0.4 && <0.7,
         splitmix >=0.1 && <0.2
     if impl(ghc < 9.4)
       build-depends: data-array-byte

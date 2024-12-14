@@ -98,10 +98,10 @@ import Control.Arrow
 import Control.DeepSeq (NFData)
 import Control.Monad (replicateM, when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
-import Control.Monad.Identity (IdentityT (runIdentityT))
 import Control.Monad.ST
 import Control.Monad.State.Strict (MonadState(..), State, StateT(..), execStateT, runState)
 import Control.Monad.Trans (lift, MonadTrans)
+import Control.Monad.Trans.Identity (IdentityT (runIdentityT))
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
 import Data.Bits
 import Data.ByteString (ByteString)
