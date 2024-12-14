@@ -1,4 +1,5 @@
-resolver: lts-18.28
+resolver: lts-21.25
+system-ghc: true
 packages:
 - .
 extra-deps: []

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
@@ -13,9 +14,11 @@ import Foreign.C.Types
 import Numeric.Natural (Natural)
 import System.Random.SplitMix as SM
 import Test.Tasty.Bench
+#if MIN_VERSION_primitive(0,7,1)
 import Control.Monad.Primitive
-import Data.Primitive.PrimArray
 import Data.Primitive.Types
+import Data.Primitive.PrimArray
+#endif
 
 import System.Random.Stateful
 
@@ -198,7 +201,9 @@ main = do
             in pureUniformRBench (Proxy :: Proxy Natural) range sz
           ]
         , bgroup "floating"
-          [ bgroup "IO"
+          [
+#if MIN_VERSION_primitive(0,7,1)
+            bgroup "IO"
             [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
                 bench "uniformFloat01M" $
                 nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloat01M ma))
@@ -212,7 +217,9 @@ main = do
                 bench "uniformDoublePositive01M" $
                 nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDoublePositive01M ma))
             ]
-          , bgroup "State"
+          ,
+#endif
+            bgroup "State"
             [ env getStdGen $
                 bench "uniformFloat01M" . nf (`runStateGen` (replicateM_ sz . uniformFloat01M))
             , env getStdGen $
@@ -320,7 +327,7 @@ genMany f g0 n = go 0 $ f g0
       | i < n = go (i + 1) $ f g
       | otherwise = y
 
-
+#if MIN_VERSION_primitive(0,7,1)
 fillMutablePrimArrayM ::
      (Prim a, PrimMonad m)
   => (gen -> m a)
@@ -334,3 +341,4 @@ fillMutablePrimArrayM f ma g = do
         | otherwise = pure ()
   go 0
   unsafeFreezePrimArray ma
+#endif
