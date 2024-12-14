@@ -2,4 +2,5 @@ resolver: lts-19.33
 system-ghc: true
 packages:
 - .
-extra-deps: []
+extra-deps:
+- data-array-byte-0.1.0.1@sha256:ad89e28b2b046175698fbf542af2ce43e5d2af50aae9f48d12566b1bb3de1d3c,1989
