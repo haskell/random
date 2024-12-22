@@ -207,50 +207,80 @@ main = do
           [
 #if MIN_VERSION_primitive(0,7,1)
             bgroup "IO"
-            [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                bench "uniformFloat01M" $
-                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloat01M ma))
-            , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                bench "uniformFloatPositive01M" $
-                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloatPositive01M ma))
-            , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                bench "uniformDouble01M" $
-                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDouble01M ma))
-            , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                bench "uniformDoublePositive01M" $
-                nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDoublePositive01M ma))
+            [ bgroup "Float"
+              [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                  bench "uniformRM" $
+                  nfIO (runStateGenT gen (fillMutablePrimArrayM (uniformRM (0 :: Float, 1.1)) ma))
+              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                  bench "uniformFloat01M" $
+                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloat01M ma))
+              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                  bench "uniformFloatPositive01M" $
+                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloatPositive01M ma))
+              ]
+            , bgroup "Double"
+              [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                  bench "uniformRM" $
+                  nfIO (runStateGenT gen (fillMutablePrimArrayM (uniformRM (0 :: Double, 1.1)) ma))
+              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                  bench "uniformDouble01M" $
+                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDouble01M ma))
+              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+                  bench "uniformDoublePositive01M" $
+                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDoublePositive01M ma))
+              ]
             ]
           ,
 #endif
             bgroup "State"
-            [ env getStdGen $
-                bench "uniformFloat01M" . nf (`runStateGen` (replicateM_ sz . uniformFloat01M))
-            , env getStdGen $
-                bench "uniformFloatPositive01M" .
-                nf (`runStateGen` (replicateM_ sz . uniformFloatPositive01M))
-            , env getStdGen $
-                bench "uniformDouble01M" . nf (`runStateGen` (replicateM_ sz . uniformDouble01M))
-            , env getStdGen $
-                bench "uniformDoublePositive01M" .
-                nf (`runStateGen` (replicateM_ sz . uniformDoublePositive01M))
+            [ bgroup "Float"
+              [ env getStdGen $
+                  bench "uniformRM" . nf (`runStateGen` (replicateM_ sz . uniformRM (0.1 :: Float, 1.1)))
+              , env getStdGen $
+                  bench "uniformFloat01M" . nf (`runStateGen` (replicateM_ sz . uniformFloat01M))
+              , env getStdGen $
+                  bench "uniformFloatPositive01M" .
+                  nf (`runStateGen` (replicateM_ sz . uniformFloatPositive01M))
+              ]
+            , bgroup "Double"
+              [ env getStdGen $
+                  bench "uniformRM" . nf (`runStateGen` (replicateM_ sz . uniformRM (0.1 :: Double, 1.1)))
+              , env getStdGen $
+                  bench "uniformDouble01M" . nf (`runStateGen` (replicateM_ sz . uniformDouble01M))
+              , env getStdGen $
+                  bench "uniformDoublePositive01M" .
+                  nf (`runStateGen` (replicateM_ sz . uniformDoublePositive01M))
+              ]
             ]
           , bgroup "pure"
-            [ env getStdGen $ \gen ->
-                bench "uniformFloat01M" $ nf
-                (genMany (runState $ uniformFloat01M (StateGenM :: StateGenM StdGen)) gen)
-                sz
-            , env getStdGen $ \gen ->
-                bench "uniformFloatPositive01M" $ nf
-                (genMany (runState $ uniformFloatPositive01M (StateGenM :: StateGenM StdGen)) gen)
-                sz
-            , env getStdGen $ \gen ->
-                bench "uniformDouble01M" $ nf
-                (genMany (runState $ uniformDouble01M (StateGenM :: StateGenM StdGen)) gen)
-                sz
-            , env getStdGen $ \gen ->
-                bench "uniformDoublePositive01M" $ nf
-                (genMany (runState $ uniformDoublePositive01M (StateGenM :: StateGenM StdGen)) gen)
-                sz
+            [ bgroup "Float"
+              [ env getStdGen $ \gen ->
+                  bench "uniformRM" $ nf
+                  (genMany (runState $ uniformRM (0.1 :: Float, 1.1) (StateGenM :: StateGenM StdGen)) gen)
+                  sz
+              , env getStdGen $ \gen ->
+                  bench "uniformFloat01M" $ nf
+                  (genMany (runState $ uniformFloat01M (StateGenM :: StateGenM StdGen)) gen)
+                  sz
+              , env getStdGen $ \gen ->
+                  bench "uniformFloatPositive01M" $ nf
+                  (genMany (runState $ uniformFloatPositive01M (StateGenM :: StateGenM StdGen)) gen)
+                  sz
+              ]
+            , bgroup "Double"
+              [ env getStdGen $ \gen ->
+                  bench "uniformRM" $ nf
+                  (genMany (runState $ uniformRM (0.1 :: Double, 1.1) (StateGenM :: StateGenM StdGen)) gen)
+                  sz
+              , env getStdGen $ \gen ->
+                  bench "uniformDouble01M" $ nf
+                  (genMany (runState $ uniformDouble01M (StateGenM :: StateGenM StdGen)) gen)
+                  sz
+              , env getStdGen $ \gen ->
+                  bench "uniformDoublePositive01M" $ nf
+                  (genMany (runState $ uniformDoublePositive01M (StateGenM :: StateGenM StdGen)) gen)
+                  sz
+              ]
             ]
           ]
         ]
