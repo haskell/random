@@ -1396,7 +1396,7 @@ instance UniformRange Double where
       return $! h + l
     | otherwise = do
       x <- uniformDouble01M g
-      return $ x * l + (1 -x) * h
+      return $! x * l + (1 - x) * h
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
@@ -1433,14 +1433,10 @@ instance UniformRange Float where
   uniformRM (l, h) g
     | l == h = return l
     | isInfinite l || isInfinite h =
-      -- Optimisation exploiting absorption:
-      --   (-Infinity) + (anything but +Infinity) = -Infinity
-      --   (anything but -Infinity) + (+Infinity) = +Infinity
-      --                (-Infinity) + (+Infinity) = NaN
       return $! h + l
     | otherwise = do
       x <- uniformFloat01M g
-      return $ x * l + (1 - x) * h
+      return $! x * l + (1 - x) * h
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
