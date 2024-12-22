@@ -45,7 +45,7 @@ module System.Random
   , uniformRs
   , uniformList
   , uniformListR
-  , shuffleList
+  , uniformShuffleList
   -- ** Bytes
   , uniformByteArray
   , uniformByteString
@@ -94,6 +94,7 @@ import Data.IORef
 import Data.Word
 import Foreign.C.Types
 import GHC.Exts
+import System.Random.Array (shuffleListST)
 import System.Random.GFinite (Finite)
 import System.Random.Internal
 import System.Random.Seed
@@ -294,18 +295,18 @@ uniformListR :: (UniformRange a, RandomGen g) => Int -> (a, a) -> g -> ([a], g)
 uniformListR n r g = runStateGen g (uniformListRM n r)
 {-# INLINE uniformListR #-}
 
--- | Shuffle elements of a list in a random order.
+-- | Shuffle elements of a list in a uniformly random order.
 --
 -- ====__Examples__
 --
--- >>> let gen = mkStdGen 2023
--- >>> shuffleList ['a'..'z'] gen
--- ("renlhfqmgptwksdiyavbxojzcu",StdGen {unStdGen = SMGen 9882508430712573120 1920468677557965761})
+-- >>> uniformShuffleList "ELVIS" $ mkStdGen 252
+-- ("LIVES",StdGen {unStdGen = SMGen 17676540583805057877 5302934877338729551})
 --
 -- @since 1.3.0
-shuffleList :: RandomGen g => [a] -> g -> ([a], g)
-shuffleList xs g = runStateGen g (shuffleListM xs)
-{-# INLINE shuffleList #-}
+uniformShuffleList :: RandomGen g => [a] -> g -> ([a], g)
+uniformShuffleList xs g =
+  runStateGenST g $ \gen -> shuffleListST (`uniformWordR` gen) xs
+{-# INLINE uniformShuffleList #-}
 
 -- | Generates a 'ByteString' of the specified size using a pure pseudo-random
 -- number generator. See 'uniformByteStringM' for the monadic version.

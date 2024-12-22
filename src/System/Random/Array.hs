@@ -28,8 +28,17 @@ module System.Random.Array
   , byteArrayToShortByteString
   , getSizeOfMutableByteArray
   , shortByteStringToByteString
+  -- ** MutableArray
+  , Array (..)
+  , MutableArray (..)
+  , newMutableArray
+  , freezeMutableArray
+  , writeArray
+  , shuffleListM
+  , shuffleListST
   ) where
 
+import Control.Monad.Trans (lift, MonadTrans)
 import Control.Monad (when)
 import Control.Monad.ST
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
@@ -53,6 +62,10 @@ import Data.ByteString (ByteString)
 
 wordSizeInBits :: Int
 wordSizeInBits = finiteBitSize (0 :: Word)
+
+----------------
+-- Byte Array --
+----------------
 
 -- Architecture independent helpers:
 
@@ -204,3 +217,146 @@ pinnedByteArrayToForeignPtr ba# =
   ForeignPtr (byteArrayContents# ba#) (PlainPtr (unsafeCoerce# ba#))
 {-# INLINE pinnedByteArrayToForeignPtr #-}
 #endif
+
+-----------------
+-- Boxed Array --
+-----------------
+
+data Array a = Array (Array# a)
+
+data MutableArray s a = MutableArray (MutableArray# s a)
+
+newMutableArray :: Int -> a -> ST s (MutableArray s a)
+newMutableArray (I# n#) a =
+  ST $ \s# ->
+    case newArray# n# a s# of
+      (# s'#, ma# #) -> (# s'#, MutableArray ma# #)
+{-# INLINE newMutableArray #-}
+
+freezeMutableArray :: MutableArray s a -> ST s (Array a)
+freezeMutableArray (MutableArray ma#) =
+  ST $ \s# ->
+    case unsafeFreezeArray# ma# s# of
+      (# s'#, a# #) -> (# s'#, Array a# #)
+{-# INLINE freezeMutableArray #-}
+
+sizeOfMutableArray :: MutableArray s a -> Int
+sizeOfMutableArray (MutableArray ma#) = I# (sizeofMutableArray# ma#)
+{-# INLINE sizeOfMutableArray #-}
+
+readArray :: MutableArray s a -> Int -> ST s a
+readArray (MutableArray ma#) (I# i#) = ST (readArray# ma# i#)
+{-# INLINE readArray #-}
+
+writeArray :: MutableArray s a -> Int -> a -> ST s ()
+writeArray (MutableArray ma#) (I# i#) a = st_ (writeArray# ma# i# a)
+{-# INLINE writeArray #-}
+
+swapArray :: MutableArray s a -> Int -> Int -> ST s ()
+swapArray ma i j = do
+  x <- readArray ma i
+  y <- readArray ma j
+  writeArray ma j x
+  writeArray ma i y
+{-# INLINE swapArray #-}
+
+-- | Write contents of the list into the mutable array. Make sure that array is big
+-- enough or segfault will happen.
+fillMutableArrayFromList :: MutableArray s a -> [a] -> ST s ()
+fillMutableArrayFromList ma = go 0
+  where
+    go _ [] = pure ()
+    go i (x:xs) = writeArray ma i x >> go (i + 1) xs
+{-# INLINE fillMutableArrayFromList #-}
+
+readListFromMutableArray :: MutableArray s a -> ST s [a]
+readListFromMutableArray ma = go (len - 1) []
+  where
+    len = sizeOfMutableArray ma
+    go i !acc
+       | i >= 0 = do
+           x <- readArray ma i
+           go (i - 1) (x : acc)
+       | otherwise = pure acc
+{-# INLINE readListFromMutableArray #-}
+
+
+-- | Generate a list of indices that will be used for swapping elements in uniform shuffling:
+--
+-- @
+-- [ (0, n - 1)
+-- , (0, n - 2)
+-- , (0, n - 3)
+-- , ...
+-- , (0, 3)
+-- , (0, 2)
+-- , (0, 1)
+-- ]
+-- @
+genSwapIndices
+  :: Monad m
+  => (Word -> m Word)
+  -- ^ Action that generates a Word in the supplied range.
+  -> Word
+  -- ^ Number of index swaps to generate.
+  -> m [Int]
+genSwapIndices genWordR n = go 1 []
+  where
+    go i !acc
+      | i >= n = pure acc
+      | otherwise = do
+          x <- genWordR i
+          let !xi = fromIntegral x
+          go (i + 1) (xi : acc)
+{-# INLINE genSwapIndices #-}
+
+
+-- | Implementation of mutable version of Fisher-Yates shuffle. Unfortunately, we cannot generally
+-- interleave pseudo-random number generation and mutation of `ST` monad, therefore we have to
+-- pre-generate all of the index swaps with `genSwapIndices` and store them in a list before we can
+-- perform the actual swaps.
+shuffleListM :: Monad m => (Word -> m Word) -> [a] -> m [a]
+shuffleListM genWordR ls
+  | len <= 1 = pure ls
+  | otherwise = do
+    swapIxs <- genSwapIndices genWordR (fromIntegral len)
+    pure $ runST $ do
+      ma <- newMutableArray len $ error "Impossible: shuffleListM"
+      fillMutableArrayFromList ma ls
+
+      -- Shuffle elements of the mutable array according to the uniformly generated index swap list
+      let goSwap _ [] = pure ()
+          goSwap i (j:js) = swapArray ma i j >> goSwap (i - 1) js
+      goSwap (len - 1) swapIxs
+
+      readListFromMutableArray ma
+  where
+    len = length ls
+{-# INLINE shuffleListM #-}
+
+-- | This is a ~x2-x3 more efficient version of `shuffleListM`. It is more efficient because it does
+-- not need to pregenerate a list of indices and instead generates them on demand. Because of this the
+-- result that will be produced will differ for the same generator, since the order in which index
+-- swaps are generated is reversed.
+--
+-- Unfortunately, most stateful generator monads can't handle `MonadTrans`, so this version is only
+-- used for implementing the pure shuffle.
+shuffleListST :: (Monad (t (ST s)), MonadTrans t) => (Word -> t (ST s) Word) -> [a] -> t (ST s) [a]
+shuffleListST genWordR ls
+  | len <= 1 = pure ls
+  | otherwise = do
+     ma <- lift $ newMutableArray len $ error "Impossible: shuffleListST"
+     lift $ fillMutableArrayFromList ma ls
+
+     -- Shuffle elements of the mutable array according to the uniformly generated index swap
+     let goSwap i =
+           when (i > 0) $ do
+             j <- genWordR $ (fromIntegral :: Int -> Word) i
+             lift $ swapArray ma i ((fromIntegral :: Word -> Int) j)
+             goSwap (i - 1)
+     goSwap (len - 1)
+
+     lift $ readListFromMutableArray ma
+  where
+    len = length ls
+{-# INLINE shuffleListST #-}

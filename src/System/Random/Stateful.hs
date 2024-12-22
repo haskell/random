@@ -99,7 +99,7 @@ module System.Random.Stateful
   -- ** Lists
   , uniformListM
   , uniformListRM
-  , shuffleListM
+  , uniformShuffleListM
 
   -- ** Generators for sequences of pseudo-random bytes
   , uniformByteArrayM
@@ -120,6 +120,8 @@ module System.Random.Stateful
   -- ** Enum types
   , uniformEnumM
   , uniformEnumRM
+  -- ** Word
+  , uniformWordR
 
   -- * Appendix
 
@@ -143,6 +145,7 @@ import Data.IORef
 import Data.STRef
 import Foreign.Storable
 import System.Random
+import System.Random.Array (shuffleListM)
 import System.Random.Internal
 #if __GLASGOW_HASKELL__ >= 808
 import GHC.IORef (atomicModifyIORef2Lazy)
@@ -270,6 +273,19 @@ instance RandomGen r => RandomGenM (STGenM r s) r (ST s) where
 instance RandomGen r => RandomGenM (TGenM r) r STM where
   applyRandomGenM = applyTGen
 
+
+-- | Shuffle elements of a list in a uniformly random order.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> runStateGen_ (mkStdGen 127) $ uniformShuffleListM "ELVIS"
+-- "LIVES"
+--
+-- @since 1.3.0
+uniformShuffleListM :: StatefulGen g m => [a] -> g -> m [a]
+uniformShuffleListM xs gen = shuffleListM (`uniformWordR` gen) xs
+{-# INLINE uniformShuffleListM #-}
 
 -- | Runs a mutable pseudo-random number generator from its 'FrozenGen' state.
 --

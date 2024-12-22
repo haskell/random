@@ -7,6 +7,7 @@ module Main (main) where
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Int
+import Data.List (sortOn)
 import Data.Proxy
 import Data.Typeable
 import Data.Word
@@ -263,9 +264,15 @@ main = do
         , env getStdGen $ \gen ->
             bench "uniformByteArray 100MB" $ nf (\n -> uniformByteArray False n gen) sz100MiB
         , env getStdGen $ \gen ->
-            bench "genByteString 100MB" $ nf (\k -> genByteString k gen) sz100MiB
+            bench "genByteString 100MB" $ nf (`genByteString` gen) sz100MiB
         ]
       ]
+      , env (pure [0 :: Integer .. 200000]) $ \xs ->
+        bgroup "shuffle"
+          [ env getStdGen $ bench "uniformShuffleList" . nf (uniformShuffleList xs)
+          , env getStdGen $ bench "uniformShuffleListM" . nf (`runStateGen` uniformShuffleListM xs)
+          , env getStdGen $ bench "naiveShuffleListM" . nf (`runStateGen` naiveShuffleListM xs)
+          ]
     ]
 
 pureUniformRFullBench ::
@@ -351,3 +358,12 @@ fillMutablePrimArrayM f ma g = do
   go 0
   unsafeFreezePrimArray ma
 #endif
+
+
+naiveShuffleListM :: StatefulGen g m => [a] -> g -> m [a]
+naiveShuffleListM xs gen = do
+  is <- uniformListM n gen
+  pure $ map snd $ sortOn fst $ zip (is :: [Int]) xs
+  where
+    !n = length xs
+{-# INLINE naiveShuffleListM #-}

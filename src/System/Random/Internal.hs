@@ -57,6 +57,7 @@ module System.Random.Internal
   , Uniform(..)
   , uniformViaFiniteM
   , UniformRange(..)
+  , uniformWordR
   , uniformDouble01M
   , uniformDoublePositive01M
   , uniformFloat01M
@@ -65,7 +66,6 @@ module System.Random.Internal
   , uniformEnumRM
   , uniformListM
   , uniformListRM
-  , shuffleListM
   , isInRangeOrd
   , isInRangeEnum
 
@@ -108,7 +108,6 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Short.Internal (ShortByteString(SBS))
 import Data.IORef (IORef, newIORef)
 import Data.Int
-import Data.List (sortOn)
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
@@ -221,7 +220,6 @@ class RandomGen g where
   -- /Note/ - This function will be removed from the type class in the next major release as
   -- it is no longer needed because of `unsafeUniformFillMutableByteArray`.
   --
-  --
   -- @since 1.2.0
   genShortByteString :: Int -> g -> (ShortByteString, g)
   genShortByteString n g =
@@ -273,10 +271,10 @@ class RandomGen g where
 {-# DEPRECATED split "In favor of `splitGen`" #-}
 
 -- | Pseudo-random generators that can be split into two separate and independent
--- psuedo-random generators can have an instance for this type class.
+-- psuedo-random generators should provide an instance for this type class.
 --
 -- Historically this functionality was included in the `RandomGen` type class in the
--- `split` function, however, few pseudo-random generators posses this property of
+-- `split` function, however, few pseudo-random generators possess this property of
 -- splittability. This lead the old `split` function being usually implemented in terms of
 -- `error`.
 --
@@ -784,25 +782,6 @@ uniformListRM :: (StatefulGen g m, UniformRange a) => Int -> (a, a) -> g -> m [a
 uniformListRM n range gen = replicateM n (uniformRM range gen)
 {-# INLINE uniformListRM #-}
 
--- | Shuffle elements of a list in a random order.
---
--- ====__Examples__
---
--- >>> import System.Random.Stateful
--- >>> let pureGen = mkStdGen 2023
--- >>> g <- newIOGenM pureGen
--- >>> shuffleListM ['a'..'z'] g :: IO String
--- "renlhfqmgptwksdiyavbxojzcu"
---
--- @since 1.3.0
-shuffleListM :: StatefulGen g m => [a] -> g -> m [a]
-shuffleListM xs gen = do
-  is <- uniformListM n gen
-  pure $ map snd $ sortOn fst $ zip (is :: [Int]) xs
-  where
-    !n = length xs
-{-# INLINE shuffleListM #-}
-
 -- | The standard pseudo-random number generator.
 newtype StdGen = StdGen { unStdGen :: SM.SMGen }
   deriving (Show, RandomGen, SplitGen, NFData)
@@ -1127,6 +1106,23 @@ instance UniformRange Word where
   uniformRM = unsignedBitmaskWithRejectionRM
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
+
+-- | Architecture specific `Word` generation in the specified lower range
+--
+-- @since 1.3.0
+uniformWordR ::
+    StatefulGen g m
+  => Word
+  -- ^ Maximum value to generate
+  -> g
+  -- ^ Stateful generator
+  -> m Word
+uniformWordR r
+  | wordSizeInBits == 64 =
+    fmap (fromIntegral :: Word64 -> Word) . uniformWord64R ((fromIntegral :: Word -> Word64) r)
+  | otherwise =
+    fmap (fromIntegral :: Word32 -> Word) . uniformWord32R ((fromIntegral :: Word -> Word32) r)
+{-# INLINE uniformWordR #-}
 
 instance Uniform Word8 where
   uniformM = uniformWord8
