@@ -358,7 +358,7 @@ class Random a where
   -- independently:
   --
   -- >>> fst $ randomR (('a', 5.0), ('z', 10.0)) $ mkStdGen 26
-  -- ('z',7.27305019146949)
+  -- ('z',5.22694980853051)
   --
   -- In case when a lawful range is desired `uniformR` should be used
   -- instead.

@@ -129,6 +129,7 @@ module System.Random.Stateful
   -- $implemenstatefulegen
 
   -- ** Floating point number caveats #fpcaveats#
+  , scaleFloating
   -- $floating
 
   -- * References
@@ -786,80 +787,103 @@ applyTGen f (TGenM tvar) = do
 
 -- $floating
 --
+-- Due to rounding errors, floating point operations are neither associative nor
+-- distributive the way the corresponding operations on real numbers are. Additionally,
+-- floating point numbers admit special values @NaN@ as well as negative and positive
+-- infinity.
+--
 -- The 'UniformRange' instances for 'Float' and 'Double' use the following
--- procedure to generate a random value in a range for @uniformRM (a, b) g@:
+-- procedure to generate a random value in a range for @uniformRM (l, h) g@:
 --
--- If \(a = b\), return \(a\). Otherwise:
+-- * If @__l == h__@, return: @__l__@.
+-- * If @__`isInfinite` l == True__@ or @__`isInfinite` h == True__@, return: @__l + h__@
+-- * Otherwise:
 --
--- 1.  Generate \(x\) uniformly such that \(0 \leq x \leq 1\).
+--     1.  Generate an unsigned integral of matching width @__w__@ uniformly.
 --
---     The method by which \(x\) is sampled does not cover all representable
---     floating point numbers in the unit interval. The method never generates
---     denormal floating point numbers, for example.
+--     2.  Check whether @__h - l__@ overflows to infinity and, if it does, then convert
+--         @__w__@ to a floating point number in @__[0.0, 1.0]__@ range through division
+--         of @__w__@ by the highest possible value:
 --
--- 2.  Return \(x \cdot a + (1 - x) \cdot b\).
+--         @
+--         x = `fromIntegral` w / `fromIntegral` `maxBound`
+--         @
 --
---     Due to rounding errors, floating point operations are neither
---     associative nor distributive the way the corresponding operations on
---     real numbers are. Additionally, floating point numbers admit special
---     values @NaN@ as well as negative and positive infinity.
+--         Then we scale and clamp it before returning it:
 --
--- For pathological values, step 2 can yield surprising results.
+--         @
+--         `max` (`min` (x * l + (1 - x) * h) (`max` l h)) (`min` l h)
+--         @
 --
--- *   The result may be greater than @max a b@.
+--         Clamping is necessary, because otherwise it would be possible to run into a
+--         degenerate case when a scaled value is outside the specified range due to
+--         rounding errors.
 --
---     >>> :{
---     let (a, b, x) = (-2.13238e-29, -2.1323799e-29, 0.27736077)
---         result = x * a + (1 - x) * b :: Float
---     in (result, result > max a b)
---     :}
---     (-2.1323797e-29,True)
+--     3.  Whenever @__h - l__@ does not overflow, we use this common formula for scaling:
+--         @__ l + (h - l) * x__@.  However, instead of using @__[0.0, 1.0]__@ range we
+--         use the top most bit of @__w__@ to decide whether we will treat the generated
+--         floating point value as @__[0.0, 0.5]__@ range or @__[0.5, 1.0]__@ range and
+--         use the left over bits to produce a floating point value in the half unit
+--         range:
 --
--- *   The result may be smaller than @min a b@.
+--         @
+--         x = `fromIntegral` (`clearBit` w 31) / `fromIntegral` `maxBound`
+--         @
 --
---     >>> :{
---     let (a, b, x) = (-1.9087862, -1.908786, 0.4228573)
---         result = x * a + (1 - x) * b :: Float
---     in (result, result < min a b)
---     :}
---     (-1.9087863,True)
+--         Further scaling depends on the top most bit:
 --
--- What happens when @NaN@ or @Infinity@ are given to 'uniformRM'? We first
+--         @
+--         if `testBit` w 31
+--            then l + (h - l) * x
+--            else h + (l - h) * x
+--         @
+--
+--         Because of this clever technique the result does not need clamping, since
+--         scaled values are guaranteed to stay within the specified range. Another reason
+--         why this tecnique is used for the common case instead of the one described in
+--         @2.@ is because it avoids usage of @__1 - x__@, which consequently reduces loss
+--         of randomness due to rounding.
+--
+--
+-- What happens when @__NaN__@ or @__Infinity__@ are given to 'uniformRM'? We first
 -- define them as constants:
 --
 -- >>> nan = read "NaN" :: Float
 -- >>> inf = read "Infinity" :: Float
+-- >>> g <- newIOGenM (mkStdGen 2024)
 --
--- *   If at least one of \(a\) or \(b\) is @NaN@, the result is @NaN@.
+-- *   If at least one of \(l\) or \(h\) is @__NaN__@, the result is @__NaN__@.
 --
---     >>> let (a, b, x) = (nan, 1, 0.5) in x * a + (1 - x) * b
+--     >>> uniformRM (nan, 1) g
 --     NaN
---     >>> let (a, b, x) = (-1, nan, 0.5) in x * a + (1 - x) * b
---     NaN
---
--- *   If \(a\) is @-Infinity@ and \(b\) is @Infinity@, the result is @NaN@.
---
---     >>> let (a, b, x) = (-inf, inf, 0.5) in x * a + (1 - x) * b
+--     >>> uniformRM (-1, nan) g
 --     NaN
 --
--- *   Otherwise, if \(a\) is @Infinity@ or @-Infinity@, the result is \(a\).
+-- *   If \(l\) and \(h\) are both @__Infinity__@ with opposing signs, then the result is @__NaN__@.
 --
---     >>> let (a, b, x) = (inf, 1, 0.5) in x * a + (1 - x) * b
+--     >>> uniformRM (-inf, inf) g
+--     NaN
+--     >>> uniformRM (inf, -inf) g
+--     NaN
+--
+-- *   Otherwise, if \(l\) is @__Infinity__@ or @__-Infinity__@, the result is \(l\).
+--
+--     >>> uniformRM (inf, 1) g
 --     Infinity
---     >>> let (a, b, x) = (-inf, 1, 0.5) in x * a + (1 - x) * b
+--     >>> uniformRM (-inf, 1) g
 --     -Infinity
 --
--- *   Otherwise, if \(b\) is @Infinity@ or @-Infinity@, the result is \(b\).
+-- *   Otherwise, if \(h\) is @__Infinity__@ or @__-Infinity__@, the result is \(h\).
 --
---     >>> let (a, b, x) = (1, inf, 0.5) in x * a + (1 - x) * b
+--     >>> uniformRM (1, inf) g
 --     Infinity
---     >>> let (a, b, x) = (1, -inf, 0.5) in x * a + (1 - x) * b
+--     >>> uniformRM (1, -inf) g
 --     -Infinity
 --
 -- Note that the [GCC 10.1.0 C++ standard library](https://gcc.gnu.org/git/?p=gcc.git;a=blob;f=libstdc%2B%2B-v3/include/bits/random.h;h=19307fbc3ca401976ef6823e8fda893e4a263751;hb=63fa67847628e5f358e7e2e7edb8314f0ee31f30#l1859),
 -- the [Java 10 standard library](https://docs.oracle.com/javase/10/docs/api/java/util/Random.html#doubles%28double,double%29)
 -- and [CPython 3.8](https://github.com/python/cpython/blob/3.8/Lib/random.py#L417)
--- use the same procedure to generate floating point values in a range.
+-- use a similar procedure to generate floating point values in a range.
 --
 -- $implemenstatefulegen
 --
