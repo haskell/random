@@ -251,12 +251,12 @@ uniformSpec px =
         case uniform g of
           (range, g') ->
             take len (randomRs range g' :: [a]) == fst (uniformListR len range g')
-    , SC.testProperty "shuffleList" $
+    , SC.testProperty "uniformShuffleList" $
       seededWithLen $ \len g ->
         case uniformList len g of
           (xs, g') ->
             let xs' = zip [0 :: Int ..] (xs :: [a])
-            in sortOn fst (fst (shuffleList xs' g')) == xs'
+            in sortOn fst (fst (uniformShuffleList xs' g')) == xs'
     , SC.testProperty "uniforms" $
       seededWithLen $ \len g ->
         take len (randoms g :: [a]) == take len (uniforms g)
