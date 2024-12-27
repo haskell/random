@@ -279,11 +279,11 @@ unSeedToByteString = SBS.fromShort . byteArrayToShortByteString . unSeed
 -- resulting generator will be converted back to a seed and written to the same file.
 --
 -- @since 1.3.0
-withSeedFile :: (SeedGen g, MonadIO m) => FilePath -> (g -> m (a, g)) -> m a
-withSeedFile fileName f = do
+withSeedFile :: (SeedGen g, MonadIO m) => FilePath -> (Seed g -> m (a, Seed g)) -> m a
+withSeedFile fileName action = do
   bs <- liftIO $ BS.readFile fileName
   seed <- liftIO $ mkSeedFromByteString bs
-  (res, seed') <- withSeedM seed f
+  (res, seed') <- action seed
   liftIO $ BS.writeFile fileName $ unSeedToByteString seed'
   pure res
 
