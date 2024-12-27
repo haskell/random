@@ -396,7 +396,7 @@ newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
 instance SeedGen g => SeedGen (AtomicGen g) where
   type SeedSize (AtomicGen g) = SeedSize g
   seedGen = coerce (seedGen :: Seed g -> g)
-  unseedGen = coerce (unseedGen :: g -> Seed g)
+  unSeedGen = coerce (unSeedGen :: g -> Seed g)
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -509,7 +509,7 @@ newtype IOGen g = IOGen { unIOGen :: g }
 instance SeedGen g => SeedGen (IOGen g) where
   type SeedSize (IOGen g) = SeedSize g
   seedGen = coerce (seedGen :: Seed g -> g)
-  unseedGen = coerce (unseedGen :: g -> Seed g)
+  unSeedGen = coerce (unSeedGen :: g -> Seed g)
 
 -- | Creates a new 'IOGenM'.
 --
@@ -585,7 +585,7 @@ newtype STGen g = STGen { unSTGen :: g }
 instance SeedGen g => SeedGen (STGen g) where
   type SeedSize (STGen g) = SeedSize g
   seedGen = coerce (seedGen :: Seed g -> g)
-  unseedGen = coerce (unseedGen :: g -> Seed g)
+  unSeedGen = coerce (unSeedGen :: g -> Seed g)
 
 -- | Creates a new 'STGenM'.
 --
@@ -686,7 +686,7 @@ newtype TGen g = TGen { unTGen :: g }
 instance SeedGen g => SeedGen (TGen g) where
   type SeedSize (TGen g) = SeedSize g
   seedGen = coerce (seedGen :: Seed g -> g)
-  unseedGen = coerce (unseedGen :: g -> Seed g)
+  unSeedGen = coerce (unSeedGen :: g -> Seed g)
 
 -- | Creates a new 'TGenM' in `STM`.
 --

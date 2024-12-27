@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -67,7 +66,7 @@ import qualified System.Random.SplitMix32 as SM32
 -- It is not trivial to implement platform independence. For this reason this type class
 -- has two alternative ways of creating an instance for this class. The easiest way for
 -- constructing a platform indepent seed is by converting the inner state of a generator
--- to and from a list of 64 bit words using `unseedGen64` and `seedGen64` respectively. In
+-- to and from a list of 64 bit words using `unSeedGen64` and `seedGen64` respectively. In
 -- that case cross-platform support will be handled automaticaly.
 --
 -- >>> :set -XDataKinds -XTypeFamilies
@@ -80,39 +79,39 @@ import qualified System.Random.SplitMix32 as SM32
 --   type SeedSize FiveByteGen = 5
 --   seedGen64 (w64 :| _) =
 --     FiveByteGen (fromIntegral (w64 `shiftR` 32)) (fromIntegral w64)
---   unseedGen64 (FiveByteGen x1 x4) =
+--   unSeedGen64 (FiveByteGen x1 x4) =
 --     let w64 = (fromIntegral x1 `shiftL` 32) .|. fromIntegral x4
 --      in (w64 :| [])
 -- :}
 --
 -- >>> FiveByteGen 0x80 0x01020304
 -- FiveByteGen 128 16909060
--- >>> seedGen (unseedGen (FiveByteGen 0x80 0x01020304))
+-- >>> seedGen (unSeedGen (FiveByteGen 0x80 0x01020304))
 -- FiveByteGen 128 16909060
--- >>> unseedGen (FiveByteGen 0x80 0x01020304)
+-- >>> unSeedGen (FiveByteGen 0x80 0x01020304)
 -- Seed [0x04, 0x03, 0x02, 0x01, 0x80]
--- >>> unseedGen64 (FiveByteGen 0x80 0x01020304)
+-- >>> unSeedGen64 (FiveByteGen 0x80 0x01020304)
 -- 549772722948 :| []
 --
 -- However, when performance is of utmost importance or default handling of cross platform
 -- independence is not sufficient, then an adventurous developer can try implementing
--- conversion into bytes directly with `unseedGen` and `seedGen`.
+-- conversion into bytes directly with `unSeedGen` and `seedGen`.
 --
 -- Properties that must hold:
 --
 -- @
--- > seedGen (unseedGen gen) == gen
+-- > seedGen (unSeedGen gen) == gen
 -- @
 --
 -- @
--- > seedGen64 (unseedGen64 gen) == gen
+-- > seedGen64 (unSeedGen64 gen) == gen
 -- @
 --
 -- Note, that there is no requirement for every `Seed` to roundtrip, eg. this proprty does
 -- not even hold for `StdGen`:
 --
 -- >>> let seed = nonEmptyToSeed (0xab :| [0xff00]) :: Seed StdGen
--- >>> seed == unseedGen (seedGen seed)
+-- >>> seed == unSeedGen (seedGen seed)
 -- False
 --
 -- @since 1.3.0
@@ -121,11 +120,11 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
   -- number generator. It should be big enough to satisfy the roundtrip property:
   --
   -- @
-  -- > seedGen (unseedGen gen) == gen
+  -- > seedGen (unSeedGen gen) == gen
   -- @
   --
   type SeedSize g :: Nat
-  {-# MINIMAL (seedGen, unseedGen)|(seedGen64, unseedGen64) #-}
+  {-# MINIMAL (seedGen, unSeedGen)|(seedGen64, unSeedGen64) #-}
 
   -- | Convert from a binary representation to a pseudo-random number generator
   --
@@ -136,8 +135,8 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
   -- | Convert to a binary representation of a pseudo-random number generator
   --
   -- @since 1.3.0
-  unseedGen :: g -> Seed g
-  unseedGen = nonEmptyToSeed . unseedGen64
+  unSeedGen :: g -> Seed g
+  unSeedGen = nonEmptyToSeed . unSeedGen64
 
   -- | Construct pseudo-random number generator from a list of words. Whenever list does
   -- not have enough bytes to satisfy the `SeedSize` requirement, it will be padded with
@@ -156,24 +155,24 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
   -- in the list will be set to zero.
   --
   -- @since 1.3.0
-  unseedGen64 :: g -> NonEmpty Word64
-  unseedGen64 = nonEmptyFromSeed . unseedGen
+  unSeedGen64 :: g -> NonEmpty Word64
+  unSeedGen64 = nonEmptyFromSeed . unSeedGen
 
 instance SeedGen StdGen where
   type SeedSize StdGen = SeedSize SM.SMGen
   seedGen = coerce (seedGen :: Seed SM.SMGen -> SM.SMGen)
-  unseedGen = coerce (unseedGen :: SM.SMGen -> Seed SM.SMGen)
+  unSeedGen = coerce (unSeedGen :: SM.SMGen -> Seed SM.SMGen)
 
 instance SeedGen g => SeedGen (StateGen g) where
   type SeedSize (StateGen g) = SeedSize g
   seedGen = coerce (seedGen :: Seed g -> g)
-  unseedGen = coerce (unseedGen :: g -> Seed g)
+  unSeedGen = coerce (unSeedGen :: g -> Seed g)
 
 instance SeedGen SM.SMGen where
   type SeedSize SM.SMGen = 16
   seedGen (Seed ba) =
     SM.seedSMGen (indexWord64LE ba 0) (indexWord64LE ba 8)
-  unseedGen g =
+  unSeedGen g =
     case SM.unseedSMGen g of
       (seed, gamma) -> Seed $ runST $ do
         mba <- newMutableByteArray 16
@@ -189,7 +188,7 @@ instance SeedGen SM32.SMGen where
         seed = fromIntegral (shiftR x 32)
         gamma = fromIntegral x
     in SM32.seedSMGen seed gamma
-  unseedGen g =
+  unSeedGen g =
     let seed, gamma :: Word32
         (seed, gamma) = SM32.unseedSMGen g
     in Seed $ runST $ do
@@ -246,7 +245,7 @@ withSeed seed f = runIdentity (withSeedM seed (pure . f))
 --
 -- @since 1.3.0
 withSeedM :: (SeedGen g, Functor f) => Seed g -> (g -> f (a, g)) -> f (a, Seed g)
-withSeedM seed f = fmap unseedGen <$> f (seedGen seed)
+withSeedM seed f = fmap unSeedGen <$> f (seedGen seed)
 
 -- | This is a function that shows the name of the generator type, which is useful for
 -- error reporting.
