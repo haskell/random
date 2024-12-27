@@ -1,5 +1,6 @@
 # 1.3.0
 
+* Improve floating point value generation and avoid degenerate cases: [#172](https://github.com/haskell/random/pull/172)
 * Add `Uniform` instance for `Maybe` and `Either`: [#167](https://github.com/haskell/random/pull/167)
 * Add `Seed`, `SeedGen`, `seedSize`, `mkSeed` and `unSeed`:
   [#162](https://github.com/haskell/random/pull/162)
