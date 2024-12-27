@@ -49,7 +49,7 @@ instance (KnownNat n, Monad m) => Serial m (Gen64 n) where
 
 instance (1 <= n, KnownNat n) => SeedGen (GenN n) where
   type SeedSize (GenN n) = n
-  unseedGen (GenN bs) = fromJust . mkSeed . GHC.fromList $ BS.unpack bs
+  unSeedGen (GenN bs) = fromJust . mkSeed . GHC.fromList $ BS.unpack bs
   seedGen = GenN . BS.pack . GHC.toList . unSeed
 
 newtype Gen64 (n :: Nat) = Gen64 (NonEmpty Word64)
@@ -57,7 +57,7 @@ newtype Gen64 (n :: Nat) = Gen64 (NonEmpty Word64)
 
 instance (1 <= n, KnownNat n) => SeedGen (Gen64 n) where
   type SeedSize (Gen64 n) = n
-  unseedGen64 (Gen64 ws) = ws
+  unSeedGen64 (Gen64 ws) = ws
   seedGen64 = Gen64
 
 seedGenSpec ::
@@ -65,10 +65,10 @@ seedGenSpec ::
   => TestTree
 seedGenSpec =
     testGroup (seedGenTypeName @g)
-    [ testProperty "seedGen/unseedGen" $
-        forAll $ \(g :: g) -> g == seedGen (unseedGen g)
-    , testProperty "seedGen64/unseedGen64" $
-        forAll $ \(g :: g) -> g == seedGen64 (unseedGen64 g)
+    [ testProperty "seedGen/unSeedGen" $
+        forAll $ \(g :: g) -> g == seedGen (unSeedGen g)
+    , testProperty "seedGen64/unSeedGen64" $
+        forAll $ \(g :: g) -> g == seedGen64 (unSeedGen64 g)
     ]
 
 
