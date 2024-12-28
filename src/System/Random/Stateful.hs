@@ -41,8 +41,8 @@ module System.Random.Stateful
   , ThawedGen(..)
   , withMutableGen
   , withMutableGen_
-  , withMutableSeedGen
-  , withMutableSeedGen_
+  , withSeedMutableGen
+  , withSeedMutableGen_
   , randomM
   , randomRM
   , splitGenM
@@ -320,17 +320,49 @@ withMutableGen_ fg action = thawGen fg >>= action
 
 -- | Just like `withMutableGen`, except uses a `Seed` instead of a frozen generator.
 --
+-- ====__Examples__
+--
+-- Here is good example of how `withSeedMutableGen` can be used with `withSeedFile`, which uses a locally stored seed.
+--
+-- First we define a @reportSeed@ function that will print the contents of a seed file as a list of bytes:
+--
+-- >>> import Data.ByteString as BS (readFile, writeFile, unpack)
+-- >>> :seti -XOverloadedStrings
+-- >>> let reportSeed fp = print . ("Seed: " <>) . show . BS.unpack =<< BS.readFile fp
+--
+-- Given a file path, write an `StdGen` seed into the file:
+--
+-- >>> :seti -XFlexibleContexts -XScopedTypeVariables
+-- >>> let writeInitSeed fp = BS.writeFile fp (unSeedToByteString (toSeed (mkStdGen 2025)))
+--
+-- Apply a `StatefulGen` monadic action that uses @`IOGen` `StdGen`@, restored from the seed in the given path:
+--
+-- >>> let withMutableSeedFile fp action = withSeedFile fp (\(seed :: Seed (IOGen StdGen)) -> withSeedMutableGen seed action)
+--
+-- Given a path and an action initialize the seed file and apply the action using that seed:
+--
+-- >>> let withInitSeedFile fp action = writeInitSeed fp *> reportSeed fp *> withMutableSeedFile fp action <* reportSeed fp
+--
+-- For the sake of example we will use a temporary directory for storing the seed. Here we
+-- report the contents of the seed file before and after we shuffle a list:
+--
+-- >>> import UnliftIO.Temporary (withSystemTempDirectory)
+-- >>> withSystemTempDirectory "random" (\fp -> withInitSeedFile (fp ++ "/seed.bin") (uniformShuffleListM [1..10]))
+-- "Seed: [183,178,143,77,132,163,109,14,157,105,82,99,148,82,109,173]"
+-- "Seed: [60,105,117,203,187,138,69,39,157,105,82,99,148,82,109,173]"
+-- [7,5,4,3,1,8,10,6,9,2]
+--
 -- @since 1.3.0
-withMutableSeedGen :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
-withMutableSeedGen seed f = withSeedM seed (`withMutableGen` f)
+withSeedMutableGen :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
+withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 
--- | Just like `withMutableSeedGen`, except it doesn't return the final generator, only
+-- | Just like `withSeedMutableGen`, except it doesn't return the final generator, only
 -- the resulting value. This is slightly more efficient, since it doesn't incur overhead
 -- from freezeing the mutable generator
 --
 -- @since 1.3.0
-withMutableSeedGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
-withMutableSeedGen_ seed = withMutableGen_ (seedGen seed)
+withSeedMutableGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
+withSeedMutableGen_ seed = withMutableGen_ (fromSeed seed)
 
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
@@ -395,8 +427,8 @@ newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (AtomicGen g) where
   type SeedSize (AtomicGen g) = SeedSize g
-  seedGen = coerce (seedGen :: Seed g -> g)
-  unSeedGen = coerce (unSeedGen :: g -> Seed g)
+  fromSeed = coerce (fromSeed :: Seed g -> g)
+  toSeed = coerce (toSeed :: g -> Seed g)
 
 -- | Creates a new 'AtomicGenM'.
 --
@@ -508,8 +540,8 @@ newtype IOGen g = IOGen { unIOGen :: g }
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (IOGen g) where
   type SeedSize (IOGen g) = SeedSize g
-  seedGen = coerce (seedGen :: Seed g -> g)
-  unSeedGen = coerce (unSeedGen :: g -> Seed g)
+  fromSeed = coerce (fromSeed :: Seed g -> g)
+  toSeed = coerce (toSeed :: g -> Seed g)
 
 -- | Creates a new 'IOGenM'.
 --
@@ -584,8 +616,8 @@ newtype STGen g = STGen { unSTGen :: g }
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (STGen g) where
   type SeedSize (STGen g) = SeedSize g
-  seedGen = coerce (seedGen :: Seed g -> g)
-  unSeedGen = coerce (unSeedGen :: g -> Seed g)
+  fromSeed = coerce (fromSeed :: Seed g -> g)
+  toSeed = coerce (toSeed :: g -> Seed g)
 
 -- | Creates a new 'STGenM'.
 --
@@ -685,8 +717,8 @@ newtype TGen g = TGen { unTGen :: g }
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (TGen g) where
   type SeedSize (TGen g) = SeedSize g
-  seedGen = coerce (seedGen :: Seed g -> g)
-  unSeedGen = coerce (unSeedGen :: g -> Seed g)
+  fromSeed = coerce (fromSeed :: Seed g -> g)
+  toSeed = coerce (toSeed :: g -> Seed g)
 
 -- | Creates a new 'TGenM' in `STM`.
 --

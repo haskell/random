@@ -304,8 +304,8 @@ newtype ConstGen = ConstGen Word64
 
 instance SeedGen ConstGen where
   type SeedSize ConstGen = 8
-  seedGen64 (w :| _) = ConstGen w
-  unSeedGen64 (ConstGen w) = pure w
+  fromSeed64 (w :| _) = ConstGen w
+  toSeed64 (ConstGen w) = pure w
 
 instance RandomGen ConstGen where
   genWord64 g@(ConstGen c) = (c, g)
