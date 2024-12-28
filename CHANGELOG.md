@@ -2,8 +2,10 @@
 
 * Improve floating point value generation and avoid degenerate cases: [#172](https://github.com/haskell/random/pull/172)
 * Add `Uniform` instance for `Maybe` and `Either`: [#167](https://github.com/haskell/random/pull/167)
-* Add `Seed`, `SeedGen`, `seedSize`, `mkSeed` and `unSeed`:
+* Add `Seed`, `SeedGen`, `seedSize`, `seedSizeProxy`, `mkSeed` and `unSeed`:
   [#162](https://github.com/haskell/random/pull/162)
+* Add `mkSeedFromByteString`, `unSeedToByteString`, `withSeed`, `withSeedM`, `withSeedFile`,
+  `seedGenTypeName`, `nonEmptyToSeed`, `nonEmptyFromSeed`, `withSeedM`, `withSeedMutableGen` and `withSeedMutableGen_`
 * Add `SplitGen` and `splitGen`: [#160](https://github.com/haskell/random/pull/160)
 * Add `unifromShuffleList` and `unifromShuffleListM`: [#140](https://github.com/haskell/random/pull/140)
 * Add `uniformWordR`: [#140](https://github.com/haskell/random/pull/140)
