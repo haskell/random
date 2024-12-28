@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeApplications #-}
@@ -50,7 +51,8 @@ import Data.Functor.Identity (runIdentity)
 import Data.List.NonEmpty as NE (NonEmpty(..), nonEmpty, toList)
 import Data.Typeable
 import Data.Word
-import GHC.TypeLits (Nat, KnownNat, natVal, type (<=))
+import GHC.Exts (Proxy#, proxy#)
+import GHC.TypeLits (Nat, KnownNat, natVal', type (<=))
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
@@ -206,7 +208,7 @@ instance SeedGen g => Uniform (Seed g) where
 --
 -- @since 1.3.0
 seedSize :: forall g. SeedGen g => Int
-seedSize = fromIntegral $ natVal (Proxy :: Proxy (SeedSize g))
+seedSize = fromInteger $ natVal' (proxy# :: Proxy# (SeedSize g))
 
 -- | Just like `seedSize`, except it accepts a proxy as an argument.
 --
