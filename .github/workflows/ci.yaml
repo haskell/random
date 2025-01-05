@@ -23,8 +23,8 @@ jobs:
         include:
           # Linux
            # haskell-actions/setup is having trouble installing from hvr/ppa for ghc-8.0 and 8.2
-          # - { os: ubuntu-latest,  ghc: "8.0.2"  }
-          # - { os: ubuntu-latest,  ghc: "8.2.2"  }
+          # - { os: ubuntu-latest,  ghc: "8.0.2" }
+          # - { os: ubuntu-latest,  ghc: "8.2.2" }
           - { os: ubuntu-latest,  ghc: "8.4.4"  }
           - { os: ubuntu-latest,  ghc: "8.6.5"  }
           - { os: ubuntu-latest,  ghc: "8.8.4"  }
@@ -33,11 +33,12 @@ jobs:
           - { os: ubuntu-latest,  ghc: "9.2.8"  }
           - { os: ubuntu-latest,  ghc: "9.4.8"  }
           - { os: ubuntu-latest,  ghc: "9.6.6"  }
-          - { os: ubuntu-latest,  ghc: "9.8.2"  }
-          - { os: ubuntu-latest,  ghc: "9.10.1"  }
+          - { os: ubuntu-latest,  ghc: "9.8.4"  }
+          - { os: ubuntu-latest,  ghc: "9.10.1" }
+          - { os: ubuntu-latest,  ghc: "9.12.1" }
           # MacOS
-          # - { os: macOS-latest,  ghc: "8.0.2"  }
-          # - { os: macOS-latest,  ghc: "8.2.2"  }
+          # - { os: macOS-latest,  ghc: "8.0.2" }
+          # - { os: macOS-latest,  ghc: "8.2.2" }
           - { os: macOS-latest,  ghc: "8.4.4"  }
           - { os: macOS-latest,  ghc: "8.6.5"  }
           - { os: macOS-latest,  ghc: "8.8.4"  }
@@ -46,8 +47,9 @@ jobs:
           - { os: macOS-latest,  ghc: "9.2.8"  }
           - { os: macOS-latest,  ghc: "9.4.8"  }
           - { os: macOS-latest,  ghc: "9.6.6"  }
-          - { os: macOS-latest,  ghc: "9.8.2"  }
-          - { os: macOS-latest,  ghc: "9.10.1"  }
+          - { os: macOS-latest,  ghc: "9.8.4"  }
+          - { os: macOS-latest,  ghc: "9.10.1" }
+          - { os: macOS-latest,  ghc: "9.12.1" }
           # Windows
           # - { os: windows-latest,  ghc: "8.0.2"  }
           # - { os: windows-latest,  ghc: "8.2.2"  }
@@ -59,8 +61,9 @@ jobs:
           - { os: windows-latest,  ghc: "9.2.8"  }
           - { os: windows-latest,  ghc: "9.4.8"  }
           - { os: windows-latest,  ghc: "9.6.6"  }
-          - { os: windows-latest,  ghc: "9.8.2"  }
-          - { os: windows-latest,  ghc: "9.10.1"  }
+          - { os: windows-latest,  ghc: "9.8.4"  }
+          - { os: windows-latest,  ghc: "9.10.1" }
+          - { os: windows-latest,  ghc: "9.12.1" }
     steps:
     - uses: actions/checkout@v4
 
