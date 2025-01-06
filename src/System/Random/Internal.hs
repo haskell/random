@@ -811,9 +811,10 @@ instance SplitGen SM32.SMGen where
   splitGen = SM32.splitSMGen
   {-# INLINE splitGen #-}
 
--- | Constructs a 'StdGen' deterministically.
+-- | Constructs a 'StdGen' deterministically from an `Int` seed. See `mkStdGen64` for a `Word64`
+-- variant that is architecture agnostic.
 mkStdGen :: Int -> StdGen
-mkStdGen = StdGen . SM.mkSMGen . fromIntegral
+mkStdGen = mkStdGen64 . fromIntegral
 
 -- | Constructs a 'StdGen' deterministically from a `Word64` seed.
 --
