@@ -141,12 +141,13 @@ import Control.Monad.IO.Class
 import Control.Monad.ST
 import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
 import Control.Monad.State.Strict (MonadState, state)
+import Data.ByteString (ByteString)
 import Data.Coerce
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
 import System.Random hiding (uniformShortByteString)
-import System.Random.Array (shuffleListM)
+import System.Random.Array (shuffleListM, shortByteStringToByteString)
 import System.Random.Internal
 #if __GLASGOW_HASKELL__ >= 808
 import GHC.IORef (atomicModifyIORef2Lazy)
@@ -406,6 +407,15 @@ randomM = flip modifyGen random
 randomRM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => (a, a) -> MutableGen g m -> m a
 randomRM r = flip modifyGen (randomR r)
 {-# INLINE randomRM #-}
+
+-- | Generates a pseudo-random 'ByteString' of the specified size.
+--
+-- @since 1.2.0
+uniformByteStringM :: StatefulGen g m => Int -> g -> m ByteString
+uniformByteStringM n g =
+  shortByteStringToByteString . byteArrayToShortByteString
+    <$> uniformByteArrayM True n g
+{-# INLINE uniformByteStringM #-}
 
 -- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
 -- operations are performed atomically.
