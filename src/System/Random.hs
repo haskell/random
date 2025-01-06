@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE Trustworthy #-}
 
 -- |
@@ -49,7 +50,9 @@ module System.Random
   -- ** Bytes
   , uniformByteArray
   , uniformByteString
+  , uniformShortByteString
   , uniformFillMutableByteArray
+  -- *** Deprecated
   , genByteString
   , genShortByteString
 
@@ -88,7 +91,9 @@ module System.Random
 import Control.Arrow
 import Control.Monad.IO.Class
 import Control.Monad.State.Strict
+import Data.Array.Byte (ByteArray(..))
 import Data.ByteString (ByteString)
+import Data.ByteString.Short.Internal (ShortByteString(..))
 import Data.Int
 import Data.IORef
 import Data.Word
@@ -96,7 +101,7 @@ import Foreign.C.Types
 import GHC.Exts
 import System.Random.Array (shortByteStringToByteString, shuffleListST)
 import System.Random.GFinite (Finite)
-import System.Random.Internal
+import System.Random.Internal hiding (uniformShortByteString)
 import System.Random.Seed
 import qualified System.Random.SplitMix as SM
 
@@ -332,7 +337,7 @@ genByteString = uniformByteString
 -- ====__Examples__
 --
 -- >>> import System.Random
--- >>> import Data.ByteString
+-- >>> import Data.ByteString (unpack)
 -- >>> let pureGen = mkStdGen 137
 -- >>> unpack . fst $ uniformByteString 10 pureGen
 -- [51,123,251,37,49,167,90,109,1,4]
@@ -344,6 +349,25 @@ uniformByteString n g =
     (byteArray, g') ->
       (shortByteStringToByteString $ byteArrayToShortByteString byteArray, g')
 {-# INLINE uniformByteString #-}
+
+-- | Same as @`uniformByteArray` `False`@, but for `ShortByteString`.
+--
+-- Returns a 'ShortByteString' of length @n@ filled with pseudo-random bytes.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random
+-- >>> import Data.ByteString.Short (unpack)
+-- >>> let pureGen = mkStdGen 137
+-- >>> unpack . fst $ uniformShortByteString 10 pureGen
+-- [51,123,251,37,49,167,90,109,1,4]
+--
+-- @since 1.3.0
+uniformShortByteString :: RandomGen g => Int -> g -> (ShortByteString, g)
+uniformShortByteString n g =
+  case uniformByteArray False n g of
+    (ByteArray ba#, g') -> (SBS ba#, g')
+{-# INLINE uniformShortByteString #-}
 
 -- | The class of types for which random values can be generated. Most
 -- instances of `Random` will produce values that are uniformly distributed on the full

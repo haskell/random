@@ -23,9 +23,11 @@
   * Deprecate `genByteString` in favor of `uniformByteString`
   * Add `uniformByteArrayM` to `StatefulGen`
   * Add `uniformByteStringM` and `uniformShortByteStringM`
-  * Deprecate `uniformShortByteString` in favor of `uniformShortByteStringM` for
+  * Deprecate `System.Random.Stateful.uniformShortByteString` in favor of `uniformShortByteStringM` for
     consistent naming and a future plan of removing it from `StatefulGen`
     type class
+  * Add a pure `System.Random.uniformShortByteString` generating function.
+  * Deprecate `genShortByteString` in favor of `System.Random.uniformShortByteString`
   * Expose a helper function `fillByteArrayST`, that can be used for
     defining implementation for `uniformByteArrayM`
   * Deprecate `genShortByteStringST` and `genShortByteStringIO` in favor of `fillByteArrayST`

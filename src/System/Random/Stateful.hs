@@ -145,7 +145,7 @@ import Data.Coerce
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
-import System.Random
+import System.Random hiding (uniformShortByteString)
 import System.Random.Array (shuffleListM)
 import System.Random.Internal
 #if __GLASGOW_HASKELL__ >= 808

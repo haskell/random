@@ -24,7 +24,8 @@ import Foreign.C.Types
 import GHC.Generics
 import GHC.Exts (fromList)
 import Numeric.Natural (Natural)
-import System.Random.Stateful
+import System.Random (uniformShortByteString)
+import System.Random.Stateful hiding (uniformShortByteString)
 import System.Random.Internal (newMutableByteArray, freezeMutableByteArray, writeWord8)
 import Test.SmallCheck.Series as SC
 import Test.Tasty
@@ -129,11 +130,11 @@ byteStringSpec :: TestTree
 byteStringSpec =
   testGroup
     "ByteString"
-    [ SC.testProperty "genShortByteString" $
-      seededWithLen $ \n g -> SBS.length (fst (genShortByteString n g)) == n
+    [ SC.testProperty "uniformShortByteString" $
+      seededWithLen $ \n g -> SBS.length (fst (uniformShortByteString n g)) == n
     , SC.testProperty "uniformByteString" $
       seededWithLen $ \n g ->
-        SBS.toShort (fst (uniformByteString n g)) == fst (genShortByteString n g)
+        SBS.toShort (fst (uniformByteString n g)) == fst (uniformShortByteString n g)
     , testCase "uniformByteString/ShortByteString consistency" $ do
         let g = mkStdGen 2021
             bs = [78,232,117,189,13,237,63,84,228,82,19,36,191,5,128,192] :: [Word8]

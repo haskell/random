@@ -268,6 +268,7 @@ class RandomGen g where
   default split :: SplitGen g => g -> (g, g)
   split = splitGen
 
+{-# DEPRECATED genShortByteString "In favor of `System.Random.uniformShortByteString`" #-}
 {-# DEPRECATED split "In favor of `splitGen`" #-}
 
 -- | Pseudo-random generators that can be split into two separate and independent
