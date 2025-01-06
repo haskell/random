@@ -108,7 +108,7 @@ module System.Random.Stateful
 
   -- * Helper functions for createing instances
   -- ** Sequences of bytes
-  , genByteArrayST
+  , fillByteArrayST
   , genShortByteStringIO
   , genShortByteStringST
   , defaultUnsafeUniformFillMutableByteArray
@@ -933,7 +933,7 @@ applyTGen f (TGenM tvar) = do
 -- >   uniformWord16 = MWC.uniform
 -- >   uniformWord32 = MWC.uniform
 -- >   uniformWord64 = MWC.uniform
--- >   uniformByteArrayM isPinned n g = stToPrim (genByteArrayST isPinned n (MWC.uniform g))
+-- >   uniformByteArrayM isPinned n g = stToPrim (fillByteArrayST isPinned n (MWC.uniform g))
 --
 -- > instance PrimMonad m => FrozenGen MWC.Seed m where
 -- >   type MutableGen MWC.Seed m = MWC.Gen (PrimState m)

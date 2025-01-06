@@ -26,7 +26,7 @@
   * Deprecate `uniformShortByteString` in favor of `uniformShortByteStringM` for
     consistent naming and a future plan of removing it from `StatefulGen`
     type class
-  * Expose a helper function `genByteArrayST`, that can be used for
+  * Expose a helper function `fillByteArrayST`, that can be used for
     defining implementation for `uniformByteArrayM`
 * Improve `FrozenGen` interface: [#149](https://github.com/haskell/random/pull/149)
   * Move `thawGen` from `FreezeGen` into the new `ThawGen` type class. Fixes an issue with
