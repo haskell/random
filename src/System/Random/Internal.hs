@@ -127,8 +127,8 @@ import Data.Kind
 --
 -- Constructor is not exported, becasue it is important for implementation to enforce the
 -- invariant of the underlying byte array being of the exact same length as the generator has
--- specified in `System.Random.Seed.SeedSize`. Use `System.Random.Seed.mkSize` and
--- `System.Random.Seed.unSize` to get access to the raw bytes in a safe manner.
+-- specified in `System.Random.Seed.SeedSize`. Use `System.Random.Seed.mkSeed` and
+-- `System.Random.Seed.unSeed` to get access to the raw bytes in a safe manner.
 --
 -- @since 1.3.0
 newtype Seed g = Seed ByteArray
