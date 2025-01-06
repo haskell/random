@@ -11,7 +11,8 @@ import Control.Monad
 import Control.Monad.ST
 import Data.Proxy
 import Data.Typeable
-import System.Random.Stateful
+import System.Random (uniformShortByteString)
+import System.Random.Stateful hiding (uniformShortByteString)
 import Test.SmallCheck.Series
 import Test.Tasty
 import Test.Tasty.SmallCheck as SC
@@ -155,12 +156,12 @@ frozenGenSpecFor fromStdGen toStdGen runStatefulGen =
       , testProperty "uniformWord64R/genWord64R" $
         forAll $ \w64 ->
           matchRandomGenSpec (uniformWord64R w64) (genWord64R w64) fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformShortByteStringM/genShortByteString" $
+      , testProperty "uniformShortByteStringM/uniformShortByteString" $
         forAll $ \(NonNegative n') ->
           let n = n' `mod` 100000 -- Ensure it is not too big
           in matchRandomGenSpec
                (uniformShortByteStringM n)
-               (genShortByteString n)
+               (uniformShortByteString n)
                fromStdGen
                toStdGen
                runStatefulGen
