@@ -94,7 +94,7 @@ import Data.IORef
 import Data.Word
 import Foreign.C.Types
 import GHC.Exts
-import System.Random.Array (shuffleListST)
+import System.Random.Array (shortByteStringToByteString, shuffleListST)
 import System.Random.GFinite (Finite)
 import System.Random.Internal
 import System.Random.Seed
@@ -316,16 +316,34 @@ uniformShuffleList xs g =
 -- >>> import System.Random
 -- >>> import Data.ByteString
 -- >>> let pureGen = mkStdGen 137
+-- >>> :seti -Wno-deprecations
 -- >>> unpack . fst . genByteString 10 $ pureGen
 -- [51,123,251,37,49,167,90,109,1,4]
 --
--- /Note/ - This function is equivalet to `uniformByteString` and will be deprecated in
--- the next major release.
---
 -- @since 1.2.0
 genByteString :: RandomGen g => Int -> g -> (ByteString, g)
-genByteString n g = runStateGenST g (uniformByteStringM n)
+genByteString = uniformByteString
 {-# INLINE genByteString #-}
+{-# DEPRECATED genByteString "In favor of `uniformByteString`" #-}
+
+-- | Generates a 'ByteString' of the specified size using a pure pseudo-random
+-- number generator. See 'uniformByteStringM' for the monadic version.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random
+-- >>> import Data.ByteString
+-- >>> let pureGen = mkStdGen 137
+-- >>> unpack . fst $ uniformByteString 10 pureGen
+-- [51,123,251,37,49,167,90,109,1,4]
+--
+-- @since 1.3.0
+uniformByteString :: RandomGen g => Int -> g -> (ByteString, g)
+uniformByteString n g =
+  case uniformByteArray True n g of
+    (byteArray, g') ->
+      (shortByteStringToByteString $ byteArrayToShortByteString byteArray, g')
+{-# INLINE uniformByteString #-}
 
 -- | The class of types for which random values can be generated. Most
 -- instances of `Random` will produce values that are uniformly distributed on the full

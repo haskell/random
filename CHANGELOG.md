@@ -20,6 +20,7 @@
     `defaultUnsafeUniformFillMutableByteArray` that makes implementation
     for most instances easier.
   * Add `uniformByteArray`, `uniformByteString` and `uniformFillMutableByteArray`
+  * Deprecate `genByteString` in favor of `uniformByteString`
   * Add `uniformByteArrayM` to `StatefulGen`
   * Add `uniformByteStringM` and `uniformShortByteStringM`
   * Deprecate `uniformShortByteString` in favor of `uniformShortByteStringM` for

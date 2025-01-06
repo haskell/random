@@ -131,10 +131,10 @@ byteStringSpec =
     "ByteString"
     [ SC.testProperty "genShortByteString" $
       seededWithLen $ \n g -> SBS.length (fst (genShortByteString n g)) == n
-    , SC.testProperty "genByteString" $
+    , SC.testProperty "uniformByteString" $
       seededWithLen $ \n g ->
-        SBS.toShort (fst (genByteString n g)) == fst (genShortByteString n g)
-    , testCase "genByteString/ShortByteString consistency" $ do
+        SBS.toShort (fst (uniformByteString n g)) == fst (genShortByteString n g)
+    , testCase "uniformByteString/ShortByteString consistency" $ do
         let g = mkStdGen 2021
             bs = [78,232,117,189,13,237,63,84,228,82,19,36,191,5,128,192] :: [Word8]
         forM_ [0 .. length bs - 1] $ \ n -> do

@@ -75,7 +75,6 @@ module System.Random.Internal
   , uniformShortByteStringM
   , uniformByteArray
   , uniformFillMutableByteArray
-  , uniformByteString
   , genByteArrayST
   , genShortByteStringIO
   , genShortByteStringST
@@ -591,16 +590,6 @@ defaultUnsafeUniformFillMutableByteArray mba i0 n g =
     $ defaultUnsafeFillMutableByteArrayT mba i0 n (state genWord64)
 {-# INLINE defaultUnsafeUniformFillMutableByteArray #-}
 
-
--- | Generates a pseudo-random 'ByteString' of the specified size.
---
--- @since 1.3.0
-uniformByteString :: RandomGen g => Int -> g -> (ByteString, g)
-uniformByteString n g =
-  case uniformByteArray True n g of
-    (byteArray, g') ->
-      (shortByteStringToByteString $ byteArrayToShortByteString byteArray, g')
-{-# INLINE uniformByteString #-}
 
 -- | Same as 'genShortByteStringIO', but runs in 'ST'.
 --

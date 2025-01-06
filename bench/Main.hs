@@ -294,7 +294,7 @@ main = do
         , env getStdGen $ \gen ->
             bench "uniformByteArray 100MB" $ nf (\n -> uniformByteArray False n gen) sz100MiB
         , env getStdGen $ \gen ->
-            bench "genByteString 100MB" $ nf (`genByteString` gen) sz100MiB
+            bench "uniformByteString 100MB" $ nf (`uniformByteString` gen) sz100MiB
         ]
       ]
       , env (pure [0 :: Integer .. 200000]) $ \xs ->
