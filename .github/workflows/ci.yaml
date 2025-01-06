@@ -96,7 +96,7 @@ jobs:
     - name: Doctest
       run: |
         cabal install doctest --ignore-project --overwrite-policy=always
-        cabal repl --build-depends=unliftio --with-compiler=doctest --repl-options='-w -Wdefault'
+        ./scripts/doctest.sh
 
   build-stack:
     name: CI-stack
