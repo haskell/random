@@ -597,6 +597,7 @@ defaultUnsafeUniformFillMutableByteArray mba i0 n g =
 genShortByteStringST :: Int -> ST s Word64 -> ST s ShortByteString
 genShortByteStringST n0 action = byteArrayToShortByteString <$> fillByteArrayST False n0 action
 {-# INLINE genShortByteStringST #-}
+{-# DEPRECATED genShortByteStringST "In favor of `fillByteArrayST`, since `uniformShortByteString`, which it was used for, was also deprecated" #-}
 
 -- | Efficiently fills in a new `ShortByteString` in a platform independent manner.
 --
@@ -607,6 +608,7 @@ genShortByteStringIO ::
   -> IO ShortByteString
 genShortByteStringIO n ioAction = stToIO $ genShortByteStringST n (ioToST ioAction)
 {-# INLINE genShortByteStringIO #-}
+{-# DEPRECATED genShortByteStringIO "In favor of `fillByteArrayST`" #-}
 
 -- | @uniformShortByteString n g@ generates a 'ShortByteString' of length @n@
 -- filled with pseudo-random bytes.

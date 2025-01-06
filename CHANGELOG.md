@@ -28,6 +28,7 @@
     type class
   * Expose a helper function `fillByteArrayST`, that can be used for
     defining implementation for `uniformByteArrayM`
+  * Deprecate `genShortByteStringST` and `genShortByteStringIO` in favor of `fillByteArrayST`
 * Improve `FrozenGen` interface: [#149](https://github.com/haskell/random/pull/149)
   * Move `thawGen` from `FreezeGen` into the new `ThawGen` type class. Fixes an issue with
     an unlawful instance of `StateGen` for `FreezeGen`.
