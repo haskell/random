@@ -950,7 +950,12 @@ class UniformRange a where
   --
   -- There is a default implementation of 'isInRange' via 'Generic'. Other helper function
   -- that can be used for implementing this function are `isInRangeOrd` and
-  -- `isInRangeEnum`
+  -- `isInRangeEnum`.
+  --
+  -- Note that the @isRange@ method from @Data.Ix@ is /not/ a suitable default
+  -- implementation of 'isInRange'. Unlike 'isInRange', @isRange@ is not
+  -- required to be symmetric, and many @isRange@ implementations are not
+  -- symmetric in practice.
   --
   -- @since 1.3.0
   isInRange :: (a, a) -> a -> Bool
