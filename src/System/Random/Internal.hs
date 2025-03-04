@@ -484,7 +484,7 @@ splitMutableGenM = splitGenM >=> thawGen
 -- @since 1.3.0
 uniformByteArray ::
      RandomGen g
-  => Bool -- ^ Should byte array be allocted in pinned or unpinned memory.
+  => Bool -- ^ Should byte array be allocated in pinned or unpinned memory.
   -> Int -- ^ Number of bytes to generate
   -> g -- ^ Pure pseudo-random numer generator
   -> (ByteArray, g)
