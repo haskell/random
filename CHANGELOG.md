@@ -1,3 +1,7 @@
+# 1.3.1
+
+* Add missing `SplitGen` instance for `StateGen`: [#183](https://github.com/haskell/random/pull/183)
+
 # 1.3.0
 
 * Improve floating point value generation and avoid degenerate cases: [#172](https://github.com/haskell/random/pull/172)
