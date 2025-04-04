@@ -610,7 +610,7 @@ data StateGenM g = StateGenM
 --
 -- @since 1.2.0
 newtype StateGen g = StateGen { unStateGen :: g }
-  deriving (Eq, Ord, Show, RandomGen, Storable, NFData)
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
   uniformWord32R r _ = state (genWord32R r)
