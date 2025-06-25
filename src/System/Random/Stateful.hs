@@ -18,8 +18,6 @@
 -- This library deals with the common task of pseudo-random number generation.
 module System.Random.Stateful
   (
-  -- * Pure Random Generator
-  module System.Random
   -- * Monadic Random Generator
   -- $introduction
 
@@ -28,7 +26,7 @@ module System.Random.Stateful
 
   -- * Mutable pseudo-random number generator interfaces
   -- $interfaces
-  , StatefulGen
+    StatefulGen
       ( uniformWord32R
       , uniformWord64R
       , uniformWord8
@@ -134,6 +132,9 @@ module System.Random.Stateful
 
   -- * References
   -- $references
+
+  -- * Pure Random Generator
+  , module System.Random
   ) where
 
 import Control.DeepSeq
