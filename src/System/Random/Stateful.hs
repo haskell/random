@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -795,6 +796,20 @@ applyTGen f (TGenM tvar) = do
   case f g of
     (a, !g') -> a <$ writeTVar tvar g'
 {-# INLINE applyTGen #-}
+
+
+
+class UniformLazy a where
+  uniformLazyM :: (SplitGen f, FrozenGen f m) => MutableGen f m -> m a
+  default uniformLazyM :: (Uniform a, SplitGen f, FrozenGen f m) => MutableGen f m -> m a
+  uniformLazyM g = fst . uniform <$> splitGenM g
+
+class UniformRangeLazy a where
+  uniformLazyRM :: (SplitGen f, FrozenGen f m) => (a, a) -> MutableGen f m -> m a
+  default uniformLazyRM :: (UniformRange a, SplitGen f, FrozenGen f m) => (a, a) -> MutableGen f m -> m a
+  uniformLazyRM r g = fst . uniformR r <$> splitGenM g
+
+instance UniformLazy Int
 
 -- $uniform
 --

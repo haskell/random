@@ -46,12 +46,20 @@ module System.Random.Internal
   -- ** Pure adapter
   , StateGen(..)
   , StateGenM(..)
+  , LazyStateGen(..)
+  , LazyStateGenM(..)
   , runStateGen
   , runStateGen_
   , runStateGenT
   , runStateGenT_
   , runStateGenST
   , runStateGenST_
+  , runLazyStateGen
+  , runLazyStateGen_
+  , runLazyStateGenT
+  , runLazyStateGenT_
+  , runLazyStateGenST
+  , runLazyStateGenST_
 
   -- * Pseudo-random values of various types
   , Uniform(..)
@@ -98,6 +106,7 @@ import Control.Monad (replicateM, when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.ST
 import Control.Monad.State.Strict (MonadState(..), State, StateT(..), execStateT, runState)
+import qualified Control.Monad.State.Lazy as Lazy (MonadState(..), State, StateT(..), execStateT, runState)
 import Control.Monad.Trans (lift, MonadTrans)
 import Control.Monad.Trans.Identity (IdentityT (runIdentityT))
 import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
@@ -633,6 +642,117 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   {-# INLINE modifyGen #-}
   overwriteGen _ f = put (coerce f)
   {-# INLINE overwriteGen #-}
+
+data LazyStateGenM g = LazyStateGenM
+
+-- | Wrapper for pure state gen, which acts as an immutable seed for the corresponding
+-- stateful generator `LazyStateGenM`
+--
+-- @since 1.2.0
+newtype LazyStateGen g = LazyStateGen { unLazyStateGen :: g }
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+instance (RandomGen g, MonadState g m) => StatefulGen (LazyStateGenM g) m where
+  uniformWord32R r _ = Lazy.state (genWord32R r)
+  {-# INLINE uniformWord32R #-}
+  uniformWord64R r _ = Lazy.state (genWord64R r)
+  {-# INLINE uniformWord64R #-}
+  uniformWord8 _ = Lazy.state genWord8
+  {-# INLINE uniformWord8 #-}
+  uniformWord16 _ = Lazy.state genWord16
+  {-# INLINE uniformWord16 #-}
+  uniformWord32 _ = Lazy.state genWord32
+  {-# INLINE uniformWord32 #-}
+  uniformWord64 _ = Lazy.state genWord64
+  {-# INLINE uniformWord64 #-}
+
+instance (RandomGen g, MonadState g m) => FrozenGen (LazyStateGen g) m where
+  type MutableGen (LazyStateGen g) m = LazyStateGenM g
+  freezeGen _ = fmap LazyStateGen Lazy.get
+  modifyGen _ f = Lazy.state (coerce f)
+  {-# INLINE modifyGen #-}
+  overwriteGen _ f = Lazy.put (coerce f)
+  {-# INLINE overwriteGen #-}
+
+-- | Runs a monadic generating action in the `State` monad using a pure
+-- pseudo-random number generator.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> runLazyStateGen pureGen randomM :: (Int, StdGen)
+-- (7879794327570578227,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
+--
+-- @since 1.2.0
+runLazyStateGen :: RandomGen g => g -> (LazyStateGenM g -> Lazy.State g a) -> (a, g)
+runLazyStateGen g f = Lazy.runState (f LazyStateGenM) g
+{-# INLINE runLazyStateGen #-}
+
+-- | Runs a monadic generating action in the `State` monad using a pure
+-- pseudo-random number generator. Returns only the resulting pseudo-random
+-- value.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> runLazyStateGen_ pureGen randomM :: Int
+-- 7879794327570578227
+--
+-- @since 1.2.0
+runLazyStateGen_ :: RandomGen g => g -> (LazyStateGenM g -> Lazy.State g a) -> a
+runLazyStateGen_ g = fst . runLazyStateGen g
+{-# INLINE runLazyStateGen_ #-}
+
+-- | Runs a monadic generating action in the `StateT` monad using a pure
+-- pseudo-random number generator.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> runLazyStateGenT pureGen randomM :: IO (Int, StdGen)
+-- (7879794327570578227,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
+--
+-- @since 1.2.0
+runLazyStateGenT :: RandomGen g => g -> (LazyStateGenM g -> Lazy.StateT g m a) -> m (a, g)
+runLazyStateGenT g f = Lazy.runStateT (f LazyStateGenM) g
+{-# INLINE runLazyStateGenT #-}
+
+-- | Runs a monadic generating action in the `StateT` monad using a pure
+-- pseudo-random number generator. Returns only the resulting pseudo-random
+-- value.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> runLazyStateGenT_ pureGen randomM :: IO Int
+-- 7879794327570578227
+--
+-- @since 1.2.1
+runLazyStateGenT_ :: (RandomGen g, Functor f) => g -> (LazyStateGenM g -> Lazy.StateT g f a) -> f a
+runLazyStateGenT_ g = fmap fst . runLazyStateGenT g
+{-# INLINE runLazyStateGenT_ #-}
+
+-- | Runs a monadic generating action in the `ST` monad using a pure
+-- pseudo-random number generator.
+--
+-- @since 1.2.0
+runLazyStateGenST :: RandomGen g => g -> (forall s . LazyStateGenM g -> Lazy.StateT g (ST s) a) -> (a, g)
+runLazyStateGenST g action = runST $ runLazyStateGenT g action
+{-# INLINE runLazyStateGenST #-}
+
+-- | Runs a monadic generating action in the `ST` monad using a pure
+-- pseudo-random number generator. Same as `runLazyStateGenST`, but discards the
+-- resulting generator.
+--
+-- @since 1.2.1
+runLazyStateGenST_ :: RandomGen g => g -> (forall s . LazyStateGenM g -> Lazy.StateT g (ST s) a) -> a
+runLazyStateGenST_ g action = runST $ runLazyStateGenT_ g action
+{-# INLINE runLazyStateGenST_ #-}
+
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.
