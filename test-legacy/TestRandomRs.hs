@@ -25,4 +25,4 @@ import System.Random (getStdGen, randomRs)
 main :: IO ()
 main = do
   n <- (last . take 5000 . randomRs (0, 1000000)) `liftM` getStdGen
-  print (n :: Integer)
+  print (n :: Int)
