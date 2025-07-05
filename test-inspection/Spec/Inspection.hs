@@ -45,17 +45,18 @@ inspectionTests = testGroup "Inspection" $
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniform_Int8)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniform_Char)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoTypeClasses] 'uniform_MyAction)
-
-#if !MIN_VERSION_base(4,17,0)
-  -- Starting from GHC 9.4 and base-4.17
-  -- 'error' :: M1 C ('MetaCons "Never" 'PrefixI 'False) ..
-  -- survives. This does not really matter, because Never is uninhabited,
-  -- but fails inspection testing.
-  , $(inspectTest $ hasNoGenerics 'uniform_MyAction)
-#endif
-
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniformR_Word8)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniformR_Int8)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniformR_Char)
   , $(inspectObligations [(`doesNotUse` 'StateGenM), hasNoGenerics, hasNoTypeClasses] 'uniformR_Double)
-  ]
+  ] ++ base_pre_4_17_spec
+  where
+#if !MIN_VERSION_base(4,17,0)
+    -- Starting from GHC 9.4 and base-4.17
+    -- 'error' :: M1 C ('MetaCons "Never" 'PrefixI 'False) ..
+    -- survives. This does not really matter, because Never is uninhabited,
+    -- but fails inspection testing.
+    base_pre_4_17_spec = [$(inspectTest $ hasNoGenerics 'uniform_MyAction)]
+#else
+    base_pre_4_17_spec = []
+#endif

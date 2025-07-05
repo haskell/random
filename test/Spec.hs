@@ -44,7 +44,7 @@ main :: IO ()
 main =
   defaultMain $
   testGroup
-    "Spec"
+    "Spec" $
     [ floatingSpec (Proxy :: Proxy Double)
     , floatingSpec (Proxy :: Proxy Float)
     , floatingSpec (Proxy :: Proxy CDouble)
@@ -61,9 +61,6 @@ main =
     , integralSpec (Proxy :: Proxy Int)
     , integralSpec (Proxy :: Proxy Char)
     , integralSpec (Proxy :: Proxy Bool)
-#if __GLASGOW_HASKELL__ >= 802
-    , integralSpec (Proxy :: Proxy CBool)
-#endif
     , integralSpec (Proxy :: Proxy CChar)
     , integralSpec (Proxy :: Proxy CSChar)
     , integralSpec (Proxy :: Proxy CUChar)
@@ -109,7 +106,14 @@ main =
     , uniformSpec (Proxy :: Proxy (Int8, Int16, Word8, Word16, Word32, Word64, Word))
     , Stateful.statefulGenSpec
     , Seed.spec
-    ]
+    ] ++ ghc_8_2_spec
+  where
+#if __GLASGOW_HASKELL__ >= 802
+    ghc_8_2_spec = [integralSpec (Proxy :: Proxy CBool)]
+#else
+    ghc_8_2_spec = []
+#endif
+
 
 floatTests :: TestTree
 floatTests = testGroup "(Float)"

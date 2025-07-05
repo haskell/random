@@ -203,35 +203,8 @@ main = do
                 !range = (1, n - 1)
             in pureUniformRBench (Proxy :: Proxy Natural) range sz
           ]
-        , bgroup "floating"
+        , bgroup "floating" $ fillFloating sz ++
           [
-#if MIN_VERSION_primitive(0,7,1)
-            bgroup "IO"
-            [ bgroup "Float"
-              [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                  bench "uniformRM" $
-                  nfIO (runStateGenT gen (fillMutablePrimArrayM (uniformRM (0 :: Float, 1.1)) ma))
-              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                  bench "uniformFloat01M" $
-                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloat01M ma))
-              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                  bench "uniformFloatPositive01M" $
-                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloatPositive01M ma))
-              ]
-            , bgroup "Double"
-              [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                  bench "uniformRM" $
-                  nfIO (runStateGenT gen (fillMutablePrimArrayM (uniformRM (0 :: Double, 1.1)) ma))
-              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                  bench "uniformDouble01M" $
-                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDouble01M ma))
-              , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
-                  bench "uniformDoublePositive01M" $
-                  nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDoublePositive01M ma))
-              ]
-            ]
-          ,
-#endif
             bgroup "State"
             [ bgroup "Float"
               [ env getStdGen $
@@ -304,6 +277,38 @@ main = do
           , env getStdGen $ bench "naiveShuffleListM" . nf (`runStateGen` naiveShuffleListM xs)
           ]
     ]
+  where
+#if MIN_VERSION_primitive(0,7,1)
+    fillFloating sz =
+      [ bgroup "IO"
+        [ bgroup "Float"
+          [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+              bench "uniformRM" $
+              nfIO (runStateGenT gen (fillMutablePrimArrayM (uniformRM (0 :: Float, 1.1)) ma))
+          , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+              bench "uniformFloat01M" $
+              nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloat01M ma))
+          , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+              bench "uniformFloatPositive01M" $
+              nfIO (runStateGenT gen (fillMutablePrimArrayM uniformFloatPositive01M ma))
+          ]
+        , bgroup "Double"
+          [ env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+              bench "uniformRM" $
+              nfIO (runStateGenT gen (fillMutablePrimArrayM (uniformRM (0 :: Double, 1.1)) ma))
+          , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+              bench "uniformDouble01M" $
+              nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDouble01M ma))
+          , env ((,) <$> getStdGen <*> newAlignedPinnedPrimArray sz) $ \ ~(gen, ma) ->
+              bench "uniformDoublePositive01M" $
+              nfIO (runStateGenT gen (fillMutablePrimArrayM uniformDoublePositive01M ma))
+          ]
+        ]
+      ]
+#else
+    fillFloating _ = []
+#endif
+
 
 pureUniformRFullBench ::
      forall a. (Typeable a, UniformRange a, Bounded a)
