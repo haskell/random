@@ -176,12 +176,13 @@ writeWord64LE (MutableByteArray mba#) (I# i#) w64@(W64# w64#)
 {-# INLINE writeWord64LE #-}
 
 getSizeOfMutableByteArray :: MutableByteArray s -> ST s Int
-getSizeOfMutableByteArray (MutableByteArray mba#) =
 #if __GLASGOW_HASKELL__ >=802
+getSizeOfMutableByteArray (MutableByteArray mba#) =
   ST $ \s ->
     case getSizeofMutableByteArray# mba# s of
       (# s', n# #) -> (# s', I# n# #)
 #else
+getSizeOfMutableByteArray (MutableByteArray mba#) =
   pure $! I# (sizeofMutableByteArray# mba#)
 #endif
 {-# INLINE getSizeOfMutableByteArray #-}
@@ -197,10 +198,10 @@ byteArrayToShortByteString (ByteArray ba#) = SBS ba#
 -- | Convert a ShortByteString to ByteString by casting, whenever memory is pinned,
 -- otherwise make a copy into a new pinned ByteString
 shortByteStringToByteString :: ShortByteString -> ByteString
-shortByteStringToByteString ba =
 #if __GLASGOW_HASKELL__ < 802
-  SBS.fromShort ba
+shortByteStringToByteString ba = SBS.fromShort ba
 #else
+shortByteStringToByteString ba =
   let !(SBS ba#) = ba in
   if isTrue# (isByteArrayPinned# ba#)
     then pinnedByteArrayToByteString ba#
