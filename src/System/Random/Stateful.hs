@@ -8,6 +8,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 -- |
 -- Module      :  System.Random.Stateful
 -- Copyright   :  (c) The University of Glasgow 2001
@@ -16,8 +17,7 @@
 -- Stability   :  stable
 --
 -- This library deals with the common task of pseudo-random number generation.
-module System.Random.Stateful
-  (
+module System.Random.Stateful (
   -- * Monadic Random Generator
   -- $introduction
 
@@ -26,100 +26,108 @@ module System.Random.Stateful
 
   -- * Mutable pseudo-random number generator interfaces
   -- $interfaces
-    StatefulGen
-      ( uniformWord32R
-      , uniformWord64R
-      , uniformWord8
-      , uniformWord16
-      , uniformWord32
-      , uniformWord64
-      , uniformShortByteString
-      )
-  , FrozenGen(..)
-  , ThawedGen(..)
-  , withMutableGen
-  , withMutableGen_
-  , withSeedMutableGen
-  , withSeedMutableGen_
-  , randomM
-  , randomRM
-  , splitGenM
-  , splitMutableGenM
+  StatefulGen (
+    uniformWord32R,
+    uniformWord64R,
+    uniformWord8,
+    uniformWord16,
+    uniformWord32,
+    uniformWord64,
+    uniformShortByteString
+  ),
+  FrozenGen (..),
+  ThawedGen (..),
+  withMutableGen,
+  withMutableGen_,
+  withSeedMutableGen,
+  withSeedMutableGen_,
+  randomM,
+  randomRM,
+  splitGenM,
+  splitMutableGenM,
 
   -- ** Deprecated
-  , RandomGenM(..)
+  RandomGenM (..),
 
   -- * Monadic adapters for pure pseudo-random number generators #monadicadapters#
   -- $monadicadapters
 
   -- ** Pure adapter in 'MonadState'
-  , StateGen(..)
-  , StateGenM(..)
-  , runStateGen
-  , runStateGen_
-  , runStateGenT
-  , runStateGenT_
-  , runStateGenST
-  , runStateGenST_
+  StateGen (..),
+  StateGenM (..),
+  runStateGen,
+  runStateGen_,
+  runStateGenT,
+  runStateGenT_,
+  runStateGenST,
+  runStateGenST_,
+
   -- ** Mutable thread-safe adapter in 'IO'
-  , AtomicGen(..)
-  , AtomicGenM(..)
-  , newAtomicGenM
-  , applyAtomicGen
-  , globalStdGen
+  AtomicGen (..),
+  AtomicGenM (..),
+  newAtomicGenM,
+  applyAtomicGen,
+  globalStdGen,
+
   -- ** Mutable adapter in 'IO'
-  , IOGen(..)
-  , IOGenM(..)
-  , newIOGenM
-  , applyIOGen
+  IOGen (..),
+  IOGenM (..),
+  newIOGenM,
+  applyIOGen,
+
   -- ** Mutable adapter in 'ST'
-  , STGen(..)
-  , STGenM(..)
-  , newSTGenM
-  , applySTGen
-  , runSTGen
-  , runSTGen_
+  STGen (..),
+  STGenM (..),
+  newSTGenM,
+  applySTGen,
+  runSTGen,
+  runSTGen_,
+
   -- ** Mutable thread-safe adapter in 'STM'
-  , TGen(..)
-  , TGenM(..)
-  , newTGenM
-  , newTGenMIO
-  , applyTGen
+  TGen (..),
+  TGenM (..),
+  newTGenM,
+  newTGenMIO,
+  applyTGen,
 
   -- * Pseudo-random values of various types
   -- $uniform
-  , Uniform(..)
-  , uniformViaFiniteM
-  , UniformRange(..)
-  , isInRangeOrd
-  , isInRangeEnum
+  Uniform (..),
+  uniformViaFiniteM,
+  UniformRange (..),
+  isInRangeOrd,
+  isInRangeEnum,
 
   -- ** Lists
-  , uniformListM
-  , uniformListRM
-  , uniformShuffleListM
+  uniformListM,
+  uniformListRM,
+  uniformShuffleListM,
 
   -- ** Generators for sequences of pseudo-random bytes
-  , uniformByteArrayM
-  , uniformByteStringM
-  , uniformShortByteStringM
+  uniformByteArrayM,
+  uniformByteStringM,
+  uniformShortByteStringM,
 
   -- * Helper functions for createing instances
+
   -- ** Sequences of bytes
-  , fillByteArrayST
-  , genShortByteStringIO
-  , genShortByteStringST
-  , defaultUnsafeUniformFillMutableByteArray
+  fillByteArrayST,
+  genShortByteStringIO,
+  genShortByteStringST,
+  defaultUnsafeUniformFillMutableByteArray,
+
   -- ** Floating point numbers
-  , uniformDouble01M
-  , uniformDoublePositive01M
-  , uniformFloat01M
-  , uniformFloatPositive01M
+  uniformDouble01M,
+  uniformDoublePositive01M,
+  uniformFloat01M,
+  uniformFloatPositive01M,
+
   -- ** Enum types
-  , uniformEnumM
-  , uniformEnumRM
+  uniformEnumM,
+  uniformEnumRM,
+
   -- ** Word
-  , uniformWordR
+  uniformWordR,
 
   -- * Appendix
 
@@ -127,33 +135,32 @@ module System.Random.Stateful
   -- $implemenstatefulegen
 
   -- ** Floating point number caveats #fpcaveats#
-  , scaleFloating
+  scaleFloating,
   -- $floating
 
   -- * References
   -- $references
 
   -- * Pure Random Generator
-  , module System.Random
-  ) where
+  module System.Random,
+) where
 
 import Control.DeepSeq
 import Control.Monad.IO.Class
 import Control.Monad.ST
-import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
 import Control.Monad.State.Strict (MonadState, state)
 import Data.ByteString (ByteString)
 import Data.Coerce
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
+import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
 import System.Random hiding (uniformShortByteString)
-import System.Random.Array (shuffleListM, shortByteStringToByteString)
+import System.Random.Array (shortByteStringToByteString, shuffleListM)
 import System.Random.Internal
 #if __GLASGOW_HASKELL__ >= 808
 import GHC.IORef (atomicModifyIORef2Lazy)
 #endif
-
 
 -- $introduction
 --
@@ -176,7 +183,7 @@ import GHC.IORef (atomicModifyIORef2Lazy)
 --
 --     This library provides instances of 'Uniform' for many common bounded
 --     numeric types.
---
+
 -- $usagemonadic
 --
 -- In monadic code, use the relevant 'Uniform' and 'UniformRange' instances to
@@ -223,7 +230,6 @@ import GHC.IORef (atomicModifyIORef2Lazy)
 --     own state as they produce pseudo-random values. They generally live in
 --     'Control.Monad.State.Strict.StateT', 'ST', 'IO' or 'STM' or some other transformer
 --     on top of those monads.
---
 
 -------------------------------------------------------------------------------
 -- Monadic adapters
@@ -258,7 +264,9 @@ import GHC.IORef (atomicModifyIORef2Lazy)
 -- @since 1.2.0
 class (RandomGen r, StatefulGen g m) => RandomGenM g r m | g -> r where
   applyRandomGenM :: (r -> (a, r)) -> g -> m a
+
 {-# DEPRECATED applyRandomGenM "In favor of `modifyGen`" #-}
+
 {-# DEPRECATED RandomGenM "In favor of `FrozenGen`" #-}
 
 instance (RandomGen r, MonadIO m) => RandomGenM (IOGenM r) r m where
@@ -275,7 +283,6 @@ instance RandomGen r => RandomGenM (STGenM r s) r (ST s) where
 
 instance RandomGen r => RandomGenM (TGenM r) r STM where
   applyRandomGenM = applyTGen
-
 
 -- | Shuffle elements of a list in a uniformly random order.
 --
@@ -319,7 +326,6 @@ withMutableGen fg action = do
 withMutableGen_ :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m a
 withMutableGen_ fg action = thawGen fg >>= action
 
-
 -- | Just like `withMutableGen`, except uses a `Seed` instead of a frozen generator.
 --
 -- ====__Examples__
@@ -355,7 +361,8 @@ withMutableGen_ fg action = thawGen fg >>= action
 -- [7,5,4,3,1,8,10,6,9,2]
 --
 -- @since 1.3.0
-withSeedMutableGen :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
+withSeedMutableGen ::
+  (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
 withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 
 -- | Just like `withSeedMutableGen`, except it doesn't return the final generator, only
@@ -365,7 +372,6 @@ withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 -- @since 1.3.0
 withSeedMutableGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
 withSeedMutableGen_ seed = withMutableGen_ (fromSeed seed)
-
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
 --
@@ -426,13 +432,12 @@ uniformByteStringM n g =
 --     of its atomic operations.
 --
 -- @since 1.2.0
-newtype AtomicGenM g = AtomicGenM { unAtomicGenM :: IORef g}
-
+newtype AtomicGenM g = AtomicGenM {unAtomicGenM :: IORef g}
 
 -- | Frozen version of mutable `AtomicGenM` generator
 --
 -- @since 1.2.0
-newtype AtomicGen g = AtomicGen { unAtomicGen :: g}
+newtype AtomicGen g = AtomicGen {unAtomicGen :: g}
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
@@ -447,7 +452,6 @@ instance SeedGen g => SeedGen (AtomicGen g) where
 newAtomicGenM :: MonadIO m => g -> m (AtomicGenM g)
 newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
 
-
 -- | Global mutable standard pseudo-random number generator. This is the same
 -- generator that was historically used by `randomIO` and `randomRIO` functions.
 --
@@ -458,7 +462,6 @@ newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
 -- @since 1.2.1
 globalStdGen :: AtomicGenM StdGen
 globalStdGen = AtomicGenM theStdGen
-
 
 instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
   uniformWord32R r = applyAtomicGen (genWord32R r)
@@ -473,7 +476,6 @@ instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
   {-# INLINE uniformWord32 #-}
   uniformWord64 = applyAtomicGen genWord64
   {-# INLINE uniformWord64 #-}
-
 
 instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
@@ -540,12 +542,12 @@ atomicModifyIORefHS ref f = do
 -- >>> newIOGenM (mkStdGen 1729) >>= ioGen
 --
 -- @since 1.2.0
-newtype IOGenM g = IOGenM { unIOGenM :: IORef g }
+newtype IOGenM g = IOGenM {unIOGenM :: IORef g}
 
 -- | Frozen version of mutable `IOGenM` generator
 --
 -- @since 1.2.0
-newtype IOGen g = IOGen { unIOGen :: g }
+newtype IOGen g = IOGen {unIOGen :: g}
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
@@ -560,8 +562,6 @@ instance SeedGen g => SeedGen (IOGen g) where
 newIOGenM :: MonadIO m => g -> m (IOGenM g)
 newIOGenM = fmap IOGenM . liftIO . newIORef
 
-
-
 instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
   uniformWord32R r = applyIOGen (genWord32R r)
   {-# INLINE uniformWord32R #-}
@@ -575,7 +575,6 @@ instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
   {-# INLINE uniformWord32 #-}
   uniformWord64 = applyIOGen genWord64
   {-# INLINE uniformWord64 #-}
-
 
 instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   type MutableGen (IOGen g) m = IOGenM g
@@ -616,12 +615,12 @@ applyIOGen f (IOGenM ref) = liftIO $ do
 -- *   'STGenM' is slower than 'StateGenM' due to the extra pointer indirection.
 --
 -- @since 1.2.0
-newtype STGenM g s = STGenM { unSTGenM :: STRef s g }
+newtype STGenM g s = STGenM {unSTGenM :: STRef s g}
 
 -- | Frozen version of mutable `STGenM` generator
 --
 -- @since 1.2.0
-newtype STGen g = STGen { unSTGen :: g }
+newtype STGen g = STGen {unSTGen :: g}
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
@@ -635,7 +634,6 @@ instance SeedGen g => SeedGen (STGen g) where
 -- @since 1.2.0
 newSTGenM :: g -> ST s (STGenM g s)
 newSTGenM = fmap STGenM . newSTRef
-
 
 instance RandomGen g => StatefulGen (STGenM g s) (ST s) where
   uniformWord32R r = applySTGen (genWord32R r)
@@ -666,7 +664,6 @@ instance RandomGen g => FrozenGen (STGen g) (ST s) where
 instance RandomGen g => ThawedGen (STGen g) (ST s) where
   thawGen (STGen g) = newSTGenM g
 
-
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
 -- ====__Examples__
@@ -695,7 +692,7 @@ applySTGen f (STGenM ref) = do
 -- (7879794327570578227,StdGen {unStdGen = SMGen 11285859549637045894 7641485672361121627})
 --
 -- @since 1.2.0
-runSTGen :: RandomGen g => g -> (forall s . STGenM g s -> ST s a) -> (a, g)
+runSTGen :: RandomGen g => g -> (forall s. STGenM g s -> ST s a) -> (a, g)
 runSTGen g action = unSTGen <$> runST (withMutableGen (STGen g) action)
 
 -- | Runs a monadic generating action in the `ST` monad using a pure
@@ -710,19 +707,18 @@ runSTGen g action = unSTGen <$> runST (withMutableGen (STGen g) action)
 -- 7879794327570578227
 --
 -- @since 1.2.0
-runSTGen_ :: RandomGen g => g -> (forall s . STGenM g s -> ST s a) -> a
+runSTGen_ :: RandomGen g => g -> (forall s. STGenM g s -> ST s a) -> a
 runSTGen_ g action = fst $ runSTGen g action
-
 
 -- | Wraps a 'TVar' that holds a pure pseudo-random number generator.
 --
 -- @since 1.2.1
-newtype TGenM g = TGenM { unTGenM :: TVar g }
+newtype TGenM g = TGenM {unTGenM :: TVar g}
 
 -- | Frozen version of mutable `TGenM` generator
 --
 -- @since 1.2.1
-newtype TGen g = TGen { unTGen :: g }
+newtype TGen g = TGen {unTGen :: g}
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
@@ -737,13 +733,11 @@ instance SeedGen g => SeedGen (TGen g) where
 newTGenM :: g -> STM (TGenM g)
 newTGenM = fmap TGenM . newTVar
 
-
 -- | Creates a new 'TGenM' in `IO`.
 --
 -- @since 1.2.1
 newTGenMIO :: MonadIO m => g -> m (TGenM g)
 newTGenMIO g = liftIO (TGenM <$> newTVarIO g)
-
 
 -- | @since 1.2.1
 instance RandomGen g => StatefulGen (TGenM g) STM where
@@ -775,7 +769,6 @@ instance RandomGen g => FrozenGen (TGen g) STM where
 
 instance RandomGen g => ThawedGen (TGen g) STM where
   thawGen (TGen g) = newTGenM g
-
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -927,7 +920,7 @@ applyTGen f (TGenM tvar) = do
 -- the [Java 10 standard library](https://docs.oracle.com/javase/10/docs/api/java/util/Random.html#doubles%28double,double%29)
 -- and [CPython 3.8](https://github.com/python/cpython/blob/3.8/Lib/random.py#L417)
 -- use a similar procedure to generate floating point values in a range.
---
+
 -- $implemenstatefulegen
 --
 -- Typically, a monadic pseudo-random number generator has facilities to save
@@ -985,8 +978,7 @@ applyTGen f (TGenM tvar) = do
 -- above, we could have used `withMutableGen`, which together with the result would give
 -- us back its frozen form. This would allow us to store the end state of our generator
 -- somewhere for the later reuse.
---
---
+
 -- $references
 --
 -- 1. Guy L. Steele, Jr., Doug Lea, and Christine H. Flood. 2014. Fast
@@ -1003,5 +995,3 @@ applyTGen f (TGenM tvar) = do
 -- >>> :seti -XMultiParamTypeClasses
 -- >>> :seti -XTypeFamilies
 -- >>> :seti -XUndecidableInstances
---
---

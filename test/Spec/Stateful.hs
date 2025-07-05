@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Spec.Stateful where
 
 import Control.Concurrent.STM
@@ -35,15 +36,15 @@ instance (Monad m, Serial m g) => Serial m (TGen g) where
 instance (Monad m, Serial m g) => Serial m (StateGen g) where
   series = StateGen <$> series
 
-
 matchRandomGenSpec ::
-     forall f a sg m. (StatefulGen sg m, RandomGen f, Eq f, Show f, Eq a)
-  => (forall g n. StatefulGen g n => g -> n a)
-  -> (forall g. RandomGen g => g -> (a, g))
-  -> (StdGen -> f)
-  -> (f -> StdGen)
-  -> (f -> (sg -> m a) -> IO (a, f))
-  -> Property IO
+  forall f a sg m.
+  (StatefulGen sg m, RandomGen f, Eq f, Show f, Eq a) =>
+  (forall g n. StatefulGen g n => g -> n a) ->
+  (forall g. RandomGen g => g -> (a, g)) ->
+  (StdGen -> f) ->
+  (f -> StdGen) ->
+  (f -> (sg -> m a) -> IO (a, f)) ->
+  Property IO
 matchRandomGenSpec genM gen fromStdGen toStdGen runStatefulGen =
   forAll $ \seed -> monadic $ do
     let stdGen = mkStdGen seed
@@ -54,10 +55,11 @@ matchRandomGenSpec genM gen fromStdGen toStdGen runStatefulGen =
     pure $ and [x1 == x2, x2 == x3, g1 == toStdGen g2, g1 == toStdGen g3, g2 == g3]
 
 withMutableGenSpec ::
-     forall f m. (ThawedGen f m, Eq f, Show f)
-  => (forall a. m a -> IO a)
-  -> f
-  -> Property IO
+  forall f m.
+  (ThawedGen f m, Eq f, Show f) =>
+  (forall a. m a -> IO a) ->
+  f ->
+  Property IO
 withMutableGenSpec toIO frozen =
   forAll $ \n -> monadic $ toIO $ do
     let action = uniformListM n
@@ -67,10 +69,11 @@ withMutableGenSpec toIO frozen =
     pure $ x == y && r == r'
 
 overwriteMutableGenSpec ::
-     forall f m. (ThawedGen f m, Eq f, Show f)
-  => (forall a. m a -> IO a)
-  -> f
-  -> Property IO
+  forall f m.
+  (ThawedGen f m, Eq f, Show f) =>
+  (forall a. m a -> IO a) ->
+  f ->
+  Property IO
 overwriteMutableGenSpec toIO frozen =
   forAll $ \n -> monadic $ toIO $ do
     let action = uniformListM (abs n + 1) -- Non-empty
@@ -83,15 +86,17 @@ overwriteMutableGenSpec toIO frozen =
     pure $ r1 == r2 && frozen == frozen'
 
 indepMutableGenSpec ::
-     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f)
-  => (forall a. m a -> IO a) -> [f] -> Property IO
+  forall f m.
+  (RandomGen f, ThawedGen f m, Eq f, Show f) =>
+  (forall a. m a -> IO a) -> [f] -> Property IO
 indepMutableGenSpec toIO fgs =
   monadic $ toIO $ do
     (fgs ==) <$> (mapM freezeGen =<< mapM thawGen fgs)
 
 immutableFrozenGenSpec ::
-     forall f m. (RandomGen f, ThawedGen f m, Eq f, Show f)
-  => (forall a. m a -> IO a) -> f -> Property IO
+  forall f m.
+  (RandomGen f, ThawedGen f m, Eq f, Show f) =>
+  (forall a. m a -> IO a) -> f -> Property IO
 immutableFrozenGenSpec toIO frozen =
   forAll $ \n -> monadic $ toIO $ do
     let action = do
@@ -102,10 +107,11 @@ immutableFrozenGenSpec toIO frozen =
     pure $ all (x ==) xs
 
 splitMutableGenSpec ::
-     forall f m. (SplitGen f, ThawedGen f m, Eq f, Show f)
-  => (forall a. m a -> IO a)
-  -> f
-  -> Property IO
+  forall f m.
+  (SplitGen f, ThawedGen f m, Eq f, Show f) =>
+  (forall a. m a -> IO a) ->
+  f ->
+  Property IO
 splitMutableGenSpec toIO frozen =
   monadic $ toIO $ do
     (sfg1, fg1) <- withMutableGen frozen splitGenM
@@ -114,90 +120,100 @@ splitMutableGenSpec toIO frozen =
     pure $ fg1 == fg2 && sfg1 == sfg3
 
 thawedGenSpecFor ::
-     forall f m. (SplitGen f, ThawedGen f m, Eq f, Show f, Serial IO f, Typeable f)
-  => (forall a. m a -> IO a)
-  -> Proxy f
-  -> TestTree
+  forall f m.
+  (SplitGen f, ThawedGen f m, Eq f, Show f, Serial IO f, Typeable f) =>
+  (forall a. m a -> IO a) ->
+  Proxy f ->
+  TestTree
 thawedGenSpecFor toIO px =
   testGroup
     (showsTypeRep (typeRep px) "")
     [ testProperty "withMutableGen" $
-      forAll $ \(f :: f) -> withMutableGenSpec toIO f
+        forAll $
+          \(f :: f) -> withMutableGenSpec toIO f
     , testProperty "overwriteGen" $
-      forAll $ \(f :: f) -> overwriteMutableGenSpec toIO f
+        forAll $
+          \(f :: f) -> overwriteMutableGenSpec toIO f
     , testProperty "independent mutable generators" $
-      forAll $ \(fs :: [f]) -> indepMutableGenSpec toIO fs
+        forAll $
+          \(fs :: [f]) -> indepMutableGenSpec toIO fs
     , testProperty "immutable frozen generators" $
-      forAll $ \(f :: f) -> immutableFrozenGenSpec toIO f
+        forAll $
+          \(f :: f) -> immutableFrozenGenSpec toIO f
     , testProperty "splitGen" $
-      forAll $ \(f :: f) -> splitMutableGenSpec toIO f
+        forAll $
+          \(f :: f) -> splitMutableGenSpec toIO f
     ]
 
 frozenGenSpecFor ::
-     forall f sg m. (RandomGen f, StatefulGen sg m, Eq f, Show f, Typeable f)
-  => (StdGen -> f)
-  -> (f -> StdGen)
-  -> (forall a. f -> (sg -> m a) -> IO (a, f))
-  -> TestTree
+  forall f sg m.
+  (RandomGen f, StatefulGen sg m, Eq f, Show f, Typeable f) =>
+  (StdGen -> f) ->
+  (f -> StdGen) ->
+  (forall a. f -> (sg -> m a) -> IO (a, f)) ->
+  TestTree
 frozenGenSpecFor fromStdGen toStdGen runStatefulGen =
-    testGroup (showsTypeRep (typeRep (Proxy :: Proxy f)) "")
-    [ testGroup "matchRandomGenSpec"
-      [ testProperty "uniformWord8/genWord8" $
-          matchRandomGenSpec uniformWord8 genWord8 fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformWord16/genWord16" $
-          matchRandomGenSpec uniformWord16 genWord16 fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformWord32/genWord32" $
-          matchRandomGenSpec uniformWord32 genWord32 fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformWord64/genWord64" $
-          matchRandomGenSpec uniformWord64 genWord64 fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformWord32R/genWord32R" $
-        forAll $ \w32 ->
-          matchRandomGenSpec (uniformWord32R w32) (genWord32R w32) fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformWord64R/genWord64R" $
-        forAll $ \w64 ->
-          matchRandomGenSpec (uniformWord64R w64) (genWord64R w64) fromStdGen toStdGen runStatefulGen
-      , testProperty "uniformShortByteStringM/uniformShortByteString" $
-        forAll $ \(NonNegative n') ->
-          let n = n' `mod` 100000 -- Ensure it is not too big
-          in matchRandomGenSpec
-               (uniformShortByteStringM n)
-               (uniformShortByteString n)
-               fromStdGen
-               toStdGen
-               runStatefulGen
-      , testProperty "uniformByteStringM/uniformByteString" $
-        forAll $ \(NonNegative n') ->
-          let n = n' `mod` 100000 -- Ensure it is not too big
-          in matchRandomGenSpec
-               (uniformByteStringM n)
-               (uniformByteString n)
-               fromStdGen
-               toStdGen
-               runStatefulGen
-      , testProperty "uniformByteArrayM/genByteArray" $
-        forAll $ \(NonNegative n', isPinned1 :: Bool, isPinned2 :: Bool) ->
-          let n = n' `mod` 100000 -- Ensure it is not too big
-          in matchRandomGenSpec
-               (uniformByteArrayM isPinned1 n)
-               (uniformByteArray isPinned2 n)
-               fromStdGen
-               toStdGen
-               runStatefulGen
-      ]
+  testGroup
+    (showsTypeRep (typeRep (Proxy :: Proxy f)) "")
+    [ testGroup
+        "matchRandomGenSpec"
+        [ testProperty "uniformWord8/genWord8" $
+            matchRandomGenSpec uniformWord8 genWord8 fromStdGen toStdGen runStatefulGen
+        , testProperty "uniformWord16/genWord16" $
+            matchRandomGenSpec uniformWord16 genWord16 fromStdGen toStdGen runStatefulGen
+        , testProperty "uniformWord32/genWord32" $
+            matchRandomGenSpec uniformWord32 genWord32 fromStdGen toStdGen runStatefulGen
+        , testProperty "uniformWord64/genWord64" $
+            matchRandomGenSpec uniformWord64 genWord64 fromStdGen toStdGen runStatefulGen
+        , testProperty "uniformWord32R/genWord32R" $
+            forAll $ \w32 ->
+              matchRandomGenSpec (uniformWord32R w32) (genWord32R w32) fromStdGen toStdGen runStatefulGen
+        , testProperty "uniformWord64R/genWord64R" $
+            forAll $ \w64 ->
+              matchRandomGenSpec (uniformWord64R w64) (genWord64R w64) fromStdGen toStdGen runStatefulGen
+        , testProperty "uniformShortByteStringM/uniformShortByteString" $
+            forAll $ \(NonNegative n') ->
+              let n = n' `mod` 100000 -- Ensure it is not too big
+               in matchRandomGenSpec
+                    (uniformShortByteStringM n)
+                    (uniformShortByteString n)
+                    fromStdGen
+                    toStdGen
+                    runStatefulGen
+        , testProperty "uniformByteStringM/uniformByteString" $
+            forAll $ \(NonNegative n') ->
+              let n = n' `mod` 100000 -- Ensure it is not too big
+               in matchRandomGenSpec
+                    (uniformByteStringM n)
+                    (uniformByteString n)
+                    fromStdGen
+                    toStdGen
+                    runStatefulGen
+        , testProperty "uniformByteArrayM/genByteArray" $
+            forAll $ \(NonNegative n', isPinned1 :: Bool, isPinned2 :: Bool) ->
+              let n = n' `mod` 100000 -- Ensure it is not too big
+               in matchRandomGenSpec
+                    (uniformByteArrayM isPinned1 n)
+                    (uniformByteArray isPinned2 n)
+                    fromStdGen
+                    toStdGen
+                    runStatefulGen
+        ]
     ]
-
 
 statefulGenSpec :: TestTree
 statefulGenSpec =
   testGroup
     "StatefulGen"
-    [ testGroup "ThawedGen"
+    [ testGroup
+        "ThawedGen"
         [ thawedGenSpecFor id (Proxy :: Proxy (IOGen StdGen))
         , thawedGenSpecFor id (Proxy :: Proxy (AtomicGen StdGen))
         , thawedGenSpecFor stToIO (Proxy :: Proxy (STGen StdGen))
         , thawedGenSpecFor atomically (Proxy :: Proxy (TGen StdGen))
         ]
-    , testGroup "FrozenGen"
+    , testGroup
+        "FrozenGen"
         [ frozenGenSpecFor StateGen unStateGen runStateGenT
         , frozenGenSpecFor IOGen unIOGen $ \g action -> do
             mg <- newIOGenM (unIOGen g)
