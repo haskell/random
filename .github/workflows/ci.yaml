@@ -94,6 +94,7 @@ jobs:
         cabal $EXTRA_FLAGS build all --write-ghc-environment-files=always
 
     - name: Doctest
+      if: matrix.ghc != '8.4.4'
       run: |
         cabal install doctest --ignore-project --overwrite-policy=always
         ./scripts/doctest.sh
@@ -170,6 +171,7 @@ jobs:
     env:
       STACK_YAML: '${{ matrix.stack-yaml }}'
       STACK_ARGS: '--resolver ${{ matrix.resolver }}'
+      HADDOCK: ${{ (matrix.resolver == 'lts-9' || matrix.resolver == 'lts-11' || matrix.resolver == 'lts-12') && '--no-haddock' || '--haddock --no-haddock-deps' }}
       cache-version: v5 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v4
@@ -217,9 +219,9 @@ jobs:
         set -ex
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           # Inspection tests aren't compatible with coverage
-          stack $STACK_ARGS build :spec :legacy-test --coverage --test --no-run-tests --haddock --no-haddock-deps
+          stack $STACK_ARGS build :spec :legacy-test --coverage --test --no-run-tests $HADDOCK
         else
-          stack $STACK_ARGS build --test --no-run-tests --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS build --test --no-run-tests --bench --no-run-benchmarks $HADDOCK
         fi
 
     - name: Test
