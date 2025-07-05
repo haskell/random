@@ -23,8 +23,6 @@ jobs:
         include:
           # Linux
            # haskell-actions/setup is having trouble installing from hvr/ppa for ghc-8.0 and 8.2
-          # - { os: ubuntu-latest,  ghc: "8.0.2" }
-          # - { os: ubuntu-latest,  ghc: "8.2.2" }
           - { os: ubuntu-latest,  ghc: "8.4.4"  }
           - { os: ubuntu-latest,  ghc: "8.6.5"  }
           - { os: ubuntu-latest,  ghc: "8.8.4"  }
@@ -32,13 +30,11 @@ jobs:
           - { os: ubuntu-latest,  ghc: "9.0.2"  }
           - { os: ubuntu-latest,  ghc: "9.2.8"  }
           - { os: ubuntu-latest,  ghc: "9.4.8"  }
-          - { os: ubuntu-latest,  ghc: "9.6.6"  }
+          - { os: ubuntu-latest,  ghc: "9.6.7"  }
           - { os: ubuntu-latest,  ghc: "9.8.4"  }
-          - { os: ubuntu-latest,  ghc: "9.10.1" }
-          - { os: ubuntu-latest,  ghc: "9.12.1" }
+          - { os: ubuntu-latest,  ghc: "9.10.2" }
+          - { os: ubuntu-latest,  ghc: "9.12.2" }
           # MacOS
-          # - { os: macOS-latest,  ghc: "8.0.2" }
-          # - { os: macOS-latest,  ghc: "8.2.2" }
           - { os: macOS-latest,  ghc: "8.4.4"  }
           - { os: macOS-latest,  ghc: "8.6.5"  }
           - { os: macOS-latest,  ghc: "8.8.4"  }
@@ -46,13 +42,11 @@ jobs:
           - { os: macOS-latest,  ghc: "9.0.2"  }
           - { os: macOS-latest,  ghc: "9.2.8"  }
           - { os: macOS-latest,  ghc: "9.4.8"  }
-          - { os: macOS-latest,  ghc: "9.6.6"  }
+          - { os: macOS-latest,  ghc: "9.6.7"  }
           - { os: macOS-latest,  ghc: "9.8.4"  }
-          - { os: macOS-latest,  ghc: "9.10.1" }
-          - { os: macOS-latest,  ghc: "9.12.1" }
+          - { os: macOS-latest,  ghc: "9.10.2" }
+          - { os: macOS-latest,  ghc: "9.12.2" }
           # Windows
-          # - { os: windows-latest,  ghc: "8.0.2"  }
-          # - { os: windows-latest,  ghc: "8.2.2"  }
           - { os: windows-latest,  ghc: "8.4.4"  }
           - { os: windows-latest,  ghc: "8.6.5"  }
           - { os: windows-latest,  ghc: "8.8.4"  }
@@ -60,10 +54,10 @@ jobs:
           - { os: windows-latest,  ghc: "9.0.2"  }
           - { os: windows-latest,  ghc: "9.2.8"  }
           - { os: windows-latest,  ghc: "9.4.8"  }
-          - { os: windows-latest,  ghc: "9.6.6"  }
+          - { os: windows-latest,  ghc: "9.6.7"  }
           - { os: windows-latest,  ghc: "9.8.4"  }
-          - { os: windows-latest,  ghc: "9.10.1" }
-          - { os: windows-latest,  ghc: "9.12.1" }
+          - { os: windows-latest,  ghc: "9.10.2" }
+          - { os: windows-latest,  ghc: "9.12.2" }
     steps:
     - uses: actions/checkout@v4
 
@@ -134,7 +128,7 @@ jobs:
             ghc: '9.4.8'
             stack-yaml: stack.yaml
           - resolver: lts-22
-            ghc: '9.6.6'
+            ghc: '9.6.7'
             stack-yaml: stack.yaml
           - resolver: nightly
             stack-yaml: stack.yaml
@@ -149,7 +143,7 @@ jobs:
             stack-yaml: stack.yaml
           - resolver: lts-22
             os: macos-13
-            ghc: '9.6.6'
+            ghc: '9.6.7'
             stack-yaml: stack.yaml
           # Windows-latest
           - resolver: lts-14
@@ -166,7 +160,7 @@ jobs:
             stack-yaml: stack.yaml
           - resolver: lts-22
             os: windows-latest
-            ghc: '9.6.6'
+            ghc: '9.6.7'
             stack-yaml: stack.yaml
     env:
       STACK_YAML: '${{ matrix.stack-yaml }}'
