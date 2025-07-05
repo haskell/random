@@ -482,7 +482,6 @@ class Random a where
 -- [7879794327570578227,6883935014316540929,-1519291874655152001,2353271688382626589]
 {-# INLINE buildRandoms #-}
 buildRandoms ::
-  RandomGen g =>
   -- | E.g. @(:)@ but subject to fusion
   (a -> as -> as) ->
   -- | E.g. 'random'
