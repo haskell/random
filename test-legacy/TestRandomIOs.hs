@@ -3,7 +3,7 @@
 --
 -- Used to fail with:
 --
--- $ cabal test TestRandomIOs --test-options="+RTS -M1M -RTS"
+-- \$ cabal test TestRandomIOs --test-options="+RTS -M1M -RTS"
 -- TestRandomIOs: Heap exhausted;
 
 module TestRandomIOs where
@@ -17,5 +17,5 @@ import System.Random (randomIO)
 -- unevaluated thunks.
 main :: IO ()
 main = do
-    rs <- replicateM 5000 randomIO :: IO [Int]
-    print $ last rs
+  rs <- replicateM 5000 randomIO :: IO [Int]
+  print $ last rs

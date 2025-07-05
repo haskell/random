@@ -1,21 +1,20 @@
-{-# LANGUAGE DefaultSignatures    #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE MagicHash            #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  System.Random.GFinite
 -- Copyright   :  (c) Andrew Lelechenko 2020
 -- License     :  BSD-style (see the file LICENSE in the 'random' repository)
 -- Maintainer  :  libraries@haskell.org
---
-module System.Random.GFinite
-  ( Cardinality(..)
-  , Finite(..)
-  , GFinite(..)
-  ) where
+module System.Random.GFinite (
+  Cardinality (..),
+  Finite (..),
+  GFinite (..),
+) where
 
 import Data.Bits
 import Data.Int
@@ -26,8 +25,9 @@ import GHC.Generics
 
 -- | Cardinality of a set.
 data Cardinality
-  = Shift !Int -- ^ Shift n is equivalent to Card (bit n)
-  | Card  !Integer
+  = -- | Shift n is equivalent to Card (bit n)
+    Shift !Int
+  | Card !Integer
   deriving (Eq, Ord, Show)
 
 -- | This is needed only as a superclass of 'Integral'.
@@ -36,14 +36,14 @@ instance Enum Cardinality where
   fromEnum = fromIntegral
   succ = (+ 1)
   pred = subtract 1
-  enumFrom x           = map fromInteger (enumFrom (toInteger x))
-  enumFromThen x y     = map fromInteger (enumFromThen (toInteger x) (toInteger y))
-  enumFromTo x y       = map fromInteger (enumFromTo (toInteger x) (toInteger y))
+  enumFrom x = map fromInteger (enumFrom (toInteger x))
+  enumFromThen x y = map fromInteger (enumFromThen (toInteger x) (toInteger y))
+  enumFromTo x y = map fromInteger (enumFromTo (toInteger x) (toInteger y))
   enumFromThenTo x y z = map fromInteger (enumFromThenTo (toInteger x) (toInteger y) (toInteger z))
 
 instance Num Cardinality where
-  fromInteger 1 = Shift 0  -- ()
-  fromInteger 2 = Shift 1  -- Bool
+  fromInteger 1 = Shift 0 -- ()
+  fromInteger 2 = Shift 1 -- Bool
   fromInteger n = Card n
   {-# INLINE fromInteger #-}
 
@@ -51,12 +51,12 @@ instance Num Cardinality where
   {-# INLINE (+) #-}
 
   Shift x * Shift y = Shift (x + y)
-  Shift x * Card  y = Card (y `shiftL` x)
-  Card  x * Shift y = Card (x `shiftL` y)
-  Card  x * Card  y = Card (x * y)
+  Shift x * Card y = Card (y `shiftL` x)
+  Card x * Shift y = Card (x `shiftL` y)
+  Card x * Card y = Card (x * y)
   {-# INLINE (*) #-}
 
-  abs    = Card . abs    . toInteger
+  abs = Card . abs . toInteger
   signum = Card . signum . toInteger
   negate = Card . negate . toInteger
 
@@ -67,12 +67,12 @@ instance Real Cardinality where
 instance Integral Cardinality where
   toInteger = \case
     Shift n -> bit n
-    Card  n -> n
+    Card n -> n
   {-# INLINE toInteger #-}
 
   quotRem x' = \case
     Shift n -> (Card (x `shiftR` n), Card (x .&. (bit n - 1)))
-    Card  n -> let (q, r) = x `quotRem` n in (Card q, Card r)
+    Card n -> let (q, r) = x `quotRem` n in (Card q, Card r)
     where
       x = toInteger x'
   {-# INLINE quotRem #-}
@@ -87,7 +87,6 @@ instance Integral Cardinality where
 -- >>> import GHC.Generics (Generic)
 -- >>> data MyBool = MyTrue | MyFalse deriving (Generic, Finite)
 -- >>> data Action = Code MyBool | Eat (Maybe Bool) | Sleep deriving (Generic, Finite)
---
 class Finite a where
   cardinality :: Proxy# a -> Cardinality
   toFinite :: Integer -> a
@@ -155,8 +154,8 @@ instance (GFinite a, GFinite b) => GFinite (a :+: b) where
   {-# INLINE toGFinite #-}
 
   fromGFinite = \case
-     L1 x -> fromGFinite x
-     R1 x -> fromGFinite x + toInteger (gcardinality (proxy# :: Proxy# a))
+    L1 x -> fromGFinite x
+    R1 x -> fromGFinite x + toInteger (gcardinality (proxy# :: Proxy# a))
   {-# INLINE fromGFinite #-}
 
 instance (GFinite a, GFinite b) => GFinite (a :*: b) where
@@ -175,8 +174,11 @@ instance (GFinite a, GFinite b) => GFinite (a :*: b) where
   {-# INLINE fromGFinite #-}
 
 instance Finite Void
+
 instance Finite ()
+
 instance Finite Bool
+
 instance Finite Ordering
 
 instance Finite Char where
@@ -192,13 +194,13 @@ cardinalityDef _ = Shift (finiteBitSize (0 :: a))
 
 toFiniteDef :: forall a. (Num a, FiniteBits a) => Integer -> a
 toFiniteDef n
-    | isSigned (0 :: a) = fromInteger (n - bit (finiteBitSize (0 :: a) - 1))
-    | otherwise = fromInteger n
+  | isSigned (0 :: a) = fromInteger (n - bit (finiteBitSize (0 :: a) - 1))
+  | otherwise = fromInteger n
 
 fromFiniteDef :: (Integral a, FiniteBits a) => a -> Integer
 fromFiniteDef x
-    | isSigned x = toInteger x + bit (finiteBitSize x - 1)
-    | otherwise = toInteger x
+  | isSigned x = toInteger x + bit (finiteBitSize x - 1)
+  | otherwise = toInteger x
 
 instance Finite Word8 where
   cardinality = cardinalityDef
@@ -207,6 +209,7 @@ instance Finite Word8 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Word16 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -214,6 +217,7 @@ instance Finite Word16 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Word32 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -221,6 +225,7 @@ instance Finite Word32 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Word64 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -228,6 +233,7 @@ instance Finite Word64 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Word where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -235,6 +241,7 @@ instance Finite Word where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Int8 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -242,6 +249,7 @@ instance Finite Int8 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Int16 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -249,6 +257,7 @@ instance Finite Int16 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Int32 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -256,6 +265,7 @@ instance Finite Int32 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Int64 where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -263,6 +273,7 @@ instance Finite Int64 where
   {-# INLINE toFinite #-}
   fromFinite = fromFiniteDef
   {-# INLINE fromFinite #-}
+
 instance Finite Int where
   cardinality = cardinalityDef
   {-# INLINE cardinality #-}
@@ -272,10 +283,19 @@ instance Finite Int where
   {-# INLINE fromFinite #-}
 
 instance Finite a => Finite (Maybe a)
+
 instance (Finite a, Finite b) => Finite (Either a b)
+
 instance (Finite a, Finite b) => Finite (a, b)
+
 instance (Finite a, Finite b, Finite c) => Finite (a, b, c)
+
 instance (Finite a, Finite b, Finite c, Finite d) => Finite (a, b, c, d)
+
 instance (Finite a, Finite b, Finite c, Finite d, Finite e) => Finite (a, b, c, d, e)
+
 instance (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f) => Finite (a, b, c, d, e, f)
-instance (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f, Finite g) => Finite (a, b, c, d, e, f, g)
+
+instance
+  (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f, Finite g) =>
+  Finite (a, b, c, d, e, f, g)

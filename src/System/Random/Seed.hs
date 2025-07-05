@@ -12,51 +12,50 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+
 -- |
 -- Module      :  System.Random.Seed
 -- Copyright   :  (c) Alexey Kuleshevich 2024
 -- License     :  BSD-style (see the file LICENSE in the 'random' repository)
 -- Maintainer  :  libraries@haskell.org
---
+module System.Random.Seed (
+  SeedGen (..),
 
-module System.Random.Seed
-  ( SeedGen(..)
-  , -- ** Seed
-    Seed
-  , seedSize
-  , seedSizeProxy
-  , mkSeed
-  , unSeed
-  , mkSeedFromByteString
-  , unSeedToByteString
-  , withSeed
-  , withSeedM
-  , withSeedFile
-  , seedGenTypeName
-  , nonEmptyToSeed
-  , nonEmptyFromSeed
-  ) where
+  -- ** Seed
+  Seed,
+  seedSize,
+  seedSizeProxy,
+  mkSeed,
+  unSeed,
+  mkSeedFromByteString,
+  unSeedToByteString,
+  withSeed,
+  withSeedM,
+  withSeedFile,
+  seedGenTypeName,
+  nonEmptyToSeed,
+  nonEmptyFromSeed,
+) where
 
 import Control.Monad (unless)
 import qualified Control.Monad.Fail as F
 import Control.Monad.IO.Class
 import Control.Monad.ST
 import Control.Monad.State.Strict (get, put, runStateT)
-import Data.Array.Byte (ByteArray(..))
+import Data.Array.Byte (ByteArray (..))
 import Data.Bits
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short.Internal as SBS (fromShort, toShort)
 import Data.Coerce
 import Data.Functor.Identity (runIdentity)
-import Data.List.NonEmpty as NE (NonEmpty(..), nonEmpty, toList)
+import Data.List.NonEmpty as NE (NonEmpty (..), nonEmpty, toList)
 import Data.Typeable
 import Data.Word
 import GHC.Exts (Proxy#, proxy#)
-import GHC.TypeLits (Nat, KnownNat, natVal', type (<=))
+import GHC.TypeLits (KnownNat, Nat, natVal', type (<=))
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
-
 
 -- | Interface for converting a pure pseudo-random number generator to and from non-empty
 -- sequence of bytes. Seeds are stored in Little-Endian order regardless of the platform
@@ -125,9 +124,9 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
   -- @
   -- > fromSeed (toSeed gen) == gen
   -- @
-  --
   type SeedSize g :: Nat
-  {-# MINIMAL (fromSeed, toSeed)|(fromSeed64, toSeed64) #-}
+
+  {-# MINIMAL (fromSeed, toSeed) | (fromSeed64, toSeed64) #-}
 
   -- | Convert from a binary representation to a pseudo-random number generator
   --
@@ -190,16 +189,16 @@ instance SeedGen SM32.SMGen where
         seed, gamma :: Word32
         seed = fromIntegral (shiftR x 32)
         gamma = fromIntegral x
-    in SM32.seedSMGen seed gamma
+     in SM32.seedSMGen seed gamma
   toSeed g =
     let seed, gamma :: Word32
         (seed, gamma) = SM32.unseedSMGen g
-    in Seed $ runST $ do
-        mba <- newMutableByteArray 8
-        let w64 :: Word64
-            w64 = shiftL (fromIntegral seed) 32 .|. fromIntegral gamma
-        writeWord64LE mba 0 w64
-        freezeMutableByteArray mba
+     in Seed $ runST $ do
+          mba <- newMutableByteArray 8
+          let w64 :: Word64
+              w64 = shiftL (fromIntegral seed) 32 .|. fromIntegral gamma
+          writeWord64LE mba 0 w64
+          freezeMutableByteArray mba
 
 instance SeedGen g => Uniform (Seed g) where
   uniformM = fmap Seed . uniformByteArrayM False (seedSize @g)
@@ -224,7 +223,8 @@ seedSizeProxy _px = seedSize @g
 mkSeed :: forall g m. (SeedGen g, F.MonadFail m) => ByteArray -> m (Seed g)
 mkSeed ba = do
   unless (sizeOfByteArray ba == seedSize @g) $ do
-    F.fail $ "Unexpected number of bytes: "
+    F.fail $
+      "Unexpected number of bytes: "
         ++ show (sizeOfByteArray ba)
         ++ ". Exactly "
         ++ show (seedSize @g)
@@ -263,7 +263,6 @@ withSeedM seed f = fmap toSeed <$> f (fromSeed seed)
 seedGenTypeName :: forall g. SeedGen g => String
 seedGenTypeName = show (typeOf (Proxy @g))
 
-
 -- | Just like `mkSeed`, but uses `ByteString` as argument. Results in a memcopy of the seed.
 --
 -- @since 1.3.0
@@ -281,7 +280,6 @@ unSeed (Seed ba) = ba
 -- @since 1.3.0
 unSeedToByteString :: Seed g -> BS.ByteString
 unSeedToByteString = SBS.fromShort . byteArrayToShortByteString . unSeed
-
 
 -- | Read the seed from a file and use it for constructing a pseudo-random number
 -- generator. After supplied action has been applied to the constructed generator, the
@@ -307,7 +305,7 @@ nonEmptyToSeed xs = Seed $ runST $ do
     defaultUnsafeFillMutableByteArrayT mba 0 n $ do
       get >>= \case
         [] -> pure 0
-        w:ws -> w <$ put ws
+        w : ws -> w <$ put ws
   freezeMutableByteArray mba
 
 -- | Convert a `Seed` to a list of 64bit words.
@@ -317,13 +315,15 @@ nonEmptyFromSeed :: forall g. SeedGen g => Seed g -> NonEmpty Word64
 nonEmptyFromSeed (Seed ba) =
   case nonEmpty $ reverse $ goWord64 0 [] of
     Just ne -> ne
-    Nothing -> -- Seed is at least 1 byte in size, so it can't be empty
-      error $ "Impossible: Seed for "
-           ++ seedGenTypeName @g
-           ++ " must be at least: "
-           ++ show (seedSize @g)
-           ++ " bytes, but got "
-           ++ show n
+    Nothing ->
+      -- Seed is at least 1 byte in size, so it can't be empty
+      error $
+        "Impossible: Seed for "
+          ++ seedGenTypeName @g
+          ++ " must be at least: "
+          ++ show (seedSize @g)
+          ++ " bytes, but got "
+          ++ show n
   where
     n = sizeOfByteArray ba
     n8 = 8 * (n `quot` 8)

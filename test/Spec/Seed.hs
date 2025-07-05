@@ -9,21 +9,22 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Spec.Seed where
 
 import Data.Bits
+import qualified Data.ByteString as BS
 import Data.List.NonEmpty as NE
 import Data.Maybe (fromJust)
 import Data.Proxy
 import Data.Word
+import qualified GHC.Exts as GHC (IsList (..))
+import GHC.TypeLits
+import Spec.Stateful ()
 import System.Random
+import Test.SmallCheck.Series hiding (NonEmpty (..))
 import Test.Tasty
 import Test.Tasty.SmallCheck as SC
-import qualified Data.ByteString as BS
-import GHC.TypeLits
-import qualified GHC.Exts as GHC (IsList(..))
-import Test.SmallCheck.Series hiding (NonEmpty(..))
-import Spec.Stateful ()
 
 newtype GenN (n :: Nat) = GenN BS.ByteString
   deriving (Eq, Show)
@@ -61,16 +62,19 @@ instance (1 <= n, KnownNat n) => SeedGen (Gen64 n) where
   fromSeed64 = Gen64
 
 seedGenSpec ::
-     forall g. (SeedGen g, Eq g, Show g, Serial IO g)
-  => TestTree
+  forall g.
+  (SeedGen g, Eq g, Show g, Serial IO g) =>
+  TestTree
 seedGenSpec =
-    testGroup (seedGenTypeName @g)
+  testGroup
+    (seedGenTypeName @g)
     [ testProperty "fromSeed/toSeed" $
-        forAll $ \(g :: g) -> g == fromSeed (toSeed g)
+        forAll $
+          \(g :: g) -> g == fromSeed (toSeed g)
     , testProperty "fromSeed64/toSeed64" $
-        forAll $ \(g :: g) -> g == fromSeed64 (toSeed64 g)
+        forAll $
+          \(g :: g) -> g == fromSeed64 (toSeed64 g)
     ]
-
 
 spec :: TestTree
 spec =
@@ -112,4 +116,3 @@ spec =
     , seedGenSpec @(Gen64 16)
     , seedGenSpec @(Gen64 17)
     ]
-

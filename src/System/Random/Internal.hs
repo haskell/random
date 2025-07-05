@@ -10,8 +10,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
@@ -24,102 +24,105 @@
 -- Stability   :  stable
 --
 -- This library deals with the common task of pseudo-random number generation.
-module System.Random.Internal
-  (-- * Pure and monadic pseudo-random number generator interfaces
-    RandomGen(..)
-  , SplitGen(..)
-  , Seed(..)
+module System.Random.Internal (
+  -- * Pure and monadic pseudo-random number generator interfaces
+  RandomGen (..),
+  SplitGen (..),
+  Seed (..),
+
   -- * Stateful
-  , StatefulGen(..)
-  , FrozenGen(..)
-  , ThawedGen(..)
-  , splitGenM
-  , splitMutableGenM
+  StatefulGen (..),
+  FrozenGen (..),
+  ThawedGen (..),
+  splitGenM,
+  splitMutableGenM,
 
   -- ** Standard pseudo-random number generator
-  , StdGen(..)
-  , mkStdGen
-  , mkStdGen64
-  , theStdGen
+  StdGen (..),
+  mkStdGen,
+  mkStdGen64,
+  theStdGen,
 
   -- * Monadic adapters for pure pseudo-random number generators
+
   -- ** Pure adapter
-  , StateGen(..)
-  , StateGenM(..)
-  , runStateGen
-  , runStateGen_
-  , runStateGenT
-  , runStateGenT_
-  , runStateGenST
-  , runStateGenST_
+  StateGen (..),
+  StateGenM (..),
+  runStateGen,
+  runStateGen_,
+  runStateGenT,
+  runStateGenT_,
+  runStateGenST,
+  runStateGenST_,
 
   -- * Pseudo-random values of various types
-  , Uniform(..)
-  , uniformViaFiniteM
-  , UniformRange(..)
-  , uniformWordR
-  , uniformDouble01M
-  , uniformDoublePositive01M
-  , uniformFloat01M
-  , uniformFloatPositive01M
-  , uniformEnumM
-  , uniformEnumRM
-  , uniformListM
-  , uniformListRM
-  , isInRangeOrd
-  , isInRangeEnum
-  , scaleFloating
+  Uniform (..),
+  uniformViaFiniteM,
+  UniformRange (..),
+  uniformWordR,
+  uniformDouble01M,
+  uniformDoublePositive01M,
+  uniformFloat01M,
+  uniformFloatPositive01M,
+  uniformEnumM,
+  uniformEnumRM,
+  uniformListM,
+  uniformListRM,
+  isInRangeOrd,
+  isInRangeEnum,
+  scaleFloating,
 
   -- * Generators for sequences of pseudo-random bytes
-  , uniformShortByteStringM
-  , uniformByteArray
-  , fillByteArrayST
-  , genShortByteStringIO
-  , genShortByteStringST
-  , defaultUnsafeFillMutableByteArrayT
-  , defaultUnsafeUniformFillMutableByteArray
+  uniformShortByteStringM,
+  uniformByteArray,
+  fillByteArrayST,
+  genShortByteStringIO,
+  genShortByteStringST,
+  defaultUnsafeFillMutableByteArrayT,
+  defaultUnsafeUniformFillMutableByteArray,
+
   -- ** Helpers for dealing with MutableByteArray
-  , newMutableByteArray
-  , newPinnedMutableByteArray
-  , freezeMutableByteArray
-  , writeWord8
-  , writeWord64LE
-  , indexWord8
-  , indexWord64LE
-  , indexByteSliceWord64LE
-  , sizeOfByteArray
-  , shortByteStringToByteArray
-  , byteArrayToShortByteString
-  ) where
+  newMutableByteArray,
+  newPinnedMutableByteArray,
+  freezeMutableByteArray,
+  writeWord8,
+  writeWord64LE,
+  indexWord8,
+  indexWord64LE,
+  indexByteSliceWord64LE,
+  sizeOfByteArray,
+  shortByteStringToByteArray,
+  byteArrayToShortByteString,
+) where
 
 import Control.Arrow
 import Control.DeepSeq (NFData)
 import Control.Monad (replicateM, when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.ST
-import Control.Monad.State.Strict (MonadState(..), State, StateT(..), execStateT, runState)
-import Control.Monad.Trans (lift, MonadTrans)
+import Control.Monad.State.Strict (MonadState (..), State, StateT (..), execStateT, runState)
+import Control.Monad.Trans (MonadTrans, lift)
 import Control.Monad.Trans.Identity (IdentityT (runIdentityT))
-import Data.Array.Byte (ByteArray(..), MutableByteArray(..))
+import Data.Array.Byte (ByteArray (..), MutableByteArray (..))
 import Data.Bits
-import Data.ByteString.Short.Internal (ShortByteString(SBS))
+import Data.ByteString.Short.Internal (ShortByteString (SBS))
 import Data.IORef (IORef, newIORef)
 import Data.Int
+import Data.Kind
 import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
 import GHC.Exts
 import GHC.Generics
-import GHC.IO (IO(..))
-import GHC.ST (ST(..))
+import GHC.IO (IO (..))
+import GHC.ST (ST (..))
 import GHC.Word
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random.Array
-import System.Random.GFinite (Cardinality(..), GFinite(..), Finite)
+import System.Random.GFinite (Cardinality (..), Finite, GFinite (..))
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
-import Data.Kind
 
 -- | This is a binary form of pseudo-random number generator's state. It is designed to be
 -- safe and easy to use for input/output operations like restoring from file, transmitting
@@ -134,16 +137,18 @@ import Data.Kind
 newtype Seed g = Seed ByteArray
   deriving (Eq, Ord, Show)
 
-
 -- | 'RandomGen' is an interface to pure pseudo-random number generators.
 --
 -- 'StdGen' is the standard 'RandomGen' instance provided by this library.
 --
 -- @since 1.0.0
 {-# DEPRECATED next "No longer used" #-}
+
 {-# DEPRECATED genRange "No longer used" #-}
+
 class RandomGen g where
-  {-# MINIMAL (genWord32|genWord64|(next,genRange)) #-}
+  {-# MINIMAL (genWord32 | genWord64 | (next, genRange)) #-}
+
   -- | Returns an 'Int' that is uniformly distributed over the range returned by
   -- 'genRange' (including both end points), and a new generator. Using 'next'
   -- is inefficient as all operations go via 'Integer'. See
@@ -232,17 +237,17 @@ class RandomGen g where
   --
   -- @since 1.3.0
   unsafeUniformFillMutableByteArray ::
-       MutableByteArray s
-    -- ^ Mutable array to fill with random bytes
-    -> Int
-    -- ^ Offset into a mutable array from the beginning in number of bytes. Offset must
+    -- | Mutable array to fill with random bytes
+    MutableByteArray s ->
+    -- | Offset into a mutable array from the beginning in number of bytes. Offset must
     -- be non-negative, but this will not be checked
-    -> Int
-    -- ^ Number of randomly generated bytes to write into the array. Number of bytes
+    Int ->
+    -- | Number of randomly generated bytes to write into the array. Number of bytes
     -- must be non-negative and less then the total size of the array, minus the
     -- offset. This also will be checked.
-    -> g
-    -> ST s g
+    Int ->
+    g ->
+    ST s g
   unsafeUniformFillMutableByteArray = defaultUnsafeUniformFillMutableByteArray
   {-# INLINE unsafeUniformFillMutableByteArray #-}
 
@@ -273,6 +278,7 @@ class RandomGen g where
   split = splitGen
 
 {-# DEPRECATED genShortByteString "In favor of `System.Random.uniformShortByteString`" #-}
+
 {-# DEPRECATED split "In favor of `splitGen`" #-}
 
 -- | Pseudo-random generators that can be split into two separate and independent
@@ -285,7 +291,6 @@ class RandomGen g where
 --
 -- @since 1.3.0
 class RandomGen g => SplitGen g where
-
   -- | Returns two distinct pseudo-random number generators.
   --
   -- Implementations should take care to ensure that the resulting generators
@@ -298,7 +303,8 @@ class RandomGen g => SplitGen g where
 --
 -- @since 1.2.0
 class Monad m => StatefulGen g m where
-  {-# MINIMAL uniformWord32|uniformWord64 #-}
+  {-# MINIMAL uniformWord32 | uniformWord64 #-}
+
   -- | @uniformWord32R upperBound g@ generates a 'Word32' that is uniformly
   -- distributed over the range @[0, upperBound]@.
   --
@@ -364,10 +370,13 @@ class Monad m => StatefulGen g m where
   --
   -- @since 1.3.0
   uniformByteArrayM ::
-       Bool -- ^ Should `ByteArray` be allocated as pinned memory or not
-    -> Int -- ^ Size of the newly created `ByteArray` in number of bytes.
-    -> g -- ^ Generator to use for filling in the newly created `ByteArray`
-    -> m ByteArray
+    -- | Should `ByteArray` be allocated as pinned memory or not
+    Bool ->
+    -- | Size of the newly created `ByteArray` in number of bytes.
+    Int ->
+    -- | Generator to use for filling in the newly created `ByteArray`
+    g ->
+    m ByteArray
   default uniformByteArrayM ::
     (RandomGen f, FrozenGen f m, g ~ MutableGen f m) => Bool -> Int -> g -> m ByteArray
   uniformByteArrayM isPinned n g = modifyGen g (uniformByteArray isPinned n)
@@ -380,8 +389,8 @@ class Monad m => StatefulGen g m where
   uniformShortByteString :: Int -> g -> m ShortByteString
   uniformShortByteString = uniformShortByteStringM
   {-# INLINE uniformShortByteString #-}
-{-# DEPRECATED uniformShortByteString "In favor of `uniformShortByteStringM`" #-}
 
+{-# DEPRECATED uniformShortByteString "In favor of `uniformShortByteStringM`" #-}
 
 -- | This class is designed for mutable pseudo-random number generators that have a frozen
 -- imutable counterpart that can be manipulated in pure code.
@@ -411,7 +420,8 @@ class Monad m => StatefulGen g m where
 --
 -- @since 1.2.0
 class StatefulGen (MutableGen f m) m => FrozenGen f m where
-  {-# MINIMAL (modifyGen|(freezeGen,overwriteGen)) #-}
+  {-# MINIMAL (modifyGen | (freezeGen, overwriteGen)) #-}
+
   -- | Represents the state of the pseudo-random number generator for use with
   -- 'thawGen' and 'freezeGen'.
   --
@@ -483,11 +493,14 @@ splitMutableGenM = splitGenM >=> thawGen
 --
 -- @since 1.3.0
 uniformByteArray ::
-     RandomGen g
-  => Bool -- ^ Should byte array be allocated in pinned or unpinned memory.
-  -> Int -- ^ Number of bytes to generate
-  -> g -- ^ Pure pseudo-random numer generator
-  -> (ByteArray, g)
+  RandomGen g =>
+  -- | Should byte array be allocated in pinned or unpinned memory.
+  Bool ->
+  -- | Number of bytes to generate
+  Int ->
+  -- | Pure pseudo-random numer generator
+  g ->
+  (ByteArray, g)
 uniformByteArray isPinned n0 g =
   runST $ do
     let !n = max 0 n0
@@ -507,20 +520,21 @@ uniformByteArray isPinned n0 g =
 fillByteArrayST :: Bool -> Int -> ST s Word64 -> ST s ByteArray
 fillByteArrayST isPinned n0 action = do
   let !n = max 0 n0
-  mba <- if isPinned
-    then newPinnedMutableByteArray n
-    else newMutableByteArray n
+  mba <-
+    if isPinned
+      then newPinnedMutableByteArray n
+      else newMutableByteArray n
   runIdentityT $ defaultUnsafeFillMutableByteArrayT mba 0 n (lift action)
   freezeMutableByteArray mba
 {-# INLINE fillByteArrayST #-}
 
 defaultUnsafeFillMutableByteArrayT ::
-     (Monad (t (ST s)), MonadTrans t)
-  => MutableByteArray s
-  -> Int
-  -> Int
-  -> t (ST s) Word64
-  -> t (ST s) ()
+  (Monad (t (ST s)), MonadTrans t) =>
+  MutableByteArray s ->
+  Int ->
+  Int ->
+  t (ST s) Word64 ->
+  t (ST s) ()
 defaultUnsafeFillMutableByteArrayT mba offset n gen64 = do
   let !n64 = n `quot` 8
       !endIx64 = offset + n64 * 8
@@ -542,35 +556,39 @@ defaultUnsafeFillMutableByteArrayT mba offset n gen64 = do
     -- result in inconsistent tail when total length is slightly varied.
     lift $ writeByteSliceWord64LE mba (endIx - nrem) endIx w64
 {-# INLINEABLE defaultUnsafeFillMutableByteArrayT #-}
-{-# SPECIALIZE defaultUnsafeFillMutableByteArrayT
-  :: MutableByteArray s
-  -> Int
-  -> Int
-  -> IdentityT (ST s) Word64
-  -> IdentityT (ST s) () #-}
-{-# SPECIALIZE defaultUnsafeFillMutableByteArrayT
-  :: MutableByteArray s
-  -> Int
-  -> Int
-  -> StateT g (ST s) Word64
-  -> StateT g (ST s) () #-}
+{-# SPECIALIZE defaultUnsafeFillMutableByteArrayT ::
+  MutableByteArray s ->
+  Int ->
+  Int ->
+  IdentityT (ST s) Word64 ->
+  IdentityT (ST s) ()
+  #-}
+{-# SPECIALIZE defaultUnsafeFillMutableByteArrayT ::
+  MutableByteArray s ->
+  Int ->
+  Int ->
+  StateT g (ST s) Word64 ->
+  StateT g (ST s) ()
+  #-}
 
 -- | Efficiently generates a sequence of pseudo-random bytes in a platform
 -- independent manner.
 --
 -- @since 1.2.0
 defaultUnsafeUniformFillMutableByteArray ::
-     RandomGen g
-  => MutableByteArray s
-  -> Int -- ^ Starting offset
-  -> Int -- ^ Number of random bytes to write into the array
-  -> g -- ^ ST action that can generate 8 random bytes at a time
-  -> ST s g
+  RandomGen g =>
+  MutableByteArray s ->
+  -- | Starting offset
+  Int ->
+  -- | Number of random bytes to write into the array
+  Int ->
+  -- | ST action that can generate 8 random bytes at a time
+  g ->
+  ST s g
 defaultUnsafeUniformFillMutableByteArray mba i0 n g =
-  flip execStateT g
-    $ defaultUnsafeFillMutableByteArrayT mba i0 n (state genWord64)
+  flip execStateT g $
+    defaultUnsafeFillMutableByteArrayT mba i0 n (state genWord64)
 {-# INLINE defaultUnsafeUniformFillMutableByteArray #-}
-
 
 -- | Same as 'genShortByteStringIO', but runs in 'ST'.
 --
@@ -578,15 +596,20 @@ defaultUnsafeUniformFillMutableByteArray mba i0 n g =
 genShortByteStringST :: Int -> ST s Word64 -> ST s ShortByteString
 genShortByteStringST n0 action = byteArrayToShortByteString <$> fillByteArrayST False n0 action
 {-# INLINE genShortByteStringST #-}
-{-# DEPRECATED genShortByteStringST "In favor of `fillByteArrayST`, since `uniformShortByteString`, which it was used for, was also deprecated" #-}
+{-# DEPRECATED
+  genShortByteStringST
+  "In favor of `fillByteArrayST`, since `uniformShortByteString`, which it was used for, was also deprecated"
+  #-}
 
 -- | Efficiently fills in a new `ShortByteString` in a platform independent manner.
 --
 -- @since 1.2.0
 genShortByteStringIO ::
-     Int -- ^ Number of bytes to generate
-  -> IO Word64 -- ^ IO action that can generate 8 random bytes at a time
-  -> IO ShortByteString
+  -- | Number of bytes to generate
+  Int ->
+  -- | IO action that can generate 8 random bytes at a time
+  IO Word64 ->
+  IO ShortByteString
 genShortByteStringIO n ioAction = stToIO $ genShortByteStringST n (ioToST ioAction)
 {-# INLINE genShortByteStringIO #-}
 {-# DEPRECATED genShortByteStringIO "In favor of `fillByteArrayST`" #-}
@@ -609,7 +632,7 @@ data StateGenM g = StateGenM
 -- stateful generator `StateGenM`
 --
 -- @since 1.2.0
-newtype StateGen g = StateGen { unStateGen :: g }
+newtype StateGen g = StateGen {unStateGen :: g}
   deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
 
 instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
@@ -700,7 +723,7 @@ runStateGenT_ g = fmap fst . runStateGenT g
 -- pseudo-random number generator.
 --
 -- @since 1.2.0
-runStateGenST :: RandomGen g => g -> (forall s . StateGenM g -> StateT g (ST s) a) -> (a, g)
+runStateGenST :: RandomGen g => g -> (forall s. StateGenM g -> StateT g (ST s) a) -> (a, g)
 runStateGenST g action = runST $ runStateGenT g action
 {-# INLINE runStateGenST #-}
 
@@ -709,10 +732,9 @@ runStateGenST g action = runST $ runStateGenT g action
 -- resulting generator.
 --
 -- @since 1.2.1
-runStateGenST_ :: RandomGen g => g -> (forall s . StateGenM g -> StateT g (ST s) a) -> a
+runStateGenST_ :: RandomGen g => g -> (forall s. StateGenM g -> StateT g (ST s) a) -> a
 runStateGenST_ g action = runST $ runStateGenT_ g action
 {-# INLINE runStateGenST_ #-}
-
 
 -- | Generates a list of pseudo-random values.
 --
@@ -728,7 +750,6 @@ runStateGenST_ g action = runST $ runStateGenT_ g action
 uniformListM :: (StatefulGen g m, Uniform a) => Int -> g -> m [a]
 uniformListM n gen = replicateM n (uniformM gen)
 {-# INLINE uniformListM #-}
-
 
 -- | Generates a list of pseudo-random values in a specified range.
 --
@@ -746,7 +767,7 @@ uniformListRM n range gen = replicateM n (uniformRM range gen)
 {-# INLINE uniformListRM #-}
 
 -- | The standard pseudo-random number generator.
-newtype StdGen = StdGen { unStdGen :: SM.SMGen }
+newtype StdGen = StdGen {unStdGen :: SM.SMGen}
   deriving (Show, RandomGen, SplitGen, NFData)
 
 instance Eq StdGen where
@@ -759,6 +780,7 @@ instance RandomGen SM.SMGen where
   {-# INLINE genWord32 #-}
   genWord64 = SM.nextWord64
   {-# INLINE genWord64 #-}
+
   -- Despite that this is the same default implementation as in the type class definition,
   -- for some mysterious reason without this overwrite, performance of ByteArray generation
   -- slows down by a factor of x4:
@@ -801,7 +823,6 @@ theStdGen :: IORef StdGen
 theStdGen = unsafePerformIO $ SM.initSMGen >>= newIORef . StdGen
 {-# NOINLINE theStdGen #-}
 
-
 -- | The class of types for which a uniformly distributed value can be drawn
 -- from all possible values of the type.
 --
@@ -823,7 +844,6 @@ class Uniform a where
   --
   -- @since 1.2.0
   uniformM :: StatefulGen g m => g -> m a
-
   default uniformM :: (StatefulGen g m, Generic a, GUniform (Rep a)) => g -> m a
   uniformM = fmap to . (`runContT` pure) . guniformM
   {-# INLINE uniformM #-}
@@ -858,13 +878,14 @@ instance (GFinite f, GFinite g) => GUniform (f :+: g) where
   {-# INLINE guniformM #-}
 
 finiteUniformM :: forall g m f a. (StatefulGen g m, GFinite f) => g -> m (f a)
-finiteUniformM = fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
-  Shift n
-    | n <= 64 -> fmap toInteger . unsignedBitmaskWithRejectionM uniformWord64 (bit n - 1)
-    | otherwise -> boundedByPowerOf2ExclusiveIntegralM n
-  Card n
-    | n <= bit 64 -> fmap toInteger . unsignedBitmaskWithRejectionM uniformWord64 (fromInteger n - 1)
-    | otherwise -> boundedExclusiveIntegralM n
+finiteUniformM =
+  fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
+    Shift n
+      | n <= 64 -> fmap toInteger . unsignedBitmaskWithRejectionM uniformWord64 (bit n - 1)
+      | otherwise -> boundedByPowerOf2ExclusiveIntegralM n
+    Card n
+      | n <= bit 64 -> fmap toInteger . unsignedBitmaskWithRejectionM uniformWord64 (fromInteger n - 1)
+      | otherwise -> boundedExclusiveIntegralM n
 {-# INLINE finiteUniformM #-}
 
 -- | A definition of 'Uniform' for 'System.Random.Finite' types.
@@ -879,7 +900,6 @@ finiteUniformM = fmap toGFinite . case gcardinality (proxy# :: Proxy# f) of
 -- >>> gen <- newIOGenM (mkStdGen 42)
 -- >>> uniformListM 5 gen :: IO [Triple]
 -- [Triple 60 226 48,Triple 234 194 151,Triple 112 96 95,Triple 51 251 15,Triple 6 0 208]
---
 uniformViaFiniteM :: (StatefulGen g m, Generic a, GFinite (Rep a)) => g -> m a
 uniformViaFiniteM = fmap to . finiteUniformM
 {-# INLINE uniformViaFiniteM #-}
@@ -1021,6 +1041,7 @@ instance UniformRange Natural where
 instance Uniform Int8 where
   uniformM = fmap (fromIntegral :: Word8 -> Int8) . uniformWord8
   {-# INLINE uniformM #-}
+
 instance UniformRange Int8 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int8 -> Word8) fromIntegral
   {-# INLINE uniformRM #-}
@@ -1029,6 +1050,7 @@ instance UniformRange Int8 where
 instance Uniform Int16 where
   uniformM = fmap (fromIntegral :: Word16 -> Int16) . uniformWord16
   {-# INLINE uniformM #-}
+
 instance UniformRange Int16 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int16 -> Word16) fromIntegral
   {-# INLINE uniformRM #-}
@@ -1037,6 +1059,7 @@ instance UniformRange Int16 where
 instance Uniform Int32 where
   uniformM = fmap (fromIntegral :: Word32 -> Int32) . uniformWord32
   {-# INLINE uniformM #-}
+
 instance UniformRange Int32 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int32 -> Word32) fromIntegral
   {-# INLINE uniformRM #-}
@@ -1045,6 +1068,7 @@ instance UniformRange Int32 where
 instance Uniform Int64 where
   uniformM = fmap (fromIntegral :: Word64 -> Int64) . uniformWord64
   {-# INLINE uniformM #-}
+
 instance UniformRange Int64 where
   uniformRM = signedBitmaskWithRejectionRM (fromIntegral :: Int64 -> Word64) fromIntegral
   {-# INLINE uniformRM #-}
@@ -1053,9 +1077,9 @@ instance UniformRange Int64 where
 instance Uniform Int where
   uniformM
     | wordSizeInBits == 64 =
-      fmap (fromIntegral :: Word64 -> Int) . uniformWord64
+        fmap (fromIntegral :: Word64 -> Int) . uniformWord64
     | otherwise =
-      fmap (fromIntegral :: Word32 -> Int) . uniformWord32
+        fmap (fromIntegral :: Word32 -> Int) . uniformWord32
   {-# INLINE uniformM #-}
 
 instance UniformRange Int where
@@ -1066,9 +1090,9 @@ instance UniformRange Int where
 instance Uniform Word where
   uniformM
     | wordSizeInBits == 64 =
-      fmap (fromIntegral :: Word64 -> Word) . uniformWord64
+        fmap (fromIntegral :: Word64 -> Word) . uniformWord64
     | otherwise =
-      fmap (fromIntegral :: Word32 -> Word) . uniformWord32
+        fmap (fromIntegral :: Word32 -> Word) . uniformWord32
   {-# INLINE uniformM #-}
 
 instance UniformRange Word where
@@ -1080,22 +1104,23 @@ instance UniformRange Word where
 --
 -- @since 1.3.0
 uniformWordR ::
-    StatefulGen g m
-  => Word
-  -- ^ Maximum value to generate
-  -> g
-  -- ^ Stateful generator
-  -> m Word
+  StatefulGen g m =>
+  -- | Maximum value to generate
+  Word ->
+  -- | Stateful generator
+  g ->
+  m Word
 uniformWordR r
   | wordSizeInBits == 64 =
-    fmap (fromIntegral :: Word64 -> Word) . uniformWord64R ((fromIntegral :: Word -> Word64) r)
+      fmap (fromIntegral :: Word64 -> Word) . uniformWord64R ((fromIntegral :: Word -> Word64) r)
   | otherwise =
-    fmap (fromIntegral :: Word32 -> Word) . uniformWord32R ((fromIntegral :: Word -> Word32) r)
+      fmap (fromIntegral :: Word32 -> Word) . uniformWord32R ((fromIntegral :: Word -> Word32) r)
 {-# INLINE uniformWordR #-}
 
 instance Uniform Word8 where
   uniformM = uniformWord8
   {-# INLINE uniformM #-}
+
 instance UniformRange Word8 where
   uniformRM = unbiasedWordMult32RM
   {-# INLINE uniformRM #-}
@@ -1104,22 +1129,25 @@ instance UniformRange Word8 where
 instance Uniform Word16 where
   uniformM = uniformWord16
   {-# INLINE uniformM #-}
+
 instance UniformRange Word16 where
   uniformRM = unbiasedWordMult32RM
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
 instance Uniform Word32 where
-  uniformM  = uniformWord32
+  uniformM = uniformWord32
   {-# INLINE uniformM #-}
+
 instance UniformRange Word32 where
   uniformRM = unbiasedWordMult32RM
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
 instance Uniform Word64 where
-  uniformM  = uniformWord64
+  uniformM = uniformWord64
   {-# INLINE uniformM #-}
+
 instance UniformRange Word64 where
   uniformRM = unsignedBitmaskWithRejectionRM
   {-# INLINE uniformRM #-}
@@ -1138,6 +1166,7 @@ instance UniformRange CBool where
 instance Uniform CChar where
   uniformM = fmap CChar . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CChar where
   uniformRM (CChar b, CChar t) = fmap CChar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1146,6 +1175,7 @@ instance UniformRange CChar where
 instance Uniform CSChar where
   uniformM = fmap CSChar . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CSChar where
   uniformRM (CSChar b, CSChar t) = fmap CSChar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1154,6 +1184,7 @@ instance UniformRange CSChar where
 instance Uniform CUChar where
   uniformM = fmap CUChar . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CUChar where
   uniformRM (CUChar b, CUChar t) = fmap CUChar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1162,6 +1193,7 @@ instance UniformRange CUChar where
 instance Uniform CShort where
   uniformM = fmap CShort . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CShort where
   uniformRM (CShort b, CShort t) = fmap CShort . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1170,6 +1202,7 @@ instance UniformRange CShort where
 instance Uniform CUShort where
   uniformM = fmap CUShort . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CUShort where
   uniformRM (CUShort b, CUShort t) = fmap CUShort . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1178,6 +1211,7 @@ instance UniformRange CUShort where
 instance Uniform CInt where
   uniformM = fmap CInt . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CInt where
   uniformRM (CInt b, CInt t) = fmap CInt . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1186,6 +1220,7 @@ instance UniformRange CInt where
 instance Uniform CUInt where
   uniformM = fmap CUInt . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CUInt where
   uniformRM (CUInt b, CUInt t) = fmap CUInt . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1194,6 +1229,7 @@ instance UniformRange CUInt where
 instance Uniform CLong where
   uniformM = fmap CLong . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CLong where
   uniformRM (CLong b, CLong t) = fmap CLong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1202,6 +1238,7 @@ instance UniformRange CLong where
 instance Uniform CULong where
   uniformM = fmap CULong . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CULong where
   uniformRM (CULong b, CULong t) = fmap CULong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1210,6 +1247,7 @@ instance UniformRange CULong where
 instance Uniform CPtrdiff where
   uniformM = fmap CPtrdiff . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CPtrdiff where
   uniformRM (CPtrdiff b, CPtrdiff t) = fmap CPtrdiff . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1218,6 +1256,7 @@ instance UniformRange CPtrdiff where
 instance Uniform CSize where
   uniformM = fmap CSize . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CSize where
   uniformRM (CSize b, CSize t) = fmap CSize . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1226,6 +1265,7 @@ instance UniformRange CSize where
 instance Uniform CWchar where
   uniformM = fmap CWchar . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CWchar where
   uniformRM (CWchar b, CWchar t) = fmap CWchar . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1234,6 +1274,7 @@ instance UniformRange CWchar where
 instance Uniform CSigAtomic where
   uniformM = fmap CSigAtomic . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CSigAtomic where
   uniformRM (CSigAtomic b, CSigAtomic t) = fmap CSigAtomic . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1242,6 +1283,7 @@ instance UniformRange CSigAtomic where
 instance Uniform CLLong where
   uniformM = fmap CLLong . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CLLong where
   uniformRM (CLLong b, CLLong t) = fmap CLLong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1250,6 +1292,7 @@ instance UniformRange CLLong where
 instance Uniform CULLong where
   uniformM = fmap CULLong . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CULLong where
   uniformRM (CULLong b, CULLong t) = fmap CULLong . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1258,6 +1301,7 @@ instance UniformRange CULLong where
 instance Uniform CIntPtr where
   uniformM = fmap CIntPtr . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CIntPtr where
   uniformRM (CIntPtr b, CIntPtr t) = fmap CIntPtr . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1266,6 +1310,7 @@ instance UniformRange CIntPtr where
 instance Uniform CUIntPtr where
   uniformM = fmap CUIntPtr . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CUIntPtr where
   uniformRM (CUIntPtr b, CUIntPtr t) = fmap CUIntPtr . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1274,6 +1319,7 @@ instance UniformRange CUIntPtr where
 instance Uniform CIntMax where
   uniformM = fmap CIntMax . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CIntMax where
   uniformRM (CIntMax b, CIntMax t) = fmap CIntMax . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1282,6 +1328,7 @@ instance UniformRange CIntMax where
 instance Uniform CUIntMax where
   uniformM = fmap CUIntMax . uniformM
   {-# INLINE uniformM #-}
+
 instance UniformRange CUIntMax where
   uniformRM (CUIntMax b, CUIntMax t) = fmap CUIntMax . uniformRM (b, t)
   {-# INLINE uniformRM #-}
@@ -1324,6 +1371,7 @@ charToWord32 (C# c#) = W32# (wordToWord32# (int2Word# (ord# c#)))
 instance Uniform Char where
   uniformM g = word32ToChar <$> unbiasedWordMult32 (charToWord32 maxBound) g
   {-# INLINE uniformM #-}
+
 instance UniformRange Char where
   uniformRM (l, h) g =
     word32ToChar <$> unbiasedWordMult32RM (charToWord32 l, charToWord32 h) g
@@ -1333,19 +1381,22 @@ instance UniformRange Char where
 instance Uniform () where
   uniformM = const $ pure ()
   {-# INLINE uniformM #-}
+
 instance UniformRange () where
   uniformRM = const $ const $ pure ()
   {-# INLINE uniformRM #-}
 
 instance Uniform Bool where
   uniformM = fmap wordToBool . uniformWord8
-    where wordToBool w = (w .&. 1) /= 0
-          {-# INLINE wordToBool #-}
+    where
+      wordToBool w = (w .&. 1) /= 0
+      {-# INLINE wordToBool #-}
   {-# INLINE uniformM #-}
+
 instance UniformRange Bool where
   uniformRM (False, False) _g = return False
-  uniformRM (True, True)   _g = return True
-  uniformRM _               g = uniformM g
+  uniformRM (True, True) _g = return True
+  uniformRM _ g = uniformM g
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
@@ -1358,17 +1409,17 @@ instance UniformRange Double where
   uniformRM (l, h) g
     | l == h = return l
     | isInfinite l || isInfinite h =
-      -- Optimisation exploiting absorption:
-      --    (+Infinity) + (-Infinity) = NaN
-      --    (-Infinity) + (+Infinity) = NaN
-      --    (+Infinity) + _           = +Infinity
-      --    (-Infinity) + _           = -Infinity
-      --              _ + (+Infinity) = +Infinity
-      --              _ + (-Infinity) = -Infinity
-      return $! h + l
+        -- Optimisation exploiting absorption:
+        --    (+Infinity) + (-Infinity) = NaN
+        --    (-Infinity) + (+Infinity) = NaN
+        --    (+Infinity) + _           = +Infinity
+        --    (-Infinity) + _           = -Infinity
+        --              _ + (+Infinity) = +Infinity
+        --              _ + (-Infinity) = -Infinity
+        return $! h + l
     | otherwise = do
-      w64 <- uniformWord64 g
-      pure $! scaleFloating l h w64
+        w64 <- uniformWord64 g
+        pure $! scaleFloating l h w64
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
@@ -1405,17 +1456,17 @@ instance UniformRange Float where
   uniformRM (l, h) g
     | l == h = return l
     | isInfinite l || isInfinite h =
-      -- Optimisation exploiting absorption:
-      --    (+Infinity) + (-Infinity) = NaN
-      --    (-Infinity) + (+Infinity) = NaN
-      --    (+Infinity) + _           = +Infinity
-      --    (-Infinity) + _           = -Infinity
-      --              _ + (+Infinity) = +Infinity
-      --              _ + (-Infinity) = -Infinity
-      return $! h + l
+        -- Optimisation exploiting absorption:
+        --    (+Infinity) + (-Infinity) = NaN
+        --    (-Infinity) + (+Infinity) = NaN
+        --    (+Infinity) + _           = +Infinity
+        --    (-Infinity) + _           = -Infinity
+        --              _ + (+Infinity) = +Infinity
+        --              _ + (-Infinity) = -Infinity
+        return $! h + l
     | otherwise = do
-      w32 <- uniformWord32 g
-      pure $! scaleFloating l h w32
+        w32 <- uniformWord32 g
+        pure $! scaleFloating l h w32
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
@@ -1424,25 +1475,28 @@ instance UniformRange Float where
 --
 -- @since 1.3.0
 scaleFloating ::
-     forall a w. (RealFloat a, Integral w, Bounded w, FiniteBits w)
-  => a
-  -- ^ Low
-  -> a
-  -- ^ High
-  -> w
-  -- ^ Uniformly distributed unsigned integral value that will be used for converting to a floating
+  forall a w.
+  (RealFloat a, Integral w, Bounded w, FiniteBits w) =>
+  -- | Low
+  a ->
+  -- | High
+  a ->
+  -- | Uniformly distributed unsigned integral value that will be used for converting to a floating
   -- point value and subsequent scaling to the specified range
-  -> a
+  w ->
+  a
 scaleFloating l h w =
   if isInfinite diff
-    then let !x = fromIntegral w / m
-             !y = x * l + (1 - x) * h
-          in max (min y (max l h)) (min l h)
-    else let !topMostBit = finiteBitSize w - 1
-             !x = fromIntegral (clearBit w topMostBit) / m
-          in if testBit w topMostBit
-               then l + diff * x
-               else h + negate diff * x
+    then
+      let !x = fromIntegral w / m
+          !y = x * l + (1 - x) * h
+       in max (min y (max l h)) (min l h)
+    else
+      let !topMostBit = finiteBitSize w - 1
+          !x = fromIntegral (clearBit w topMostBit) / m
+       in if testBit w topMostBit
+            then l + diff * x
+            else h + negate diff * x
   where
     !diff = h - l
     !m = fromIntegral (maxBound :: w) :: a
@@ -1502,32 +1556,35 @@ uniformEnumRM (l, h) g = toEnum <$> uniformRM (fromEnum l, fromEnum h) g
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
 randomIvalIntegral (l, h) = randomIvalInteger (toInteger l, toInteger h)
 
-{-# SPECIALIZE randomIvalInteger :: (Num a) =>
-    (Integer, Integer) -> StdGen -> (a, StdGen) #-}
-
+{-# SPECIALIZE randomIvalInteger ::
+  Num a =>
+  (Integer, Integer) -> StdGen -> (a, StdGen)
+  #-}
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l, h) rng
- | l > h     = randomIvalInteger (h,l) rng
- | otherwise = case f 1 0 rng of (v, rng') -> (fromInteger (l + v `mod` k), rng')
-     where
-       (genlo, genhi) = genRange rng
-       b = fromIntegral genhi - fromIntegral genlo + 1 :: Integer
+  | l > h = randomIvalInteger (h, l) rng
+  | otherwise = case f 1 0 rng of (v, rng') -> (fromInteger (l + v `mod` k), rng')
+  where
+    (genlo, genhi) = genRange rng
+    b = fromIntegral genhi - fromIntegral genlo + 1 :: Integer
 
-       -- Probabilities of the most likely and least likely result
-       -- will differ at most by a factor of (1 +- 1/q). Assuming the RandomGen
-       -- is uniform, of course
+    -- Probabilities of the most likely and least likely result
+    -- will differ at most by a factor of (1 +- 1/q). Assuming the RandomGen
+    -- is uniform, of course
 
-       -- On average, log q / log b more pseudo-random values will be generated
-       -- than the minimum
-       q = 1000 :: Integer
-       k = h - l + 1
-       magtgt = k * q
+    -- On average, log q / log b more pseudo-random values will be generated
+    -- than the minimum
+    q = 1000 :: Integer
+    k = h - l + 1
+    magtgt = k * q
 
-       -- generate pseudo-random values until we exceed the target magnitude
-       f mag v g | mag >= magtgt = (v, g)
-                 | otherwise = v' `seq`f (mag*b) v' g' where
-                        (x,g') = next g
-                        v' = v * b + (fromIntegral x - fromIntegral genlo)
+    -- generate pseudo-random values until we exceed the target magnitude
+    f mag v g
+      | mag >= magtgt = (v, g)
+      | otherwise = v' `seq` f (mag * b) v' g'
+      where
+        (x, g') = next g
+        v' = v * b + (fromIntegral x - fromIntegral genlo)
 
 -- | Generate an integral in the range @[l, h]@ if @l <= h@ and @[h, l]@
 -- otherwise.
@@ -1556,7 +1613,7 @@ uniformIntegralM (l, h) gen = case l `compare` h of
 -- https://doi.org/10.1145/3230636
 --
 -- PRECONDITION (unchecked): s > 0
-boundedExclusiveIntegralM :: forall a g m . (Bits a, Integral a, StatefulGen g m) => a -> g -> m a
+boundedExclusiveIntegralM :: forall a g m. (Bits a, Integral a, StatefulGen g m) => a -> g -> m a
 boundedExclusiveIntegralM s gen = go
   where
     n = integralWordSize s
@@ -1606,8 +1663,8 @@ uniformIntegralWords n gen = go 0 n
     go !acc i
       | i == 0 = return acc
       | otherwise = do
-        (w :: Word) <- uniformM gen
-        go ((acc `shiftL` wordSizeInBits) .|. fromIntegral w) (i - 1)
+          (w :: Word) <- uniformM gen
+          go ((acc `shiftL` wordSizeInBits) .|. fromIntegral w) (i - 1)
 {-# INLINE uniformIntegralWords #-}
 
 -- | Uniformly generate an 'Integral' in an inclusive-inclusive range.
@@ -1615,15 +1672,15 @@ uniformIntegralWords n gen = go 0 n
 -- Only use for integrals size less than or equal to that of 'Word32'.
 unbiasedWordMult32RM :: forall a g m. (Integral a, StatefulGen g m) => (a, a) -> g -> m a
 unbiasedWordMult32RM (b, t) g
-  | b <= t    = (+b) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (t - b)) g
-  | otherwise = (+t) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (b - t)) g
+  | b <= t = (+ b) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (t - b)) g
+  | otherwise = (+ t) . fromIntegral <$> unbiasedWordMult32 (fromIntegral (b - t)) g
 {-# INLINE unbiasedWordMult32RM #-}
 
 -- | Uniformly generate Word32 in @[0, s]@.
 unbiasedWordMult32 :: forall g m. StatefulGen g m => Word32 -> g -> m Word32
 unbiasedWordMult32 s g
   | s == maxBound = uniformWord32 g
-  | otherwise = unbiasedWordMult32Exclusive (s+1) g
+  | otherwise = unbiasedWordMult32Exclusive (s + 1) g
 {-# INLINE unbiasedWordMult32 #-}
 
 -- | See [Lemire's paper](https://arxiv.org/pdf/1805.10941.pdf),
@@ -1632,7 +1689,7 @@ unbiasedWordMult32 s g
 -- more directly [O\'Neill's github
 -- repo](https://github.com/imneme/bounded-rands/blob/3d71f53c975b1e5b29f2f3b05a74e26dab9c3d84/bounded32.cpp#L234).
 -- N.B. The range is [0,r) **not** [0,r].
-unbiasedWordMult32Exclusive :: forall g m . StatefulGen g m => Word32 -> g -> m Word32
+unbiasedWordMult32Exclusive :: forall g m. StatefulGen g m => Word32 -> g -> m Word32
 unbiasedWordMult32Exclusive r g = go
   where
     t :: Word32
@@ -1649,10 +1706,11 @@ unbiasedWordMult32Exclusive r g = go
 
 -- | This only works for unsigned integrals
 unsignedBitmaskWithRejectionRM ::
-     forall a g m . (FiniteBits a, Num a, Ord a, Uniform a, StatefulGen g m)
-  => (a, a)
-  -> g
-  -> m a
+  forall a g m.
+  (FiniteBits a, Num a, Ord a, Uniform a, StatefulGen g m) =>
+  (a, a) ->
+  g ->
+  m a
 unsignedBitmaskWithRejectionRM (bottom, top) gen
   | bottom == top = pure top
   | otherwise = (b +) <$> unsignedBitmaskWithRejectionM uniformM r gen
@@ -1664,24 +1722,29 @@ unsignedBitmaskWithRejectionRM (bottom, top) gen
 -- overflow. It uses `unsignedBitmaskWithRejectionM`, therefore it requires functions that
 -- take the value to unsigned and back.
 signedBitmaskWithRejectionRM ::
-     forall a b g m. (Num a, Num b, Ord b, Ord a, FiniteBits a, StatefulGen g m, Uniform a)
-  => (b -> a) -- ^ Convert signed to unsigned. @a@ and @b@ must be of the same size.
-  -> (a -> b) -- ^ Convert unsigned to signed. @a@ and @b@ must be of the same size.
-  -> (b, b) -- ^ Range.
-  -> g -- ^ Generator.
-  -> m b
+  forall a b g m.
+  (Num a, Num b, Ord b, Ord a, FiniteBits a, StatefulGen g m, Uniform a) =>
+  -- | Convert signed to unsigned. @a@ and @b@ must be of the same size.
+  (b -> a) ->
+  -- | Convert unsigned to signed. @a@ and @b@ must be of the same size.
+  (a -> b) ->
+  -- | Range.
+  (b, b) ->
+  -- | Generator.
+  g ->
+  m b
 signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
   | bottom == top = pure top
   | otherwise =
-    (b +) . fromUnsigned <$> unsignedBitmaskWithRejectionM uniformM r gen
-    -- This works in all cases, see Appendix 1 at the end of the file.
+      (b +) . fromUnsigned <$> unsignedBitmaskWithRejectionM uniformM r gen
   where
+    -- This works in all cases, see Appendix 1 at the end of the file.
+
     (b, r) =
       if bottom > top
         then (top, toUnsigned bottom - toUnsigned top)
         else (bottom, toUnsigned top - toUnsigned bottom)
 {-# INLINE signedBitmaskWithRejectionRM #-}
-
 
 -- | Detailed explanation about the algorithm employed here can be found in this post:
 -- http://web.archive.org/web/20200520071940/https://www.pcg-random.org/posts/bounded-rands.html
@@ -1719,35 +1782,59 @@ instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e) => Uniform (a, 
   uniformM g = (,,,,) <$> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g <*> uniformM g
   {-# INLINE uniformM #-}
 
-instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) =>
-  Uniform (a, b, c, d, e, f) where
-  uniformM g = (,,,,,)
-               <$> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
+instance
+  (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f) =>
+  Uniform (a, b, c, d, e, f)
+  where
+  uniformM g =
+    (,,,,,)
+      <$> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
   {-# INLINE uniformM #-}
 
-instance (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Uniform g) =>
-  Uniform (a, b, c, d, e, f, g) where
-  uniformM g = (,,,,,,)
-               <$> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
-               <*> uniformM g
+instance
+  (Uniform a, Uniform b, Uniform c, Uniform d, Uniform e, Uniform f, Uniform g) =>
+  Uniform (a, b, c, d, e, f, g)
+  where
+  uniformM g =
+    (,,,,,,)
+      <$> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
+      <*> uniformM g
   {-# INLINE uniformM #-}
 
 instance (UniformRange a, UniformRange b) => UniformRange (a, b)
+
 instance (UniformRange a, UniformRange b, UniformRange c) => UniformRange (a, b, c)
+
 instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d) => UniformRange (a, b, c, d)
-instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e) => UniformRange (a, b, c, d, e)
-instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e, UniformRange f) => UniformRange (a, b, c, d, e, f)
-instance (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e, UniformRange f, UniformRange g) => UniformRange (a, b, c, d, e, f, g)
+
+instance
+  (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e) =>
+  UniformRange (a, b, c, d, e)
+
+instance
+  (UniformRange a, UniformRange b, UniformRange c, UniformRange d, UniformRange e, UniformRange f) =>
+  UniformRange (a, b, c, d, e, f)
+
+instance
+  ( UniformRange a
+  , UniformRange b
+  , UniformRange c
+  , UniformRange d
+  , UniformRange e
+  , UniformRange f
+  , UniformRange g
+  ) =>
+  UniformRange (a, b, c, d, e, f, g)
 
 -- Appendix 1.
 --

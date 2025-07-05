@@ -8,8 +8,8 @@ import qualified TestRandomRs as TestRandomRs
 
 main :: IO ()
 main = do
-    Random1283.main
-    RangeTest.main
-    T7936.main
-    TestRandomIOs.main
-    TestRandomRs.main
+  Random1283.main
+  RangeTest.main
+  T7936.main
+  TestRandomIOs.main
+  TestRandomRs.main
