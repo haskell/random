@@ -7,9 +7,14 @@
 --
 -- Used to fail with:
 --
--- > $ cabal test TestRandomRs --test-options="+RTS -M1M -RTS"
---
--- TestRandomRs: Heap exhausted;
+-- @
+--   $ cabal build
+--   $ cabal exec -- ghc -O1 -fforce-recomp -rtsopts -main-is TestRandomRs test-legacy/TestRandomRs.hs -o test-legacy/test
+--   $ test-legacy/test +RTS -M1M -A1M -RTS
+--   test: Heap exhausted;
+--   test: Current maximum heap size is 1048576 bytes (1 MB).
+--   test: Use `+RTS -M<size>' to increase it.
+-- @
 module TestRandomRs where
 
 import Control.Monad (liftM)
