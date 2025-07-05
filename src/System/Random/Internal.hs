@@ -1556,10 +1556,7 @@ uniformEnumRM (l, h) g = toEnum <$> uniformRM (fromEnum l, fromEnum h) g
 randomIvalIntegral :: (RandomGen g, Integral a) => (a, a) -> g -> (a, g)
 randomIvalIntegral (l, h) = randomIvalInteger (toInteger l, toInteger h)
 
-{-# SPECIALIZE randomIvalInteger ::
-  Num a =>
-  (Integer, Integer) -> StdGen -> (a, StdGen)
-  #-}
+{-# SPECIALIZE randomIvalInteger :: Num a => (Integer, Integer) -> StdGen -> (a, StdGen) #-}
 randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
 randomIvalInteger (l, h) rng
   | l > h = randomIvalInteger (h, l) rng
@@ -1736,10 +1733,9 @@ signedBitmaskWithRejectionRM ::
 signedBitmaskWithRejectionRM toUnsigned fromUnsigned (bottom, top) gen
   | bottom == top = pure top
   | otherwise =
+      -- This works in all cases, see Appendix 1 at the end of the file.
       (b +) . fromUnsigned <$> unsignedBitmaskWithRejectionM uniformM r gen
   where
-    -- This works in all cases, see Appendix 1 at the end of the file.
-
     (b, r) =
       if bottom > top
         then (top, toUnsigned bottom - toUnsigned top)

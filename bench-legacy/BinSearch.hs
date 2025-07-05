@@ -20,7 +20,6 @@ module BinSearch (
 ) where
 
 import Control.Monad
--- Not in 6.10
 import Data.List
 import Data.Time.Clock
 import System.IO
