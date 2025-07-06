@@ -748,7 +748,7 @@ instance
 --
 -- @since 1.0.0
 setStdGen :: MonadIO m => StdGen -> m ()
-setStdGen = liftIO . writeIORef theStdGen
+setStdGen g = getStdRandom (const ((), g))
 
 -- | Gets the global pseudo-random number generator. Extracts the contents of
 -- 'System.Random.Stateful.globalStdGen'
