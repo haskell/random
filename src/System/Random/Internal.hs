@@ -1870,7 +1870,7 @@ newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
 --
 -- >>> import Control.Monad (replicateM)
 -- >>> replicateM 10 (uniformRM ('a', 'z') globalStdGen)
--- "tdzxhyfvgr"
+-- "..."
 --
 -- @since 1.2.1
 globalStdGen :: AtomicGenM StdGen
