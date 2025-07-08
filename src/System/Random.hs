@@ -102,6 +102,7 @@ import Control.Monad.State.Strict
 import Data.Array.Byte (ByteArray (..), MutableByteArray (..))
 import Data.ByteString (ByteString)
 import Data.ByteString.Short.Internal (ShortByteString (..))
+import Data.Coerce
 import Data.IORef
 import Data.Int
 import Data.Word
@@ -747,7 +748,7 @@ instance
 --
 -- @since 1.0.0
 setStdGen :: MonadIO m => StdGen -> m ()
-setStdGen = liftIO . writeIORef theStdGen
+setStdGen g = getStdRandom (const ((), g))
 
 -- | Gets the global pseudo-random number generator. Extracts the contents of
 -- 'System.Random.Stateful.globalStdGen'
@@ -785,9 +786,7 @@ newStdGen = liftIO $ atomicModifyIORef' theStdGen splitGen
 --
 -- @since 1.0.0
 getStdRandom :: MonadIO m => (StdGen -> (a, StdGen)) -> m a
-getStdRandom f = liftIO $ atomicModifyIORef' theStdGen (swap . f)
-  where
-    swap (v, g) = (g, v)
+getStdRandom f = modifyGen globalStdGen (coerce f)
 
 -- | A variant of 'System.Random.Stateful.randomRM' that uses the global
 -- pseudo-random number generator 'System.Random.Stateful.globalStdGen'

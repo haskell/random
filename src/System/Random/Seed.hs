@@ -165,8 +165,15 @@ instance SeedGen StdGen where
   fromSeed = coerce (fromSeed :: Seed SM.SMGen -> SM.SMGen)
   toSeed = coerce (toSeed :: SM.SMGen -> Seed SM.SMGen)
 
+-- Standalone definitions due to GHC-8.0 not supporting deriving with associated type families
+
 instance SeedGen g => SeedGen (StateGen g) where
   type SeedSize (StateGen g) = SeedSize g
+  fromSeed = coerce (fromSeed :: Seed g -> g)
+  toSeed = coerce (toSeed :: g -> Seed g)
+
+instance SeedGen g => SeedGen (AtomicGen g) where
+  type SeedSize (AtomicGen g) = SeedSize g
   fromSeed = coerce (fromSeed :: Seed g -> g)
   toSeed = coerce (toSeed :: g -> Seed g)
 

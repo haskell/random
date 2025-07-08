@@ -1,3 +1,8 @@
+# 1.3.2
+
+* Fix `setStdGen` not being threadsafe: [#190](https://github.com/haskell/random/pull/190)
+* Make `getStdRandom` lazy in the value being generated: [#190](https://github.com/haskell/random/pull/190)
+
 # 1.3.1
 
 * Add missing `SplitGen` instance for `StateGen`: [#183](https://github.com/haskell/random/pull/183)

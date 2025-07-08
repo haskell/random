@@ -37,6 +37,13 @@ module System.Random.Internal (
   splitGenM,
   splitMutableGenM,
 
+  -- * Atomic and Global
+  AtomicGen (..),
+  AtomicGenM (..),
+  newAtomicGenM,
+  applyAtomicGen,
+  globalStdGen,
+
   -- ** Standard pseudo-random number generator
   StdGen (..),
   mkStdGen,
@@ -99,6 +106,7 @@ import Control.Arrow
 import Control.DeepSeq (NFData)
 import Control.Monad (replicateM, when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
+import Control.Monad.IO.Class
 import Control.Monad.ST
 import Control.Monad.State.Strict (MonadState (..), State, StateT (..), execStateT, runState)
 import Control.Monad.Trans (MonadTrans, lift)
@@ -106,7 +114,7 @@ import Control.Monad.Trans.Identity (IdentityT (runIdentityT))
 import Data.Array.Byte (ByteArray (..), MutableByteArray (..))
 import Data.Bits
 import Data.ByteString.Short.Internal (ShortByteString (SBS))
-import Data.IORef (IORef, newIORef)
+import Data.IORef
 import Data.Int
 import Data.Kind
 import Data.Word
@@ -123,6 +131,9 @@ import System.Random.Array
 import System.Random.GFinite (Cardinality (..), Finite, GFinite (..))
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
+#if __GLASGOW_HASKELL__ >= 808
+import GHC.IORef (atomicModifyIORef2Lazy)
+#endif
 
 -- | This is a binary form of pseudo-random number generator's state. It is designed to be
 -- safe and easy to use for input/output operations like restoring from file, transmitting
@@ -1831,6 +1842,100 @@ instance
   , UniformRange g
   ) =>
   UniformRange (a, b, c, d, e, f, g)
+
+-- | Wraps an 'IORef' that holds a pure pseudo-random number generator. All
+-- operations are performed atomically.
+--
+-- *   'AtomicGenM' is safe in the presence of exceptions and concurrency.
+-- *   'AtomicGenM' is the slowest of the monadic adapters due to the overhead
+--     of its atomic operations.
+--
+-- @since 1.2.0
+newtype AtomicGenM g = AtomicGenM {unAtomicGenM :: IORef g}
+
+-- | Frozen version of mutable `AtomicGenM` generator
+--
+-- @since 1.2.0
+newtype AtomicGen g = AtomicGen {unAtomicGen :: g}
+  deriving (Eq, Ord, Show, RandomGen, SplitGen, Storable, NFData)
+
+-- | Creates a new 'AtomicGenM'.
+--
+-- @since 1.2.0
+newAtomicGenM :: MonadIO m => g -> m (AtomicGenM g)
+newAtomicGenM = fmap AtomicGenM . liftIO . newIORef
+
+-- | Global mutable standard pseudo-random number generator. This is the same
+-- generator that was historically used by `randomIO` and `randomRIO` functions.
+--
+-- >>> import Control.Monad (replicateM)
+-- >>> replicateM 10 (uniformRM ('a', 'z') globalStdGen)
+-- "..."
+--
+-- @since 1.2.1
+globalStdGen :: AtomicGenM StdGen
+globalStdGen = AtomicGenM theStdGen
+
+instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
+  uniformWord32R r = applyAtomicGen (genWord32R r)
+  {-# INLINE uniformWord32R #-}
+  uniformWord64R r = applyAtomicGen (genWord64R r)
+  {-# INLINE uniformWord64R #-}
+  uniformWord8 = applyAtomicGen genWord8
+  {-# INLINE uniformWord8 #-}
+  uniformWord16 = applyAtomicGen genWord16
+  {-# INLINE uniformWord16 #-}
+  uniformWord32 = applyAtomicGen genWord32
+  {-# INLINE uniformWord32 #-}
+  uniformWord64 = applyAtomicGen genWord64
+  {-# INLINE uniformWord64 #-}
+
+instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
+  type MutableGen (AtomicGen g) m = AtomicGenM g
+  freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
+  modifyGen (AtomicGenM ioRef) f =
+    liftIO $ atomicModifyIORefHS ioRef $ \g ->
+      case f (AtomicGen g) of
+        (a, AtomicGen g') -> (g', a)
+  {-# INLINE modifyGen #-}
+
+instance (RandomGen g, MonadIO m) => ThawedGen (AtomicGen g) m where
+  thawGen (AtomicGen g) = newAtomicGenM g
+
+-- | Atomically applies a pure operation to the wrapped pseudo-random number
+-- generator.
+--
+-- ====__Examples__
+--
+-- >>> import System.Random.Stateful
+-- >>> let pureGen = mkStdGen 137
+-- >>> g <- newAtomicGenM pureGen
+-- >>> applyAtomicGen random g :: IO Int
+-- 7879794327570578227
+--
+-- @since 1.2.0
+applyAtomicGen :: MonadIO m => (g -> (a, g)) -> AtomicGenM g -> m a
+applyAtomicGen op (AtomicGenM gVar) =
+  liftIO $ atomicModifyIORefHS gVar $ \g ->
+    case op g of
+      (a, g') -> (g', a)
+{-# INLINE applyAtomicGen #-}
+
+-- HalfStrict version of atomicModifyIORef, i.e. strict in the modifcation of the contents
+-- of the IORef, but not in the result produced.
+atomicModifyIORefHS :: IORef a -> (a -> (a, b)) -> IO b
+atomicModifyIORefHS ref f = do
+#if __GLASGOW_HASKELL__ >= 808
+  (_old, (_new, res)) <- atomicModifyIORef2Lazy ref $ \old ->
+    case f old of
+      r@(!_new, _res) -> r
+  pure res
+#else
+  atomicModifyIORef ref $ \old ->
+    case f old of
+      r@(!_new, _res) -> r
+#endif
+{-# INLINE atomicModifyIORefHS #-}
 
 -- Appendix 1.
 --

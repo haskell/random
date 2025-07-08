@@ -224,12 +224,12 @@ jobs:
       run: |
         set -ex
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
-          stack $STACK_ARGS test :spec :legacy-test --coverage --haddock --no-haddock-deps
+          stack $STACK_ARGS test :spec :legacy-test --coverage $HADDOCK
           stack $STACK_ARGS hpc report --all
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
-          stack $STACK_ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS test --bench --no-run-benchmarks $HADDOCK
         fi
 
   i386:
