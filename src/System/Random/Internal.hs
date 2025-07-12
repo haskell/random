@@ -153,10 +153,6 @@ newtype Seed g = Seed ByteArray
 -- 'StdGen' is the standard 'RandomGen' instance provided by this library.
 --
 -- @since 1.0.0
-{-# DEPRECATED next "No longer used" #-}
-
-{-# DEPRECATED genRange "No longer used" #-}
-
 class RandomGen g where
   {-# MINIMAL (genWord32 | genWord64 | (next, genRange)) #-}
 
@@ -288,9 +284,13 @@ class RandomGen g where
   default split :: SplitGen g => g -> (g, g)
   split = splitGen
 
-{-# DEPRECATED genShortByteString "In favor of `System.Random.uniformShortByteString`" #-}
+{-# DEPRECATED next "No longer used" #-}
+
+{-# DEPRECATED genRange "No longer used" #-}
 
 {-# DEPRECATED split "In favor of `splitGen`" #-}
+
+{-# DEPRECATED genShortByteString "In favor of `System.Random.uniformShortByteString`" #-}
 
 -- | Pseudo-random generators that can be split into two separate and independent
 -- psuedo-random generators should provide an instance for this type class.
