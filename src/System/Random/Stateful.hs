@@ -37,7 +37,6 @@ module System.Random.Stateful (
   ),
   FrozenGen (..),
   ThawedGen (..),
-  withMutableGen,
   withMutableGen_,
   withSeedMutableGen,
   withSeedMutableGen_,
@@ -294,22 +293,6 @@ uniformShuffleListM :: StatefulGen g m => [a] -> g -> m [a]
 uniformShuffleListM xs gen = shuffleListM (`uniformWordR` gen) xs
 {-# INLINE uniformShuffleListM #-}
 
--- | Runs a mutable pseudo-random number generator from its 'FrozenGen' state.
---
--- ====__Examples__
---
--- >>> import Data.Int (Int8)
--- >>> withMutableGen (IOGen (mkStdGen 217)) (uniformListM 5) :: IO ([Int8], IOGen StdGen)
--- ([-74,37,-50,-2,3],IOGen {unIOGen = StdGen {unStdGen = SMGen 4273268533320920145 15251669095119325999}})
---
--- @since 1.2.0
-withMutableGen :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m (a, f)
-withMutableGen fg action = do
-  g <- thawGen fg
-  res <- action g
-  fg' <- freezeGen g
-  pure (res, fg')
-
 -- | Same as 'withMutableGen', but only returns the generated value.
 --
 -- ====__Examples__
@@ -320,8 +303,8 @@ withMutableGen fg action = do
 -- 4
 --
 -- @since 1.2.0
-withMutableGen_ :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m a
-withMutableGen_ fg action = thawGen fg >>= action
+withMutableGen_ :: FrozenGen f m => f -> (MutableGen f m -> m a) -> m a
+withMutableGen_ fg action = fst <$> withMutableGen fg action
 
 -- | Just like `withMutableGen`, except uses a `Seed` instead of a frozen generator.
 --
@@ -359,7 +342,7 @@ withMutableGen_ fg action = thawGen fg >>= action
 --
 -- @since 1.3.0
 withSeedMutableGen ::
-  (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
+  (SeedGen g, FrozenGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
 withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 
 -- | Just like `withSeedMutableGen`, except it doesn't return the final generator, only
@@ -367,7 +350,7 @@ withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 -- from freezeing the mutable generator
 --
 -- @since 1.3.0
-withSeedMutableGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
+withSeedMutableGen_ :: (SeedGen g, FrozenGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
 withSeedMutableGen_ seed = withMutableGen_ (fromSeed seed)
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.

@@ -464,6 +464,23 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   overwriteGen mg fg = modifyGen mg (const ((), fg))
   {-# INLINE overwriteGen #-}
 
+  -- | Runs a mutable pseudo-random number generator from its 'FrozenGen' state.
+  --
+  -- ====__Examples__
+  --
+  -- >>> import Data.Int (Int8)
+  -- >>> withMutableGen (IOGen (mkStdGen 217)) (uniformListM 5) :: IO ([Int8], IOGen StdGen)
+  -- ([-74,37,-50,-2,3],IOGen {unIOGen = StdGen {unStdGen = SMGen 4273268533320920145 15251669095119325999}})
+  --
+  -- @since 1.2.0
+  withMutableGen :: f -> (MutableGen f m -> m a) -> m (a, f)
+  default withMutableGen :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m (a, f)
+  withMutableGen fg action = do
+    g <- thawGen fg
+    res <- action g
+    fg' <- freezeGen g
+    pure (res, fg')
+
 -- | Functionality for thawing frozen generators is not part of the `FrozenGen` class,
 -- becase not all mutable generators support functionality of creating new mutable
 -- generators, which is what thawing is in its essence. For this reason `StateGen` does
@@ -667,6 +684,13 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   {-# INLINE modifyGen #-}
   overwriteGen _ f = put (coerce f)
   {-# INLINE overwriteGen #-}
+  withMutableGen (StateGen fg) action = do
+    gCur <- get
+    put fg
+    res <- action StateGenM
+    fg' <- freezeGen StateGenM
+    put gCur
+    pure (res, fg')
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.
