@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
@@ -51,8 +52,10 @@ import Data.Functor.Identity (runIdentity)
 import Data.List.NonEmpty as NE (NonEmpty (..), nonEmpty, toList)
 import Data.Typeable
 import Data.Word
+#if !defined(__MHS__)
 import GHC.Exts (Proxy#, proxy#)
 import GHC.TypeLits (KnownNat, Nat, natVal', type (<=))
+#endif /* !defined(__MHS__) */
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
@@ -117,14 +120,22 @@ import qualified System.Random.SplitMix32 as SM32
 -- False
 --
 -- @since 1.3.0
-class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
+class (
+#if !defined(__MHS__)
+       KnownNat (SeedSize g), 1 <= SeedSize g, 
+#endif /* !defined(__MHS__) */
+                                               Typeable g) => SeedGen g where
   -- | Number of bytes that is required for storing the full state of a pseudo-random
   -- number generator. It should be big enough to satisfy the roundtrip property:
   --
   -- @
   -- > fromSeed (toSeed gen) == gen
   -- @
+#if !defined(__MHS__)
   type SeedSize g :: Nat
+#else /* !defined(__MHS__) */
+  _seedSize :: Int
+#endif /* !defined(__MHS__) */
 
   {-# MINIMAL (fromSeed, toSeed) | (fromSeed64, toSeed64) #-}
 
@@ -161,24 +172,40 @@ class (KnownNat (SeedSize g), 1 <= SeedSize g, Typeable g) => SeedGen g where
   toSeed64 = nonEmptyFromSeed . toSeed
 
 instance SeedGen StdGen where
+#if !defined(__MHS__)
   type SeedSize StdGen = SeedSize SM.SMGen
+#else /* !defined(__MHS__) */
+  _seedSize = _seedSize @SM.SMGen
+#endif /* !defined(__MHS__) */
   fromSeed = coerce (fromSeed :: Seed SM.SMGen -> SM.SMGen)
   toSeed = coerce (toSeed :: SM.SMGen -> Seed SM.SMGen)
 
 -- Standalone definitions due to GHC-8.0 not supporting deriving with associated type families
 
 instance SeedGen g => SeedGen (StateGen g) where
+#if !defined(__MHS__)
   type SeedSize (StateGen g) = SeedSize g
+#else /* !defined(__MHS__) */
+  _seedSize = _seedSize @g
+#endif /* !defined(__MHS__) */
   fromSeed = coerce (fromSeed :: Seed g -> g)
   toSeed = coerce (toSeed :: g -> Seed g)
 
 instance SeedGen g => SeedGen (AtomicGen g) where
+#if !defined(__MHS__)
   type SeedSize (AtomicGen g) = SeedSize g
+#else /* !defined(__MHS__) */
+  _seedSize = _seedSize @g
+#endif /* !defined(__MHS__) */
   fromSeed = coerce (fromSeed :: Seed g -> g)
   toSeed = coerce (toSeed :: g -> Seed g)
 
 instance SeedGen SM.SMGen where
+#if !defined(__MHS__)
   type SeedSize SM.SMGen = 16
+#else /* !defined(__MHS__) */
+  _seedSize = 16
+#endif /* !defined(__MHS__) */
   fromSeed (Seed ba) =
     SM.seedSMGen (indexWord64LE ba 0) (indexWord64LE ba 8)
   toSeed g =
@@ -190,7 +217,11 @@ instance SeedGen SM.SMGen where
         freezeMutableByteArray mba
 
 instance SeedGen SM32.SMGen where
+#if !defined(__MHS__)
   type SeedSize SM32.SMGen = 8
+#else /* !defined(__MHS__) */
+  _seedSize = 8
+#endif /* !defined(__MHS__) */
   fromSeed (Seed ba) =
     let x = indexWord64LE ba 0
         seed, gamma :: Word32
@@ -214,7 +245,13 @@ instance SeedGen g => Uniform (Seed g) where
 --
 -- @since 1.3.0
 seedSize :: forall g. SeedGen g => Int
-seedSize = fromInteger $ natVal' (proxy# :: Proxy# (SeedSize g))
+seedSize =
+#if !defined(__MHS__)
+  fromInteger $ natVal' (proxy# :: Proxy# (SeedSize g))
+#else /* !defined(__MHS__) */
+  _seedSize @g
+#endif /* !defined(__MHS__) */
+
 
 -- | Just like `seedSize`, except it accepts a proxy as an argument.
 --

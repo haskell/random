@@ -32,10 +32,13 @@ module System.Random.Internal (
 
   -- * Stateful
   StatefulGen (..),
+
+#if !defined(__MHS__)
   FrozenGen (..),
   ThawedGen (..),
   splitGenM,
   splitMutableGenM,
+#endif /* !defined(__MHS__) */
 
   -- * Atomic and Global
   AtomicGen (..),
@@ -64,7 +67,9 @@ module System.Random.Internal (
 
   -- * Pseudo-random values of various types
   Uniform (..),
+#if !defined(__MHS__)
   uniformViaFiniteM,
+#endif /* !defined(__MHS__) */
   UniformRange (..),
   uniformWordR,
   uniformDouble01M,
@@ -108,7 +113,7 @@ import Control.Monad (replicateM, when, (>=>))
 import Control.Monad.Cont (ContT, runContT)
 import Control.Monad.IO.Class
 import Control.Monad.ST
-import Control.Monad.State.Strict (MonadState (..), State, StateT (..), execStateT, runState)
+import Control.Monad.State.Strict (MonadState (..), State, StateT (..), execStateT, runState, runStateT)
 import Control.Monad.Trans (MonadTrans, lift)
 import Control.Monad.Trans.Identity (IdentityT (runIdentityT))
 import Data.Array.Byte (ByteArray (..), MutableByteArray (..))
@@ -121,14 +126,18 @@ import Data.Word
 import Foreign.C.Types
 import Foreign.Storable (Storable)
 import GHC.Exts
+#if !defined(__MHS__)
 import GHC.Generics
 import GHC.IO (IO (..))
 import GHC.ST (ST (..))
 import GHC.Word
+#endif /* __MHS__ */
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random.Array
+#if !defined(__MHS__)
 import System.Random.GFinite (Cardinality (..), Finite, GFinite (..))
+#endif /* __MHS__ */
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
 #if __GLASGOW_HASKELL__ >= 808
@@ -231,10 +240,12 @@ class RandomGen g where
   --
   -- @since 1.2.0
   genShortByteString :: Int -> g -> (ShortByteString, g)
+#if !defined(__MHS__)
   genShortByteString n g =
     case uniformByteArray False n g of
       (ByteArray ba#, g') -> (SBS ba#, g')
   {-# INLINE genShortByteString #-}
+#endif /* !defined(__MHS__) */
 
   -- | Fill in the supplied `MutableByteArray` with uniformly generated random bytes. This function
   -- is unsafe because it is not required to do any bounds checking. For a safe variant use
@@ -388,10 +399,12 @@ class Monad m => StatefulGen g m where
     -- | Generator to use for filling in the newly created `ByteArray`
     g ->
     m ByteArray
+#if !defined(__MHS__)
   default uniformByteArrayM ::
     (RandomGen f, FrozenGen f m, g ~ MutableGen f m) => Bool -> Int -> g -> m ByteArray
   uniformByteArrayM isPinned n g = modifyGen g (uniformByteArray isPinned n)
   {-# INLINE uniformByteArrayM #-}
+#endif /* !defined(__MHS__) */
 
   -- | @uniformShortByteString n g@ generates a 'ShortByteString' of length @n@
   -- filled with pseudo-random bytes.
@@ -403,6 +416,7 @@ class Monad m => StatefulGen g m where
 
 {-# DEPRECATED uniformShortByteString "In favor of `uniformShortByteStringM`" #-}
 
+#if !defined(__MHS__)
 -- | This class is designed for mutable pseudo-random number generators that have a frozen
 -- imutable counterpart that can be manipulated in pure code.
 --
@@ -463,7 +477,9 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   overwriteGen :: MutableGen f m -> f -> m ()
   overwriteGen mg fg = modifyGen mg (const ((), fg))
   {-# INLINE overwriteGen #-}
+#endif /* !defined(__MHS__) */
 
+#if !defined(__MHS__)
 -- | Functionality for thawing frozen generators is not part of the `FrozenGen` class,
 -- becase not all mutable generators support functionality of creating new mutable
 -- generators, which is what thawing is in its essence. For this reason `StateGen` does
@@ -498,6 +514,7 @@ splitGenM = flip modifyGen splitGen
 -- @since 1.3.0
 splitMutableGenM :: (SplitGen f, ThawedGen f m) => MutableGen f m -> m (MutableGen f m)
 splitMutableGenM = splitGenM >=> thawGen
+#endif /* !defined(__MHS__) */
 
 -- | Efficiently generates a sequence of pseudo-random bytes in a platform
 -- independent manner.
@@ -660,6 +677,7 @@ instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
   uniformWord64 _ = state genWord64
   {-# INLINE uniformWord64 #-}
 
+#if !defined(__MHS__)
 instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   type MutableGen (StateGen g) m = StateGenM g
   freezeGen _ = fmap StateGen get
@@ -667,6 +685,7 @@ instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   {-# INLINE modifyGen #-}
   overwriteGen _ f = put (coerce f)
   {-# INLINE overwriteGen #-}
+#endif /* !defined(__MHS__) */
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.
@@ -855,10 +874,13 @@ class Uniform a where
   --
   -- @since 1.2.0
   uniformM :: StatefulGen g m => g -> m a
+#if !defined(__MHS__)
   default uniformM :: (StatefulGen g m, Generic a, GUniform (Rep a)) => g -> m a
   uniformM = fmap to . (`runContT` pure) . guniformM
   {-# INLINE uniformM #-}
+#endif /* !defined(__MHS__) */
 
+#if !defined(__MHS__)
 -- | Default implementation of 'Uniform' type class for 'Generic' data.
 -- It's important to use 'ContT', because without it 'fmap' and '>>=' remain
 -- polymorphic too long and GHC fails to inline or specialize it, ending up
@@ -914,6 +936,7 @@ finiteUniformM =
 uniformViaFiniteM :: (StatefulGen g m, Generic a, GFinite (Rep a)) => g -> m a
 uniformViaFiniteM = fmap to . finiteUniformM
 {-# INLINE uniformViaFiniteM #-}
+#endif /* !defined(__MHS__) */
 
 -- | The class of types for which a uniformly distributed value can be drawn
 -- from a range.
@@ -991,6 +1014,7 @@ class UniformRange a where
   -- @since 1.3.0
   isInRange :: (a, a) -> a -> Bool
 
+#if !defined(__MHS__)
   default uniformRM :: (StatefulGen g m, Generic a, GUniformRange (Rep a)) => (a, a) -> g -> m a
   uniformRM (a, b) = fmap to . (`runContT` pure) . guniformRM (from a, from b)
   {-# INLINE uniformRM #-}
@@ -1024,6 +1048,7 @@ instance (GUniformRange f, GUniformRange g) => GUniformRange (f :*: g) where
   {-# INLINE guniformRM #-}
   gisInRange (x1 :*: y1, x2 :*: y2) (x3 :*: y3) =
     gisInRange (x1, x2) x3 && gisInRange (y1, y2) y3
+#endif /* !defined(__MHS__) */
 
 -- | Utilize `Ord` instance to decide if a value is within the range. Designed to be used
 -- for implementing `isInRange`
@@ -1364,19 +1389,27 @@ instance UniformRange CDouble where
 -- `Char`, therefore it is totally fine to omit all the unnecessary checks involved in
 -- other paths of conversion.
 word32ToChar :: Word32 -> Char
+#if !defined(__MHS__)
 #if __GLASGOW_HASKELL__ < 902
 word32ToChar (W32# w#) = C# (chr# (word2Int# w#))
 #else
 word32ToChar (W32# w#) = C# (chr# (word2Int# (word32ToWord# w#)))
 #endif
+#else /* !defined(__MHS__) */
+word32ToChar = toEnum . fromIntegral
+#endif /* !defined(__MHS__) */
 {-# INLINE word32ToChar #-}
 
 charToWord32 :: Char -> Word32
+#if !defined(__MHS__)
 #if __GLASGOW_HASKELL__ < 902
 charToWord32 (C# c#) = W32# (int2Word# (ord# c#))
 #else
 charToWord32 (C# c#) = W32# (wordToWord32# (int2Word# (ord# c#)))
 #endif
+#else /* !defined(__MHS__) */
+charToWord32 = fromIntegral . fromEnum
+#endif /* !defined(__MHS__) */
 {-# INLINE charToWord32 #-}
 
 instance Uniform Char where
@@ -1411,9 +1444,11 @@ instance UniformRange Bool where
   {-# INLINE uniformRM #-}
   isInRange = isInRangeOrd
 
+#if !defined(__MHS__)
 instance (Finite a, Uniform a) => Uniform (Maybe a)
 
 instance (Finite a, Uniform a, Finite b, Uniform b) => Uniform (Either a b)
+#endif /* !defined(__MHS__) */
 
 -- | See [Floating point number caveats](System-Random-Stateful.html#fpcaveats).
 instance UniformRange Double where
@@ -1890,6 +1925,7 @@ instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
   uniformWord64 = applyAtomicGen genWord64
   {-# INLINE uniformWord64 #-}
 
+#if !defined(__MHS__)
 instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
   freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
@@ -1901,6 +1937,7 @@ instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
 
 instance (RandomGen g, MonadIO m) => ThawedGen (AtomicGen g) m where
   thawGen (AtomicGen g) = newAtomicGenM g
+#endif /* __MHS__ */
 
 -- | Atomically applies a pure operation to the wrapped pseudo-random number
 -- generator.

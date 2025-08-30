@@ -35,6 +35,7 @@ module System.Random.Stateful (
     uniformWord64,
     uniformShortByteString
   ),
+#if !defined(__MHS__)
   FrozenGen (..),
   ThawedGen (..),
   withMutableGen,
@@ -45,6 +46,7 @@ module System.Random.Stateful (
   randomRM,
   splitGenM,
   splitMutableGenM,
+#endif /* !defined(__MHS__) */
 
   -- ** Deprecated
   RandomGenM (..),
@@ -80,20 +82,26 @@ module System.Random.Stateful (
   STGenM (..),
   newSTGenM,
   applySTGen,
+#if !defined(__MHS__)
   runSTGen,
   runSTGen_,
+#endif /* !defined(__MHS__) */
 
+#if !defined(__MHS__)
   -- ** Mutable thread-safe adapter in 'STM'
   TGen (..),
   TGenM (..),
   newTGenM,
   newTGenMIO,
   applyTGen,
+#endif /* !defined(__MHS__) */
 
   -- * Pseudo-random values of various types
   -- $uniform
   Uniform (..),
+#if !defined(__MHS__)
   uniformViaFiniteM,
+#endif /* !defined(__MHS__) */
   UniformRange (..),
   isInRangeOrd,
   isInRangeEnum,
@@ -154,7 +162,9 @@ import Data.Coerce
 import Data.IORef
 import Data.STRef
 import Foreign.Storable
+#if !defined(__MHS__)
 import GHC.Conc.Sync (STM, TVar, newTVar, newTVarIO, readTVar, writeTVar)
+#endif /* !defined(__MHS__) */
 import System.Random hiding (uniformShortByteString)
 import System.Random.Array (shortByteStringToByteString, shuffleListM)
 import System.Random.Internal
@@ -278,8 +288,10 @@ instance (RandomGen r, MonadState r m) => RandomGenM (StateGenM r) r m where
 instance RandomGen r => RandomGenM (STGenM r s) r (ST s) where
   applyRandomGenM = applySTGen
 
+#if !defined(__MHS__)
 instance RandomGen r => RandomGenM (TGenM r) r STM where
   applyRandomGenM = applyTGen
+#endif /* !defined(__MHS__) */
 
 -- | Shuffle elements of a list in a uniformly random order.
 --
@@ -294,6 +306,7 @@ uniformShuffleListM :: StatefulGen g m => [a] -> g -> m [a]
 uniformShuffleListM xs gen = shuffleListM (`uniformWordR` gen) xs
 {-# INLINE uniformShuffleListM #-}
 
+#if !defined(__MHS__)
 -- | Runs a mutable pseudo-random number generator from its 'FrozenGen' state.
 --
 -- ====__Examples__
@@ -411,6 +424,7 @@ randomM = flip modifyGen random
 randomRM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => (a, a) -> MutableGen g m -> m a
 randomRM r = flip modifyGen (randomR r)
 {-# INLINE randomRM #-}
+#endif /* !defined(__MHS__) */
 
 -- | Generates a pseudo-random 'ByteString' of the specified size.
 --
@@ -449,7 +463,11 @@ newtype IOGen g = IOGen {unIOGen :: g}
 
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (IOGen g) where
+#if !defined(__MHS__)
   type SeedSize (IOGen g) = SeedSize g
+#else /* !defined(__MHS__) */
+  _seedSize = _seedSize @g
+#endif /* !defined(__MHS__) */
   fromSeed = coerce (fromSeed :: Seed g -> g)
   toSeed = coerce (toSeed :: g -> Seed g)
 
@@ -473,6 +491,7 @@ instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
   uniformWord64 = applyIOGen genWord64
   {-# INLINE uniformWord64 #-}
 
+#if !defined(__MHS__)
 instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   type MutableGen (IOGen g) m = IOGenM g
   freezeGen = fmap IOGen . liftIO . readIORef . unIOGenM
@@ -487,6 +506,7 @@ instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
 
 instance (RandomGen g, MonadIO m) => ThawedGen (IOGen g) m where
   thawGen (IOGen g) = newIOGenM g
+#endif /* !defined(__MHS__) */
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -522,7 +542,11 @@ newtype STGen g = STGen {unSTGen :: g}
 
 -- Standalone definition due to GHC-8.0 not supporting deriving with associated type families
 instance SeedGen g => SeedGen (STGen g) where
+#if !defined(__MHS__)
   type SeedSize (STGen g) = SeedSize g
+#else /* !defined(__MHS__) */
+  _seedSize = _seedSize @g
+#endif /* !defined(__MHS__) */
   fromSeed = coerce (fromSeed :: Seed g -> g)
   toSeed = coerce (toSeed :: g -> Seed g)
 
@@ -546,6 +570,7 @@ instance RandomGen g => StatefulGen (STGenM g s) (ST s) where
   uniformWord64 = applySTGen genWord64
   {-# INLINE uniformWord64 #-}
 
+#if !defined(__MHS__)
 instance RandomGen g => FrozenGen (STGen g) (ST s) where
   type MutableGen (STGen g) (ST s) = STGenM g s
   freezeGen = fmap STGen . readSTRef . unSTGenM
@@ -560,6 +585,7 @@ instance RandomGen g => FrozenGen (STGen g) (ST s) where
 
 instance RandomGen g => ThawedGen (STGen g) (ST s) where
   thawGen (STGen g) = newSTGenM g
+#endif /* !defined(__MHS__) */
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -578,6 +604,7 @@ applySTGen f (STGenM ref) = do
     (a, !g') -> a <$ writeSTRef ref g'
 {-# INLINE applySTGen #-}
 
+#if !defined(__MHS__)
 -- | Runs a monadic generating action in the `ST` monad using a pure
 -- pseudo-random number generator.
 --
@@ -686,6 +713,7 @@ applyTGen f (TGenM tvar) = do
   case f g of
     (a, !g') -> a <$ writeTVar tvar g'
 {-# INLINE applyTGen #-}
+#endif /* !defined(__MHS__) */
 
 -- $uniform
 --

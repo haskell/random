@@ -40,6 +40,9 @@ module System.Random.Array (
   shuffleListST,
 ) where
 
+#if defined(__MHS__)
+import Data.Array.Byte
+#else /* defined(__MHS__) */
 import Control.Monad (when)
 import Control.Monad.ST
 import Control.Monad.Trans (MonadTrans, lift)
@@ -367,3 +370,6 @@ shuffleListST genWordR ls
   where
     len = length ls
 {-# INLINE shuffleListST #-}
+
+#endif /* defined(__MHS__) */
+  

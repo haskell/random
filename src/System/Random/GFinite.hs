@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -12,16 +13,20 @@
 -- Maintainer  :  libraries@haskell.org
 module System.Random.GFinite (
   Cardinality (..),
+#if !defined(__MHS__)
   Finite (..),
   GFinite (..),
+#endif /* !defined(__MHS__) */
 ) where
 
 import Data.Bits
 import Data.Int
 import Data.Void
 import Data.Word
+#if !defined(__MHS__)
 import GHC.Exts (Proxy#, proxy#)
 import GHC.Generics
+#endif /* !defined(__MHS__) */
 
 -- | Cardinality of a set.
 data Cardinality
@@ -77,6 +82,7 @@ instance Integral Cardinality where
       x = toInteger x'
   {-# INLINE quotRem #-}
 
+#if !defined(__MHS__)
 -- | A type class for data with a finite number of inhabitants. This type class
 -- is used in the default implementation of 'System.Random.Stateful.Uniform'.
 --
@@ -299,3 +305,5 @@ instance (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f) => Finite 
 instance
   (Finite a, Finite b, Finite c, Finite d, Finite e, Finite f, Finite g) =>
   Finite (a, b, c, d, e, f, g)
+
+#endif /* !defined(__MHS__) */
