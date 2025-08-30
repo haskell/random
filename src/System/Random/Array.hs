@@ -40,12 +40,10 @@ module System.Random.Array (
   shuffleListST,
 ) where
 
-#if defined(__MHS__)
-import Data.Array.Byte
-#else /* defined(__MHS__) */
 import Control.Monad (when)
 import Control.Monad.ST
 import Control.Monad.Trans (MonadTrans, lift)
+#if !defined(__MHS__)
 import Data.Array.Byte (ByteArray (..), MutableByteArray (..))
 import Data.Bits
 import Data.ByteString.Short.Internal (ShortByteString (SBS))
@@ -109,15 +107,6 @@ writeWord8 :: MutableByteArray s -> Int -> Word8 -> ST s ()
 writeWord8 (MutableByteArray mba#) (I# i#) (W8# w#) = st_ (writeWord8Array# mba# i# w#)
 {-# INLINE writeWord8 #-}
 
-writeByteSliceWord64LE :: MutableByteArray s -> Int -> Int -> Word64 -> ST s ()
-writeByteSliceWord64LE mba fromByteIx toByteIx = go fromByteIx
-  where
-    go !i !z =
-      when (i < toByteIx) $ do
-        writeWord8 mba i (fromIntegral z :: Word8)
-        go (i + 1) (z `shiftR` 8)
-{-# INLINE writeByteSliceWord64LE #-}
-
 indexWord8 ::
   ByteArray ->
   -- | Offset into immutable byte array in number of bytes
@@ -143,22 +132,6 @@ indexWord64LE (ByteArray ba#) (I# i#)
     in (fromIntegral w32u `shiftL` 32) .|. fromIntegral w32l
 #endif
 {-# INLINE indexWord64LE #-}
-
-indexByteSliceWord64LE ::
-  ByteArray ->
-  -- | Starting offset in number of bytes
-  Int ->
-  -- | Ending offset in number of bytes
-  Int ->
-  Word64
-indexByteSliceWord64LE ba fromByteIx toByteIx = goWord8 fromByteIx 0
-  where
-    r = (toByteIx - fromByteIx) `rem` 8
-    nPadBits = if r == 0 then 0 else 8 * (8 - r)
-    goWord8 i !w64
-      | i < toByteIx = goWord8 (i + 1) (shiftL w64 8 .|. fromIntegral (indexWord8 ba i))
-      | otherwise = byteSwap64 (shiftL w64 nPadBits)
-{-# INLINE indexByteSliceWord64LE #-}
 
 -- On big endian machines we need to write one byte at a time for consistency with little
 -- endian machines. Also for GHC versions prior to 8.6 we don't have primops that can
@@ -263,6 +236,92 @@ readArray (MutableArray ma#) (I# i#) = ST (readArray# ma# i#)
 writeArray :: MutableArray s a -> Int -> a -> ST s ()
 writeArray (MutableArray ma#) (I# i#) a = st_ (writeArray# ma# i# a)
 {-# INLINE writeArray #-}
+
+#else /* !defined(__MHS__) */
+import Data.Array.Byte
+import Data.Bits
+import Data.ByteString(ByteString)
+import Data.ByteString.Short.Internal
+import Data.Word
+import GHC.Exts(unsafeIOToST)
+
+wordSizeInBits :: Int
+wordSizeInBits = _wordSize
+
+ioToST :: IO a -> ST s a
+ioToST = unsafeIOToST
+
+-- newMutableArray
+
+newPinnedMutableByteArray :: Int -> ST s (MutableByteArray s)
+newPinnedMutableByteArray = newMutableByteArray
+
+-- freezeMutableArray
+-- writeWord8
+-- indexWord8
+
+indexWord64LE :: ByteArray -> Int -> Word64
+indexWord64LE ba i = indexByteSliceWord64LE ba i (i+8)
+
+writeWord64LE :: MutableByteArray s -> Int -> Word64 -> ST s ()
+writeWord64LE ba i w = writeByteSliceWord64LE ba i (i+8) w
+
+getSizeOfMutableByteArray :: MutableByteArray s -> ST s Int
+getSizeOfMutableByteArray = sizeOfMutableByteArray
+
+shortByteStringToByteArray :: ShortByteString -> ByteArray
+shortByteStringToByteArray = byteStringToByteArray . fromShort
+byteArrayToShortByteString :: ByteArray -> ShortByteString
+byteArrayToShortByteString = toShort . byteArrayToByteString
+shortByteStringToByteString :: ShortByteString -> ByteString
+shortByteStringToByteString = fromShort
+
+--------
+
+data Array a
+data MutableArray s a
+
+newMutableArray :: Int -> a -> ST s (MutableArray s a)
+newMutableArray = undefined
+
+freezeMutableArray :: MutableArray s a -> ST s (Array a)
+freezeMutableArray = undefined
+
+sizeOfMutableArray :: MutableArray s a -> Int
+sizeOfMutableArray = undefined
+
+readArray :: MutableArray s a -> Int -> ST s a
+readArray = undefined
+
+writeArray :: MutableArray s a -> Int -> a -> ST s ()
+writeArray = undefined
+
+#endif /* !defined(__MHS__) */
+
+writeByteSliceWord64LE :: MutableByteArray s -> Int -> Int -> Word64 -> ST s ()
+writeByteSliceWord64LE mba fromByteIx toByteIx = go fromByteIx
+  where
+    go !i !z =
+      when (i < toByteIx) $ do
+        writeWord8 mba i (fromIntegral z :: Word8)
+        go (i + 1) (z `shiftR` 8)
+{-# INLINE writeByteSliceWord64LE #-}
+
+indexByteSliceWord64LE ::
+  ByteArray ->
+  -- | Starting offset in number of bytes
+  Int ->
+  -- | Ending offset in number of bytes
+  Int ->
+  Word64
+indexByteSliceWord64LE ba fromByteIx toByteIx = goWord8 fromByteIx 0
+  where
+    r = (toByteIx - fromByteIx) `rem` 8
+    nPadBits = if r == 0 then 0 else 8 * (8 - r)
+    goWord8 i !w64
+      | i < toByteIx = goWord8 (i + 1) (shiftL w64 8 .|. fromIntegral (indexWord8 ba i))
+      | otherwise = byteSwap64 (shiftL w64 nPadBits)
+{-# INLINE indexByteSliceWord64LE #-}
 
 swapArray :: MutableArray s a -> Int -> Int -> ST s ()
 swapArray ma i j = do
@@ -370,6 +429,3 @@ shuffleListST genWordR ls
   where
     len = length ls
 {-# INLINE shuffleListST #-}
-
-#endif /* defined(__MHS__) */
-  

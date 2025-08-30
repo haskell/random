@@ -84,6 +84,7 @@ module System.Random.Internal (
   isInRangeEnum,
   scaleFloating,
 
+#if !defined(__MHS__)
   -- * Generators for sequences of pseudo-random bytes
   uniformShortByteStringM,
   uniformByteArray,
@@ -105,6 +106,7 @@ module System.Random.Internal (
   sizeOfByteArray,
   shortByteStringToByteArray,
   byteArrayToShortByteString,
+#endif /* !defined(__MHS__) */
 ) where
 
 import Control.Arrow
@@ -230,6 +232,7 @@ class RandomGen g where
   genWord64R m g = runStateGen g (unsignedBitmaskWithRejectionM uniformWord64 m)
   {-# INLINE genWord64R #-}
 
+#if !defined(__MHS__)
   -- | Same as @`uniformByteArray` `False`@, but for `ShortByteString`.
   --
   -- @genShortByteString n g@ returns a 'ShortByteString' of length @n@ filled with
@@ -240,12 +243,10 @@ class RandomGen g where
   --
   -- @since 1.2.0
   genShortByteString :: Int -> g -> (ShortByteString, g)
-#if !defined(__MHS__)
   genShortByteString n g =
     case uniformByteArray False n g of
       (ByteArray ba#, g') -> (SBS ba#, g')
   {-# INLINE genShortByteString #-}
-#endif /* !defined(__MHS__) */
 
   -- | Fill in the supplied `MutableByteArray` with uniformly generated random bytes. This function
   -- is unsafe because it is not required to do any bounds checking. For a safe variant use
@@ -268,6 +269,7 @@ class RandomGen g where
     ST s g
   unsafeUniformFillMutableByteArray = defaultUnsafeUniformFillMutableByteArray
   {-# INLINE unsafeUniformFillMutableByteArray #-}
+#endif /* !defined(__MHS__) */
 
   -- | Yields the range of values returned by 'next'.
   --
@@ -404,7 +406,6 @@ class Monad m => StatefulGen g m where
     (RandomGen f, FrozenGen f m, g ~ MutableGen f m) => Bool -> Int -> g -> m ByteArray
   uniformByteArrayM isPinned n g = modifyGen g (uniformByteArray isPinned n)
   {-# INLINE uniformByteArrayM #-}
-#endif /* !defined(__MHS__) */
 
   -- | @uniformShortByteString n g@ generates a 'ShortByteString' of length @n@
   -- filled with pseudo-random bytes.
@@ -413,6 +414,7 @@ class Monad m => StatefulGen g m where
   uniformShortByteString :: Int -> g -> m ShortByteString
   uniformShortByteString = uniformShortByteStringM
   {-# INLINE uniformShortByteString #-}
+#endif /* !defined(__MHS__) */
 
 {-# DEPRECATED uniformShortByteString "In favor of `uniformShortByteStringM`" #-}
 
@@ -516,6 +518,8 @@ splitMutableGenM :: (SplitGen f, ThawedGen f m) => MutableGen f m -> m (MutableG
 splitMutableGenM = splitGenM >=> thawGen
 #endif /* !defined(__MHS__) */
 
+#if !defined(__MHS__)
+#endif /* !defined(__MHS__) */
 -- | Efficiently generates a sequence of pseudo-random bytes in a platform
 -- independent manner.
 --
@@ -811,11 +815,13 @@ instance RandomGen SM.SMGen where
   genWord64 = SM.nextWord64
   {-# INLINE genWord64 #-}
 
+#if !defined(__MHS__)
   -- Despite that this is the same default implementation as in the type class definition,
   -- for some mysterious reason without this overwrite, performance of ByteArray generation
   -- slows down by a factor of x4:
   unsafeUniformFillMutableByteArray = defaultUnsafeUniformFillMutableByteArray
   {-# INLINE unsafeUniformFillMutableByteArray #-}
+#endif /* !defined(__MHS__) */
 
 instance SplitGen SM.SMGen where
   splitGen = SM.splitSMGen
