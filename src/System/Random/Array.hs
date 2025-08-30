@@ -238,10 +238,12 @@ writeArray (MutableArray ma#) (I# i#) a = st_ (writeArray# ma# i# a)
 {-# INLINE writeArray #-}
 
 #else /* !defined(__MHS__) */
+import qualified Data.Array as A
 import Data.Array.Byte
 import Data.Bits
 import Data.ByteString(ByteString)
 import Data.ByteString.Short.Internal
+import qualified Data.STArray as SA
 import Data.Word
 import GHC.Exts(unsafeIOToST)
 
@@ -278,23 +280,23 @@ shortByteStringToByteString = fromShort
 
 --------
 
-data Array a
-data MutableArray s a
+type Array a = A.Array Int a
+type MutableArray s a = SA.STArray s a
 
 newMutableArray :: Int -> a -> ST s (MutableArray s a)
-newMutableArray = undefined
+newMutableArray = SA.newSTArray
 
 freezeMutableArray :: MutableArray s a -> ST s (Array a)
-freezeMutableArray = undefined
+freezeMutableArray = SA.freezeSTArray
 
 sizeOfMutableArray :: MutableArray s a -> Int
-sizeOfMutableArray = undefined
+sizeOfMutableArray = SA.sizeSTArray
 
 readArray :: MutableArray s a -> Int -> ST s a
-readArray = undefined
+readArray = SA.readSTArray
 
 writeArray :: MutableArray s a -> Int -> a -> ST s ()
-writeArray = undefined
+writeArray = SA.writeSTArray
 
 #endif /* !defined(__MHS__) */
 

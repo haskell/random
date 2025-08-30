@@ -16,7 +16,7 @@ module System.Random.GFinite (
 #if !defined(__MHS__)
   Finite (..),
   GFinite (..),
-#endif /* !defined(__MHS__) */
+#endif /* !defined(x__MHS__) */
 ) where
 
 import Data.Bits

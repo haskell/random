@@ -84,7 +84,6 @@ module System.Random.Internal (
   isInRangeEnum,
   scaleFloating,
 
-#if !defined(__MHS__)
   -- * Generators for sequences of pseudo-random bytes
   uniformShortByteStringM,
   uniformByteArray,
@@ -106,7 +105,6 @@ module System.Random.Internal (
   sizeOfByteArray,
   shortByteStringToByteArray,
   byteArrayToShortByteString,
-#endif /* !defined(__MHS__) */
 ) where
 
 import Control.Arrow
@@ -232,7 +230,6 @@ class RandomGen g where
   genWord64R m g = runStateGen g (unsignedBitmaskWithRejectionM uniformWord64 m)
   {-# INLINE genWord64R #-}
 
-#if !defined(__MHS__)
   -- | Same as @`uniformByteArray` `False`@, but for `ShortByteString`.
   --
   -- @genShortByteString n g@ returns a 'ShortByteString' of length @n@ filled with
@@ -245,8 +242,12 @@ class RandomGen g where
   genShortByteString :: Int -> g -> (ShortByteString, g)
   genShortByteString n g =
     case uniformByteArray False n g of
+#if !defined(__MHS__)
       (ByteArray ba#, g') -> (SBS ba#, g')
   {-# INLINE genShortByteString #-}
+#else
+      (ba, g') -> (byteArrayToShortByteString ba, g')
+#endif /* !defined(__MHS__) */
 
   -- | Fill in the supplied `MutableByteArray` with uniformly generated random bytes. This function
   -- is unsafe because it is not required to do any bounds checking. For a safe variant use
@@ -269,7 +270,6 @@ class RandomGen g where
     ST s g
   unsafeUniformFillMutableByteArray = defaultUnsafeUniformFillMutableByteArray
   {-# INLINE unsafeUniformFillMutableByteArray #-}
-#endif /* !defined(__MHS__) */
 
   -- | Yields the range of values returned by 'next'.
   --
@@ -518,8 +518,6 @@ splitMutableGenM :: (SplitGen f, ThawedGen f m) => MutableGen f m -> m (MutableG
 splitMutableGenM = splitGenM >=> thawGen
 #endif /* !defined(__MHS__) */
 
-#if !defined(__MHS__)
-#endif /* !defined(__MHS__) */
 -- | Efficiently generates a sequence of pseudo-random bytes in a platform
 -- independent manner.
 --
@@ -815,13 +813,11 @@ instance RandomGen SM.SMGen where
   genWord64 = SM.nextWord64
   {-# INLINE genWord64 #-}
 
-#if !defined(__MHS__)
   -- Despite that this is the same default implementation as in the type class definition,
   -- for some mysterious reason without this overwrite, performance of ByteArray generation
   -- slows down by a factor of x4:
   unsafeUniformFillMutableByteArray = defaultUnsafeUniformFillMutableByteArray
   {-# INLINE unsafeUniformFillMutableByteArray #-}
-#endif /* !defined(__MHS__) */
 
 instance SplitGen SM.SMGen where
   splitGen = SM.splitSMGen
