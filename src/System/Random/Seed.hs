@@ -56,7 +56,7 @@ import Data.Word
 import GHC.Exts (Proxy#, proxy#)
 import GHC.TypeLits (KnownNat, Nat, natVal', type (<=))
 #endif /* !defined(__MHS__) */
-import System.Random.Array(sizeOfByteArray, shortByteStringToByteArray, byteArrayToShortByteString, newMutableByteArray)
+--import System.Random.Array(sizeOfByteArray, shortByteStringToByteArray, byteArrayToShortByteString, newMutableByteArray)
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32

@@ -37,7 +37,6 @@ module System.Random.Stateful (
     ,uniformShortByteString
 #endif /* !defined(__MHS__) */
   ),
-#if !defined(__MHS__)
   FrozenGen (..),
   ThawedGen (..),
   withMutableGen,
@@ -48,7 +47,6 @@ module System.Random.Stateful (
   randomRM,
   splitGenM,
   splitMutableGenM,
-#endif /* !defined(__MHS__) */
 
   -- ** Deprecated
   RandomGenM (..),
@@ -300,7 +298,6 @@ uniformShuffleListM :: StatefulGen g m => [a] -> g -> m [a]
 uniformShuffleListM xs gen = shuffleListM (`uniformWordR` gen) xs
 {-# INLINE uniformShuffleListM #-}
 
-#if !defined(__MHS__)
 -- | Runs a mutable pseudo-random number generator from its 'FrozenGen' state.
 --
 -- ====__Examples__
@@ -310,7 +307,11 @@ uniformShuffleListM xs gen = shuffleListM (`uniformWordR` gen) xs
 -- ([-74,37,-50,-2,3],IOGen {unIOGen = StdGen {unStdGen = SMGen 4273268533320920145 15251669095119325999}})
 --
 -- @since 1.2.0
+#if !defined(__MHS__)
 withMutableGen :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m (a, f)
+#else /* !defined(__MHS__) */
+withMutableGen :: ThawedGen f m mutableGen => f -> (mutableGen -> m a) -> m (a, f)
+#endif /* !defined(__MHS__) */
 withMutableGen fg action = do
   g <- thawGen fg
   res <- action g
@@ -327,7 +328,11 @@ withMutableGen fg action = do
 -- 4
 --
 -- @since 1.2.0
+#if !defined(__MHS__)
 withMutableGen_ :: ThawedGen f m => f -> (MutableGen f m -> m a) -> m a
+#else /* !defined(__MHS__) */
+withMutableGen_ :: ThawedGen f m mutableGen => f -> (mutableGen -> m a) -> m a
+#endif /* !defined(__MHS__) */
 withMutableGen_ fg action = thawGen fg >>= action
 
 -- | Just like `withMutableGen`, except uses a `Seed` instead of a frozen generator.
@@ -365,8 +370,13 @@ withMutableGen_ fg action = thawGen fg >>= action
 -- [7,5,4,3,1,8,10,6,9,2]
 --
 -- @since 1.3.0
+#if !defined(__MHS__)
 withSeedMutableGen ::
   (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m (a, Seed g)
+#else /* !defined(__MHS__) */
+withSeedMutableGen ::
+  (SeedGen g, ThawedGen g m mutableGen) => Seed g -> (mutableGen -> m a) -> m (a, Seed g)
+#endif /* !defined(__MHS__) */
 withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 
 -- | Just like `withSeedMutableGen`, except it doesn't return the final generator, only
@@ -374,7 +384,11 @@ withSeedMutableGen seed f = withSeedM seed (`withMutableGen` f)
 -- from freezeing the mutable generator
 --
 -- @since 1.3.0
+#if !defined(__MHS__)
 withSeedMutableGen_ :: (SeedGen g, ThawedGen g m) => Seed g -> (MutableGen g m -> m a) -> m a
+#else /* !defined(__MHS__) */
+withSeedMutableGen_ :: (SeedGen g, ThawedGen g m mutableGen) => Seed g -> (mutableGen -> m a) -> m a
+#endif /* !defined(__MHS__) */
 withSeedMutableGen_ seed = withMutableGen_ (fromSeed seed)
 
 -- | Generates a pseudo-random value using monadic interface and `Random` instance.
@@ -394,7 +408,11 @@ withSeedMutableGen_ seed = withMutableGen_ (fromSeed seed)
 -- 0.9156875994165681
 --
 -- @since 1.2.0
+#if !defined(__MHS__)
 randomM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => MutableGen g m -> m a
+#else /* !defined(__MHS__) */
+randomM :: (Random a, RandomGen g, FrozenGen g m mutableGen) => mutableGen -> m a
+#endif /* !defined(__MHS__) */
 randomM = flip modifyGen random
 {-# INLINE randomM #-}
 
@@ -415,13 +433,13 @@ randomM = flip modifyGen random
 -- 2
 --
 -- @since 1.2.0
+#if !defined(__MHS__)
 randomRM :: forall a g m. (Random a, RandomGen g, FrozenGen g m) => (a, a) -> MutableGen g m -> m a
 randomRM r = flip modifyGen (randomR r)
-{-# INLINE randomRM #-}
-#else
-withMutableGen :: a
-withMutableGen = error "withMutableGen: not with mhs"
+#else /* !defined(__MHS__) */
+randomRM :: (Random a, RandomGen g, FrozenGen g m mutableGen) => (a, a) -> mutableGen -> m a
 #endif /* !defined(__MHS__) */
+{-# INLINE randomRM #-}
 
 -- | Generates a pseudo-random 'ByteString' of the specified size.
 --
@@ -491,6 +509,9 @@ instance (RandomGen g, MonadIO m) => StatefulGen (IOGenM g) m where
 #if !defined(__MHS__)
 instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   type MutableGen (IOGen g) m = IOGenM g
+#else /* !defined(__MHS__) */
+instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m (IOGenM g) where
+#endif /* !defined(__MHS__) */
   freezeGen = fmap IOGen . liftIO . readIORef . unIOGenM
   modifyGen (IOGenM ref) f = liftIO $ do
     g <- readIORef ref
@@ -501,9 +522,12 @@ instance (RandomGen g, MonadIO m) => FrozenGen (IOGen g) m where
   overwriteGen (IOGenM ref) = liftIO . writeIORef ref . unIOGen
   {-# INLINE overwriteGen #-}
 
+#if !defined(__MHS__)
 instance (RandomGen g, MonadIO m) => ThawedGen (IOGen g) m where
-  thawGen (IOGen g) = newIOGenM g
+#else /* !defined(__MHS__) */
+instance (RandomGen g, MonadIO m) => ThawedGen (IOGen g) m (IOGenM g) where
 #endif /* !defined(__MHS__) */
+  thawGen (IOGen g) = newIOGenM g
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -570,6 +594,9 @@ instance RandomGen g => StatefulGen (STGenM g s) (ST s) where
 #if !defined(__MHS__)
 instance RandomGen g => FrozenGen (STGen g) (ST s) where
   type MutableGen (STGen g) (ST s) = STGenM g s
+#else /* !defined(__MHS__) */
+instance RandomGen g => FrozenGen (STGen g) (ST s) (STGenM g s) where
+#endif /* !defined(__MHS__) */
   freezeGen = fmap STGen . readSTRef . unSTGenM
   modifyGen (STGenM ref) f = do
     g <- readSTRef ref
@@ -580,9 +607,12 @@ instance RandomGen g => FrozenGen (STGen g) (ST s) where
   overwriteGen (STGenM ref) = writeSTRef ref . unSTGen
   {-# INLINE overwriteGen #-}
 
+#if !defined(__MHS__)
 instance RandomGen g => ThawedGen (STGen g) (ST s) where
-  thawGen (STGen g) = newSTGenM g
+#else /* !defined(__MHS__) */
+instance RandomGen g => ThawedGen (STGen g) (ST s) (STGenM g s) where
 #endif /* !defined(__MHS__) */
+  thawGen (STGen g) = newSTGenM g
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --
@@ -678,10 +708,13 @@ instance RandomGen g => StatefulGen (TGenM g) STM where
   uniformWord64 = applyTGen genWord64
   {-# INLINE uniformWord64 #-}
 
-#if !defined(__MHS__)
 -- | @since 1.2.1
+#if !defined(__MHS__)
 instance RandomGen g => FrozenGen (TGen g) STM where
   type MutableGen (TGen g) STM = TGenM g
+#else /* !defined(__MHS__) */
+instance RandomGen g => FrozenGen (TGen g) STM (TGenM g) where
+#endif /* !defined(__MHS__) */
   freezeGen = fmap TGen . readTVar . unTGenM
   modifyGen (TGenM ref) f = do
     g <- readTVar ref
@@ -692,9 +725,12 @@ instance RandomGen g => FrozenGen (TGen g) STM where
   overwriteGen (TGenM ref) = writeTVar ref . unTGen
   {-# INLINE overwriteGen #-}
 
+#if !defined(__MHS__)
 instance RandomGen g => ThawedGen (TGen g) STM where
-  thawGen (TGen g) = newTGenM g
+#else /* !defined(__MHS__) */
+instance RandomGen g => ThawedGen (TGen g) STM (TGenM g) where
 #endif /* !defined(__MHS__) */
+  thawGen (TGen g) = newTGenM g
 
 -- | Applies a pure operation to the wrapped pseudo-random number generator.
 --

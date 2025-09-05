@@ -33,12 +33,10 @@ module System.Random.Internal (
   -- * Stateful
   StatefulGen (..),
 
-#if !defined(__MHS__)
   FrozenGen (..),
   ThawedGen (..),
   splitGenM,
   splitMutableGenM,
-#endif /* !defined(__MHS__) */
 
   -- * Atomic and Global
   AtomicGen (..),
@@ -131,7 +129,9 @@ import GHC.Generics
 import GHC.IO (IO (..))
 import GHC.ST (ST (..))
 import GHC.Word
-#endif /* __MHS__ */
+#else /* !defined(__MHS__) */
+import Data.Coerce
+#endif /* !defined(__MHS__) */
 import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random.Array
@@ -405,6 +405,7 @@ class Monad m => StatefulGen g m where
   default uniformByteArrayM ::
     (RandomGen f, FrozenGen f m, g ~ MutableGen f m) => Bool -> Int -> g -> m ByteArray
   uniformByteArrayM isPinned n g = modifyGen g (uniformByteArray isPinned n)
+#endif /* !defined(__MHS__) */
   {-# INLINE uniformByteArrayM #-}
 
   -- | @uniformShortByteString n g@ generates a 'ShortByteString' of length @n@
@@ -414,7 +415,6 @@ class Monad m => StatefulGen g m where
   uniformShortByteString :: Int -> g -> m ShortByteString
   uniformShortByteString = uniformShortByteStringM
   {-# INLINE uniformShortByteString #-}
-#endif /* !defined(__MHS__) */
 
 {-# DEPRECATED uniformShortByteString "In favor of `uniformShortByteStringM`" #-}
 
@@ -479,6 +479,17 @@ class StatefulGen (MutableGen f m) m => FrozenGen f m where
   overwriteGen :: MutableGen f m -> f -> m ()
   overwriteGen mg fg = modifyGen mg (const ((), fg))
   {-# INLINE overwriteGen #-}
+#else
+class StatefulGen mutableGen m => FrozenGen f m mutableGen | mutableGen -> f where
+  freezeGen :: mutableGen -> m f
+  freezeGen mg = modifyGen mg (\fg -> (fg, fg))
+  modifyGen :: mutableGen -> (f -> (a, f)) -> m a
+  modifyGen mg f = do
+    fg <- freezeGen mg
+    case f fg of
+      (a, !fg') -> a <$ overwriteGen mg fg'
+  overwriteGen :: mutableGen -> f -> m ()
+  overwriteGen mg fg = modifyGen mg (const ((), fg))
 #endif /* !defined(__MHS__) */
 
 #if !defined(__MHS__)
@@ -515,6 +526,17 @@ splitGenM = flip modifyGen splitGen
 --
 -- @since 1.3.0
 splitMutableGenM :: (SplitGen f, ThawedGen f m) => MutableGen f m -> m (MutableGen f m)
+splitMutableGenM = splitGenM >=> thawGen
+
+#else /* !defined(__MHS__) */
+
+class FrozenGen f m mutableGen => ThawedGen f m mutableGen where
+  thawGen :: f -> m mutableGen
+
+splitGenM :: (SplitGen f, FrozenGen f m mutableGen) => mutableGen -> m f
+splitGenM = flip modifyGen splitGen
+
+splitMutableGenM :: (SplitGen f, ThawedGen f m mutableGen) => mutableGen -> m mutableGen
 splitMutableGenM = splitGenM >=> thawGen
 #endif /* !defined(__MHS__) */
 
@@ -682,12 +704,14 @@ instance (RandomGen g, MonadState g m) => StatefulGen (StateGenM g) m where
 #if !defined(__MHS__)
 instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m where
   type MutableGen (StateGen g) m = StateGenM g
+#else /* !defined(__MHS__) */
+instance (RandomGen g, MonadState g m) => FrozenGen (StateGen g) m (StateGenM g) where
+#endif /* !defined(__MHS__) */
   freezeGen _ = fmap StateGen get
   modifyGen _ f = state (coerce f)
   {-# INLINE modifyGen #-}
   overwriteGen _ f = put (coerce f)
   {-# INLINE overwriteGen #-}
-#endif /* !defined(__MHS__) */
 
 -- | Runs a monadic generating action in the `State` monad using a pure
 -- pseudo-random number generator.
@@ -1930,6 +1954,9 @@ instance (RandomGen g, MonadIO m) => StatefulGen (AtomicGenM g) m where
 #if !defined(__MHS__)
 instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
   type MutableGen (AtomicGen g) m = AtomicGenM g
+#else /* __MHS__ */
+instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m (AtomicGenM g) where
+#endif /* __MHS__ */
   freezeGen = fmap AtomicGen . liftIO . readIORef . unAtomicGenM
   modifyGen (AtomicGenM ioRef) f =
     liftIO $ atomicModifyIORefHS ioRef $ \g ->
@@ -1937,9 +1964,12 @@ instance (RandomGen g, MonadIO m) => FrozenGen (AtomicGen g) m where
         (a, AtomicGen g') -> (g', a)
   {-# INLINE modifyGen #-}
 
+#if !defined(__MHS__)
 instance (RandomGen g, MonadIO m) => ThawedGen (AtomicGen g) m where
-  thawGen (AtomicGen g) = newAtomicGenM g
+#else /* __MHS__ */
+instance (RandomGen g, MonadIO m) => ThawedGen (AtomicGen g) m (AtomicGenM g) where
 #endif /* __MHS__ */
+  thawGen (AtomicGen g) = newAtomicGenM g
 
 -- | Atomically applies a pure operation to the wrapped pseudo-random number
 -- generator.

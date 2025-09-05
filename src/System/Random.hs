@@ -110,7 +110,7 @@ import Data.Int
 import Data.Word
 import Foreign.C.Types
 import GHC.Exts
-import System.Random.Array(getSizeOfMutableByteArray, shortByteStringToByteString, shuffleListST)
+import System.Random.Array (getSizeOfMutableByteArray, shortByteStringToByteString, shuffleListST)
 #if !defined(__MHS__)
 import System.Random.GFinite (Finite)
 #endif /* !defined(__MHS__) */
@@ -794,7 +794,7 @@ newStdGen = liftIO $ atomicModifyIORef' theStdGen splitGen
 --
 -- @since 1.0.0
 getStdRandom :: MonadIO m => (StdGen -> (a, StdGen)) -> m a
-getStdRandom f = undefined -- modifyGen globalStdGen (coerce f)
+getStdRandom f = modifyGen globalStdGen (coerce f)
 
 -- | A variant of 'System.Random.Stateful.randomRM' that uses the global
 -- pseudo-random number generator 'System.Random.Stateful.globalStdGen'
