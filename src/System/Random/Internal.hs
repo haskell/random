@@ -32,7 +32,6 @@ module System.Random.Internal (
 
   -- * Stateful
   StatefulGen (..),
-
   FrozenGen (..),
   ThawedGen (..),
   splitGenM,
@@ -418,7 +417,6 @@ class Monad m => StatefulGen g m where
 
 {-# DEPRECATED uniformShortByteString "In favor of `uniformShortByteStringM`" #-}
 
-#if !defined(__MHS__)
 -- | This class is designed for mutable pseudo-random number generators that have a frozen
 -- imutable counterpart that can be manipulated in pure code.
 --
@@ -446,6 +444,7 @@ class Monad m => StatefulGen g m where
 -- @
 --
 -- @since 1.2.0
+#if !defined(__MHS__)
 class StatefulGen (MutableGen f m) m => FrozenGen f m where
   {-# MINIMAL (modifyGen | (freezeGen, overwriteGen)) #-}
 
@@ -492,7 +491,6 @@ class StatefulGen mutableGen m => FrozenGen f m mutableGen | mutableGen -> f whe
   overwriteGen mg fg = modifyGen mg (const ((), fg))
 #endif /* !defined(__MHS__) */
 
-#if !defined(__MHS__)
 -- | Functionality for thawing frozen generators is not part of the `FrozenGen` class,
 -- becase not all mutable generators support functionality of creating new mutable
 -- generators, which is what thawing is in its essence. For this reason `StateGen` does
@@ -507,6 +505,7 @@ class StatefulGen mutableGen m => FrozenGen f m mutableGen | mutableGen -> f whe
 -- @
 --
 -- @since 1.3.0
+#if !defined(__MHS__)
 class FrozenGen f m => ThawedGen f m where
   -- | Create a new mutable pseudo-random number generator from its frozen state.
   --

@@ -56,7 +56,6 @@ import Data.Word
 import GHC.Exts (Proxy#, proxy#)
 import GHC.TypeLits (KnownNat, Nat, natVal', type (<=))
 #endif /* !defined(__MHS__) */
---import System.Random.Array(sizeOfByteArray, shortByteStringToByteArray, byteArrayToShortByteString, newMutableByteArray)
 import System.Random.Internal
 import qualified System.Random.SplitMix as SM
 import qualified System.Random.SplitMix32 as SM32
@@ -204,6 +203,9 @@ instance SeedGen g => SeedGen (AtomicGen g) where
 instance SeedGen SM.SMGen where
 #if !defined(__MHS__)
   type SeedSize SM.SMGen = 16
+#else /* !defined(__MHS__) */
+  _seedSize = 16
+#endif /* !defined(__MHS__) */
   fromSeed (Seed ba) =
     SM.seedSMGen (indexWord64LE ba 0) (indexWord64LE ba 8)
   toSeed g =
@@ -213,13 +215,13 @@ instance SeedGen SM.SMGen where
         writeWord64LE mba 0 seed
         writeWord64LE mba 8 gamma
         freezeMutableByteArray mba
-#else /* !defined(__MHS__) */
-  _seedSize = 16
-#endif /* !defined(__MHS__) */
 
 instance SeedGen SM32.SMGen where
 #if !defined(__MHS__)
   type SeedSize SM32.SMGen = 8
+#else /* !defined(__MHS__) */
+  _seedSize = 8
+#endif /* !defined(__MHS__) */
   fromSeed (Seed ba) =
     let x = indexWord64LE ba 0
         seed, gamma :: Word32
@@ -235,9 +237,6 @@ instance SeedGen SM32.SMGen where
               w64 = shiftL (fromIntegral seed) 32 .|. fromIntegral gamma
           writeWord64LE mba 0 w64
           freezeMutableByteArray mba
-#else /* !defined(__MHS__) */
-  _seedSize = 8
-#endif /* !defined(__MHS__) */
 
 instance SeedGen g => Uniform (Seed g) where
   uniformM = fmap Seed . uniformByteArrayM False (seedSize @g)
