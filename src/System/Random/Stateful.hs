@@ -108,7 +108,7 @@ module System.Random.Stateful (
   uniformByteStringM,
   uniformShortByteStringM,
 
-  -- * Helper functions for createing instances
+  -- * Helper functions for creating instances
 
   -- ** Sequences of bytes
   fillByteArrayST,
