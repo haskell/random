@@ -87,6 +87,7 @@ library
         System.Random
         System.Random.Internal
         System.Random.Stateful
+        System.Random.Stateful.Monad
     other-modules:
         System.Random.Array
         System.Random.Seed

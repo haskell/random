@@ -2,6 +2,7 @@
 
 * Fix `setStdGen` not being threadsafe: [#190](https://github.com/haskell/random/pull/190)
 * Make `getStdRandom` lazy in the value being generated: [#190](https://github.com/haskell/random/pull/190)
+* Add `System.Random.Stateful.Monad` interface
 
 # 1.3.1
 
